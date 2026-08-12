@@ -12,10 +12,14 @@ Replica exactamente la lógica de importación por RSS del Panel Admin
   - Nunca se borra nada: si un episodio desaparece del feed, sigue en
     data.json.
 
-Solo usa la librería estándar de Python (sin dependencias externas) para que
-el workflow de GitHub Actions no necesite instalar nada.
+Además, cada episodio nuevo se transcribe automáticamente y gratis con
+Whisper corriendo localmente (ver transcribe.py) — sin ninguna API paga.
+Solo esa parte necesita una dependencia externa (faster-whisper, instalada
+por el workflow vía scripts/requirements.txt); el resto de este archivo usa
+únicamente la librería estándar de Python.
 """
 import json
+import os
 import re
 import sys
 import unicodedata
@@ -141,6 +145,7 @@ def sincronizar(data, episodios):
     por_audio = {s.get("audioUrl"): s for s in shiurim}
     agregados = 0
     actualizados = 0
+    nuevos_shiurim = []
     base_id = int(__import__("time").time() * 1000)
 
     for idx, ep in enumerate(episodios):
@@ -168,9 +173,45 @@ def sincronizar(data, episodios):
             }
             shiurim.append(nuevo)
             por_audio[ep["audioUrl"]] = nuevo
+            nuevos_shiurim.append(nuevo)
             agregados += 1
 
-    return agregados, actualizados
+    return agregados, actualizados, nuevos_shiurim
+
+
+# Tope de seguridad: cuántos episodios nuevos se transcriben como máximo en
+# una sola corrida (protege contra una corrida rarísima con muchos episodios
+# nuevos a la vez, por ejemplo tras una interrupción larga del workflow). En
+# uso normal (0-2 episodios nuevos cada 2 horas) nunca se llega a este límite.
+MAX_TRANSCRIPCIONES_POR_CORRIDA = int(os.environ.get("MAX_TRANSCRIPCIONES_POR_CORRIDA", "5"))
+
+
+def transcribir_nuevos(nuevos_shiurim):
+    if not nuevos_shiurim:
+        return 0
+    pendientes = nuevos_shiurim[:MAX_TRANSCRIPCIONES_POR_CORRIDA]
+    if len(nuevos_shiurim) > MAX_TRANSCRIPCIONES_POR_CORRIDA:
+        print(
+            f"Aviso: hay {len(nuevos_shiurim)} episodios nuevos, pero el tope por corrida es "
+            f"{MAX_TRANSCRIPCIONES_POR_CORRIDA}. El resto queda sin transcripción por ahora."
+        )
+
+    from transcribe import transcribir_audio_url
+
+    hechas = 0
+    for shiur in pendientes:
+        print(f"Transcribiendo: {shiur['titulo']}...")
+        try:
+            texto = transcribir_audio_url(shiur["audioUrl"])
+            if texto:
+                shiur["transcripcion"] = texto
+                hechas += 1
+                print(f"  OK ({len(texto)} caracteres).")
+            else:
+                print("  Transcripción vacía, se deja el campo en blanco.")
+        except Exception as e:
+            print(f"  ERROR al transcribir '{shiur['titulo']}': {e}")
+    return hechas
 
 
 def main():
@@ -194,11 +235,19 @@ def main():
         print("El feed se leyó bien pero no se encontraron episodios con audio.")
         sys.exit(0)
 
-    agregados, actualizados = sincronizar(data, episodios)
+    agregados, actualizados, nuevos_shiurim = sincronizar(data, episodios)
+
+    transcritas = 0
+    if nuevos_shiurim and os.environ.get("SKIP_TRANSCRIPCION") != "1":
+        transcritas = transcribir_nuevos(nuevos_shiurim)
+
     # Sin salto de línea final: así, si no hay cambios reales, el archivo
     # queda byte a byte igual al original y el workflow no genera un commit vacío.
     DATA_JSON.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"Listo: {len(episodios)} episodios en el feed ({agregados} nuevo(s), {actualizados} revisado(s)).")
+    print(
+        f"Listo: {len(episodios)} episodios en el feed ({agregados} nuevo(s), {actualizados} revisado(s), "
+        f"{transcritas} transcripción(es) generada(s))."
+    )
 
 
 if __name__ == "__main__":
