@@ -1,0 +1,1937 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Rabino Yoel Migdal - Shiurim</title>
+
+  <!-- PWA: instalable en pantalla de inicio del celular / computadora -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1c1917" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Shiurim" />
+
+  <!-- Tailwind CSS (via CDN, no requiere instalación) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- React + ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+  <!-- Babel (transforma JSX directamente en el navegador, sin build) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- EmailJS: envía el formulario de contacto sin exponer el email del rabino -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .font-serif { font-family: Georgia, "Times New Roman", serif; }
+  </style>
+</head>
+<body class="bg-stone-50">
+  <div id="root"></div>
+
+  <!-- Todo el componente va inline aquí abajo (evita problemas de carga de archivos separados) -->
+  <script type="text/babel">
+    const { useState, useMemo, useRef, useEffect } = React;
+
+    // ⚠️ Contraseña del Panel Admin. Cámbiala editando esta línea.
+    const ADMIN_PASSWORD = "Migdal2026";
+    const STORAGE_KEY_AUTH = "ry_migdal_admin_auth";
+    // Copia de respaldo local (en ESTE navegador) de la última versión de
+    // shiurim + configuración conocida. Se actualiza sola cada vez que
+    // data.json se lee con éxito, y también mientras editás en el Panel Admin.
+    // SOLO se usa para mostrar algo si data.json no se puede leer (sin
+    // conexión, archivo roto, etc.) — nunca pisa a un data.json que sí cargó bien.
+    const STORAGE_KEY_DATA = "ry_migdal_data_v1";
+
+    // ---------------------------------------------------------------------
+    // EmailJS (formulario de contacto). Ver guía para obtener estos 3 datos.
+    // Mientras no los configures, el formulario simplemente avisa que no
+    // está disponible todavía — nunca rompe la página.
+    // ---------------------------------------------------------------------
+    const EMAILJS_PUBLIC_KEY = "PEGA_AQUI_TU_EMAILJS_PUBLIC_KEY";
+    const EMAILJS_SERVICE_ID = "PEGA_AQUI_TU_EMAILJS_SERVICE_ID";
+    const EMAILJS_TEMPLATE_ID = "PEGA_AQUI_TU_EMAILJS_TEMPLATE_ID";
+    const EMAILJS_CONFIGURADO =
+      EMAILJS_PUBLIC_KEY.indexOf("PEGA_AQUI") !== 0 &&
+      EMAILJS_SERVICE_ID.indexOf("PEGA_AQUI") !== 0 &&
+      EMAILJS_TEMPLATE_ID.indexOf("PEGA_AQUI") !== 0;
+
+    if (EMAILJS_CONFIGURADO && window.emailjs) {
+      try { window.emailjs.init(EMAILJS_PUBLIC_KEY); } catch (e) {}
+    }
+
+    // ---------------------------------------------------------------------
+    // Iconos inline (sin dependencias externas)
+    // ---------------------------------------------------------------------
+    function Icon({ children, size = 18, ...props }) {
+      return (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          {...props}
+        >
+          {children}
+        </svg>
+      );
+    }
+    const IconSearch = (p) => (
+      <Icon {...p}>
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </Icon>
+    );
+    const IconPlay = (p) => (
+      <Icon {...p} fill="currentColor" stroke="none">
+        <polygon points="6 3 20 12 6 21 6 3" />
+      </Icon>
+    );
+    const IconPause = (p) => (
+      <Icon {...p} fill="currentColor" stroke="none">
+        <rect x="6" y="4" width="4" height="16" />
+        <rect x="14" y="4" width="4" height="16" />
+      </Icon>
+    );
+    const IconX = (p) => (
+      <Icon {...p}>
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+      </Icon>
+    );
+    const IconUpload = (p) => (
+      <Icon {...p}>
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="17 8 12 3 7 8" />
+        <line x1="12" y1="3" x2="12" y2="15" />
+      </Icon>
+    );
+    const IconDownload = (p) => (
+      <Icon {...p}>
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="7 10 12 15 17 10" />
+        <line x1="12" y1="15" x2="12" y2="3" />
+      </Icon>
+    );
+    const IconPencil = (p) => (
+      <Icon {...p}>
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+      </Icon>
+    );
+    const IconTrash = (p) => (
+      <Icon {...p}>
+        <polyline points="3 6 5 6 21 6" />
+        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+        <path d="M10 11v6" />
+        <path d="M14 11v6" />
+        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+      </Icon>
+    );
+    const IconLock = (p) => (
+      <Icon {...p}>
+        <rect x="3" y="11" width="18" height="11" rx="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </Icon>
+    );
+    const IconSettings = (p) => (
+      <Icon {...p}>
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </Icon>
+    );
+    const IconMail = (p) => (
+      <Icon {...p}>
+        <rect x="2" y="4" width="20" height="16" rx="2" />
+        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+      </Icon>
+    );
+    const IconRefresh = (p) => (
+      <Icon {...p}>
+        <polyline points="23 4 23 10 17 10" />
+        <polyline points="1 20 1 14 7 14" />
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+      </Icon>
+    );
+    const IconCheck = (p) => (
+      <Icon {...p}>
+        <polyline points="20 6 9 17 4 12" />
+      </Icon>
+    );
+    const IconAlert = (p) => (
+      <Icon {...p}>
+        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+        <line x1="12" y1="9" x2="12" y2="13" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
+      </Icon>
+    );
+    const IconInstall = (p) => (
+      <Icon {...p}>
+        <rect x="4" y="2" width="16" height="20" rx="2" />
+        <line x1="12" y1="9" x2="12" y2="15" />
+        <polyline points="9 12 12 15 15 12" />
+        <line x1="9" y1="19" x2="15" y2="19" />
+      </Icon>
+    );
+
+    // ---------------------------------------------------------------------
+    // Categorías oficiales (fijas)
+    // ---------------------------------------------------------------------
+    const CATEGORIAS = [
+      "Tania",
+      "Parashá de la semana",
+      "Conferencias",
+      "Pensamientos",
+      "Historias Jasídicas",
+      "Pirkei Avot",
+      "Fechas especiales",
+      "Discursos Jasídicos",
+      "Historia judía",
+    ];
+
+    // ---------------------------------------------------------------------
+    // Datos de respaldo mínimos: se usan SOLO si data.json no se pudo leer Y
+    // tampoco hay nada guardado en este navegador (primerísima vez, sin conexión).
+    // ---------------------------------------------------------------------
+    const MOCK_SHIURIM = [
+      {
+        id: 1,
+        titulo: "Tania cap. 1 — El alma dividida",
+        tituloPrincipal: "",
+        categoria: "Tania",
+        fecha: "2026-07-02",
+        audioUrl: "https://example.com/audio/tania-1.mp3",
+        portadaUrl: "",
+        descripcion: "Introducción a la estructura del alma según el Baal HaTania.",
+        transcripcion: "",
+        reproducciones: 0,
+      },
+    ];
+
+    const CONFIG_DEFECTO = { adminEmail: "", mercadoPagoLink: "", rssFeedUrl: "" };
+
+    // ---------------------------------------------------------------------
+    // Utilidades
+    // ---------------------------------------------------------------------
+    function formatFecha(fechaStr) {
+      const d = new Date(fechaStr + "T00:00:00");
+      return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
+    }
+
+    function formatTiempo(seg) {
+      if (!seg || isNaN(seg)) return "0:00";
+      const m = Math.floor(seg / 60);
+      const s = Math.floor(seg % 60).toString().padStart(2, "0");
+      return `${m}:${s}`;
+    }
+
+    const SPEEDS = [1, 1.25, 1.5, 2];
+
+    // Un shiur "válido" para mostrar necesita, como mínimo, título y audio.
+    // Filtra silenciosamente cualquier entrada rota (por ejemplo, si data.json
+    // se editó a mano y quedó algún objeto incompleto) en vez de romper toda la web.
+    function esShiurValido(s) {
+      return !!(s && typeof s === "object" && s.titulo && s.audioUrl);
+    }
+
+    // El "título principal" es el que carga el admin a mano (grande, arriba).
+    // Si todavía no se cargó ninguno, se usa el título original (de Spotify/RSS
+    // o el que se haya tipeado a mano al agregar el shiur) como título principal,
+    // para que nunca se vea un título vacío.
+    function tituloPrincipalDe(shiur) {
+      const propio = shiur.tituloPrincipal && shiur.tituloPrincipal.trim();
+      return propio ? propio : shiur.titulo;
+    }
+    // El "subtítulo" es el título original (de Spotify/RSS) — pero solo se
+    // muestra aparte cuando hay un título principal distinto cargado; si no,
+    // ya se está mostrando como título principal y no hace falta repetirlo.
+    function subtituloDe(shiur) {
+      const propio = shiur.tituloPrincipal && shiur.tituloPrincipal.trim();
+      if (propio && propio !== (shiur.titulo || "").trim()) return shiur.titulo;
+      return null;
+    }
+
+    // ---------------------------------------------------------------------
+    // Importación de episodios desde un feed RSS (Spotify for Creators / Anchor
+    // y, en general, cualquier feed de podcast estándar): lectura del feed,
+    // categorización automática por palabras clave, e importación de
+    // transcripciones reales cuando el feed las publica (etiqueta estándar
+    // <podcast:transcript>, la que usa Spotify for Creators).
+    // ---------------------------------------------------------------------
+    function textoDe(nodo, tag) {
+      const el = nodo.getElementsByTagName(tag)[0];
+      return el ? el.textContent : "";
+    }
+    function atributoDe(nodo, tag, attr) {
+      const el = nodo.getElementsByTagName(tag)[0];
+      return el ? el.getAttribute(attr) : "";
+    }
+
+    async function fetchTextUrl(url) {
+      // 1) Intento directo: algunas URLs sí permiten leerse desde el navegador.
+      try {
+        const directa = await fetch(url);
+        if (directa.ok) {
+          const texto = await directa.text();
+          if (texto && texto.trim().length > 0) return texto;
+        }
+      } catch (e) {
+        // Sigue con el proxy de abajo.
+      }
+      // 2) La gran mayoría de los feeds de Spotify for Creators / Anchor (y los
+      //    archivos de transcripción que enlazan) no permiten que un navegador
+      //    los lea de forma directa (por política de CORS del propio servidor,
+      //    no del código de esta web). Se usa un proxy público de solo lectura
+      //    como puente, sin necesidad de credenciales ni de un backend propio.
+      const proxy = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
+      const viaProxy = await fetch(proxy);
+      if (!viaProxy.ok) throw new Error("No se pudo acceder a " + url);
+      return await viaProxy.text();
+    }
+
+    // --- Categorización automática por palabras clave en título/descripción ---
+    // Quita tildes/diacríticos (á -> a, é -> e, etc.): normaliza el texto y
+    // descarta los caracteres de combinación Unicode (rango U+0300–U+036F,
+    // los que quedan "sueltos" arriba de cada letra tras normalizar con NFD).
+    const CARACTERES_DIACRITICOS = new RegExp("[̀-ͯ]", "g");
+    function quitarAcentos(s) {
+      return (s || "").normalize("NFD").replace(CARACTERES_DIACRITICOS, "").toLowerCase();
+    }
+
+    const REGLAS_CATEGORIA = [
+      { categoria: "Tania", palabras: ["tania"] },
+      { categoria: "Pirkei Avot", palabras: ["pirkei avot", "pirke avot", "avot"] },
+      {
+        categoria: "Historias Jasídicas",
+        palabras: ["historias jasidicas", "historia jasidica", "cuento jasidico", "relato jasidico", "anecdota jasidica"],
+      },
+      {
+        categoria: "Discursos Jasídicos",
+        palabras: ["discursos jasidicos", "discurso jasidico", "maamar", "dvar maljut"],
+      },
+      {
+        categoria: "Fechas especiales",
+        palabras: [
+          "rosh hashana", "iom kipur", "yom kipur", "kipur", "sucot", "sukkot", "pesaj", "pesach",
+          "shavuot", "shavuos", "purim", "januca", "hanuka", "hanukkah", "tisha b av", "tisha bav",
+          "lag baomer", "tu bishvat", "tu bshvat", "simjat tora", "shmini atzeret", "rosh jodesh",
+        ],
+      },
+      {
+        categoria: "Parashá de la semana",
+        palabras: ["parasha de la semana", "parashat", "parasha", "parshat", "parsha"],
+      },
+      { categoria: "Conferencias", palabras: ["conferencia"] },
+      { categoria: "Historia judía", palabras: ["historia judia"] },
+      { categoria: "Pensamientos", palabras: ["pensamiento"] },
+    ];
+    const CATEGORIA_POR_DEFECTO = "Pensamientos";
+
+    function detectarCategoria(titulo, descripcion) {
+      const texto = quitarAcentos(`${titulo} ${descripcion}`);
+      for (const regla of REGLAS_CATEGORIA) {
+        if (regla.palabras.some((p) => texto.indexOf(quitarAcentos(p)) !== -1)) {
+          return regla.categoria;
+        }
+      }
+      return CATEGORIA_POR_DEFECTO;
+    }
+
+    // --- Transcripciones reales publicadas en el feed (podcast:transcript) ---
+    function vttOSrtATexto(contenido) {
+      return contenido
+        .split(/\r?\n/)
+        .filter((linea) => {
+          const l = linea.trim();
+          if (!l) return false;
+          if (l === "WEBVTT") return false;
+          if (/^NOTE/i.test(l)) return false;
+          if (/^\d+$/.test(l)) return false; // números de cue (SRT)
+          if (/-->/.test(l)) return false; // línea de tiempos
+          return true;
+        })
+        .join(" ")
+        .replace(/<[^>]+>/g, "") // por si trae etiquetas de estilo VTT
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function jsonTranscriptATexto(jsonText) {
+      try {
+        const data = JSON.parse(jsonText);
+        const segmentos = data.segments || data.results || (Array.isArray(data) ? data : null);
+        if (Array.isArray(segmentos)) {
+          return segmentos
+            .map((seg) => seg.body || seg.text || seg.transcript || (seg.alternatives && seg.alternatives[0] && seg.alternatives[0].transcript) || "")
+            .filter(Boolean)
+            .join(" ")
+            .replace(/\s+/g, " ")
+            .trim();
+        }
+      } catch (e) {}
+      return "";
+    }
+
+    function elegirMejorTranscriptTag(tags) {
+      const prioridad = ["text/plain", "text/vtt", "application/srt", "application/x-subrip", "application/json", "text/html"];
+      let mejor = null;
+      let mejorRank = Infinity;
+      tags.forEach((tag) => {
+        const tipo = (tag.getAttribute("type") || "").toLowerCase();
+        const rank = prioridad.indexOf(tipo);
+        const rankFinal = rank === -1 ? prioridad.length : rank;
+        if (rankFinal < mejorRank) { mejorRank = rankFinal; mejor = tag; }
+      });
+      return mejor;
+    }
+
+    async function obtenerTranscripcionDeItem(item) {
+      const tags = Array.prototype.slice.call(item.getElementsByTagName("podcast:transcript"));
+      if (tags.length === 0) return ""; // el feed no publica transcripciones para este episodio
+      const elegido = elegirMejorTranscriptTag(tags);
+      const url = elegido && elegido.getAttribute("url");
+      if (!url) return "";
+      const tipo = (elegido.getAttribute("type") || "").toLowerCase();
+      try {
+        const contenido = await fetchTextUrl(url);
+        if (tipo.indexOf("json") !== -1) return jsonTranscriptATexto(contenido);
+        if (tipo.indexOf("vtt") !== -1 || tipo.indexOf("srt") !== -1 || tipo.indexOf("subrip") !== -1) return vttOSrtATexto(contenido);
+        if (tipo.indexOf("html") !== -1) return new DOMParser().parseFromString(contenido, "text/html").body.textContent.trim();
+        return contenido.trim(); // text/plain u otro formato de texto simple
+      } catch (e) {
+        return "";
+      }
+    }
+
+    // Procesa las transcripciones de a varios episodios en paralelo (no de a
+    // uno) para que sincronizar un podcast con muchos episodios no tarde
+    // demasiado, e informa el progreso mientras tanto.
+    async function enriquecerConTranscripciones(episodios, onProgreso) {
+      const CONCURRENCIA = 4;
+      let indice = 0;
+      let completados = 0;
+      async function trabajador() {
+        while (indice < episodios.length) {
+          const i = indice++;
+          const ep = episodios[i];
+          try {
+            ep.transcripcion = await obtenerTranscripcionDeItem(ep._item);
+          } catch (e) {
+            ep.transcripcion = "";
+          }
+          delete ep._item;
+          completados++;
+          if (onProgreso) onProgreso(completados, episodios.length);
+        }
+      }
+      const trabajadores = [];
+      for (let i = 0; i < CONCURRENCIA; i++) trabajadores.push(trabajador());
+      await Promise.all(trabajadores);
+      return episodios;
+    }
+
+    function parsearFeedRSS(xmlText) {
+      const xml = new DOMParser().parseFromString(xmlText, "text/xml");
+      if (xml.getElementsByTagName("parsererror").length) {
+        throw new Error("El feed no tiene un formato XML válido.");
+      }
+      const channel = xml.getElementsByTagName("channel")[0];
+      const imagenCanal = channel
+        ? (textoDe(channel, "url") || atributoDe(channel, "itunes:image", "href") || "")
+        : "";
+      const items = Array.prototype.slice.call(xml.getElementsByTagName("item"));
+      return items
+        .map((item) => {
+          const titulo = (textoDe(item, "title") || "Episodio sin título").trim();
+          const audioUrl = atributoDe(item, "enclosure", "url") || "";
+          const portadaUrl = atributoDe(item, "itunes:image", "href") || imagenCanal || "";
+          const pubDateRaw = textoDe(item, "pubDate");
+          const fechaObj = pubDateRaw ? new Date(pubDateRaw) : null;
+          const fecha = fechaObj && !isNaN(fechaObj.getTime()) ? fechaObj.toISOString().slice(0, 10) : "";
+          const descRaw = textoDe(item, "description") || textoDe(item, "itunes:summary") || "";
+          const descripcion = new DOMParser().parseFromString(descRaw, "text/html").body.textContent.trim();
+          const categoria = detectarCategoria(titulo, descripcion);
+          return { titulo, categoria, audioUrl, portadaUrl, fecha, descripcion, _item: item };
+        })
+        .filter((ep) => ep.audioUrl); // se descartan entradas sin audio (no son episodios reproducibles)
+    }
+
+    // ---------------------------------------------------------------------
+    // Tarjeta de Shiur
+    // ---------------------------------------------------------------------
+    function ShiurCard({ shiur, isActive, isPlaying, onOpenDetail, onPlay, isAdmin, onEdit, onDelete }) {
+      const titulo = tituloPrincipalDe(shiur);
+      const subtitulo = subtituloDe(shiur);
+      return (
+        <div
+          onClick={() => onOpenDetail(shiur)}
+          className={`group border rounded-lg overflow-hidden flex flex-col justify-between transition-shadow bg-white cursor-pointer relative ${
+            isActive ? "border-blue-900 shadow-md" : "border-stone-200 hover:shadow-sm"
+          }`}
+        >
+          {isAdmin && (
+            <div className="absolute top-2 right-2 z-10 flex gap-1">
+              <button
+                onClick={(e) => { e.stopPropagation(); onEdit(shiur); }}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/90 text-stone-600 hover:text-blue-900 shadow-sm"
+                aria-label="Editar"
+              >
+                <IconPencil size={14} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete(shiur.id); }}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/90 text-stone-600 hover:text-red-600 shadow-sm"
+                aria-label="Eliminar"
+              >
+                <IconTrash size={14} />
+              </button>
+            </div>
+          )}
+
+          {shiur.portadaUrl && (
+            <div className="w-full h-36 sm:h-40 bg-stone-100 flex items-center justify-center overflow-hidden">
+              <img src={shiur.portadaUrl} alt={titulo} className="w-full h-full object-contain" loading="lazy" />
+            </div>
+          )}
+          <div className="p-4 sm:p-5 flex flex-col justify-between flex-1">
+            <div>
+              <span className="inline-block text-[11px] tracking-wide uppercase text-blue-900 bg-blue-50 px-2 py-1 rounded mb-3">
+                {shiur.categoria}
+              </span>
+              <h3 className="text-stone-900 font-serif text-lg leading-snug mb-0.5">{titulo}</h3>
+              {subtitulo && <p className="text-stone-500 text-sm italic mb-1">{subtitulo}</p>}
+              <p className="text-stone-500 text-xs mb-3">{formatFecha(shiur.fecha)}</p>
+              <p className="text-stone-600 text-sm leading-relaxed line-clamp-3">{shiur.descripcion}</p>
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); onPlay(shiur); }}
+              className="mt-4 inline-flex items-center gap-2 self-start text-sm font-medium text-stone-800 border border-stone-300 rounded-full px-4 py-2 sm:py-1.5 active:scale-95 hover:bg-stone-900 hover:text-white transition-colors"
+            >
+              {isActive && isPlaying ? <IconPause size={14} /> : <IconPlay size={14} />}
+              {isActive && isPlaying ? "Pausar" : "Reproducir"}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Vista detallada (modal de pantalla completa) — incluye transcripción
+    // sincronizada con el tiempo real de reproducción del audio (no usa
+    // micrófono ni reconocimiento de voz).
+    // ---------------------------------------------------------------------
+    function ShiurDetailModal({ shiur, onClose, isActive, isPlaying, speed, progreso, actual, duracion, onPlayToggle, onSeek, onSpeedChange }) {
+      const [mostrarTranscripcion, setMostrarTranscripcion] = useState(false);
+      const cajaTextoRef = useRef(null);
+      const marcaActualRef = useRef(null);
+
+      const titulo = tituloPrincipalDe(shiur);
+      const subtitulo = subtituloDe(shiur);
+
+      const tieneTranscripcion = !!(shiur.transcripcion && shiur.transcripcion.trim());
+      const palabras = useMemo(
+        () => (tieneTranscripcion ? shiur.transcripcion.trim().split(/\s+/) : []),
+        [shiur.transcripcion]
+      );
+      // Progreso real del audio de este shiur (0 a 1). Si este shiur no es el que
+      // está cargado en el reproductor, no hay progreso que mostrar todavía.
+      const progresoTexto = isActive && duracion > 0 ? Math.min(1, Math.max(0, actual / duracion)) : 0;
+      const cantidadVisible = Math.round(palabras.length * progresoTexto);
+
+      useEffect(() => {
+        if (mostrarTranscripcion && marcaActualRef.current && typeof marcaActualRef.current.scrollIntoView === "function") {
+          marcaActualRef.current.scrollIntoView({ block: "center" });
+        }
+      }, [cantidadVisible, mostrarTranscripcion]);
+
+      return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
+          <div
+            className="bg-white w-full sm:max-w-2xl sm:rounded-lg rounded-t-2xl max-h-[95vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {shiur.portadaUrl ? (
+              <div className="w-full h-52 sm:h-72 bg-stone-100 flex items-center justify-center overflow-hidden">
+                <img src={shiur.portadaUrl} alt={titulo} className="w-full h-full object-contain" />
+              </div>
+            ) : (
+              <div className="w-full h-16 bg-stone-100" />
+            )}
+
+            <div className="p-5 sm:p-8 relative">
+              <button
+                onClick={onClose}
+                className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center text-stone-400 hover:text-stone-700"
+                aria-label="Cerrar"
+              >
+                <IconX size={20} />
+              </button>
+
+              <span className="inline-block text-[11px] tracking-wide uppercase text-blue-900 bg-blue-50 px-2 py-1 rounded mb-3">
+                {shiur.categoria}
+              </span>
+              <h2 className="font-serif text-2xl text-stone-900 mb-1 pr-8 leading-snug">{titulo}</h2>
+              {subtitulo && <p className="text-stone-500 text-sm italic mb-1">{subtitulo}</p>}
+              <p className="text-stone-500 text-sm mb-5">{formatFecha(shiur.fecha)}</p>
+
+              {/* Reproductor embebido */}
+              <div className="bg-stone-50 border border-stone-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <button
+                    onClick={onPlayToggle}
+                    className="shrink-0 w-12 h-12 flex items-center justify-center rounded-full bg-stone-900 text-white active:scale-95 transition-transform"
+                    aria-label={isActive && isPlaying ? "Pausar" : "Reproducir"}
+                  >
+                    {isActive && isPlaying ? <IconPause size={20} /> : <IconPlay size={20} />}
+                  </button>
+                  <div className="flex-1 min-w-0 flex items-center gap-2">
+                    <span className="text-[10px] text-stone-400 w-8 text-right shrink-0">{formatTiempo(isActive ? actual : 0)}</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={0.1}
+                      value={isActive && !isNaN(progreso) ? progreso : 0}
+                      onChange={(e) => onSeek(Number(e.target.value))}
+                      className="w-full accent-stone-900 h-3 sm:h-1.5 cursor-pointer"
+                    />
+                    <span className="text-[10px] text-stone-400 w-8 shrink-0">{formatTiempo(isActive ? duracion : 0)}</span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] text-stone-500 mr-1">Velocidad:</span>
+                  {SPEEDS.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => onSpeedChange(s)}
+                      className={`text-xs px-2.5 py-1.5 rounded border transition-colors ${
+                        speed === s ? "bg-stone-900 text-white border-stone-900" : "border-stone-300 text-stone-600 hover:border-stone-500"
+                      }`}
+                    >
+                      {s}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Transcripción sincronizada con el audio del shiur */}
+              <div className="mb-6">
+                <button
+                  onClick={() => setMostrarTranscripcion((v) => !v)}
+                  className={`w-full text-sm font-medium px-4 py-3 rounded border transition-colors ${
+                    mostrarTranscripcion ? "bg-stone-900 text-white border-stone-900" : "border-stone-300 text-stone-700 hover:bg-stone-50"
+                  }`}
+                >
+                  Transcripción
+                </button>
+
+                {mostrarTranscripcion && !tieneTranscripcion && (
+                  <p className="text-xs text-stone-400 mt-2 text-center">Todavía no hay transcripción cargada para este shiur.</p>
+                )}
+
+                {mostrarTranscripcion && tieneTranscripcion && (
+                  <React.Fragment>
+                    {!isActive && (
+                      <p className="text-xs text-stone-400 mt-2 text-center">Reproducí el audio para que el texto avance solo.</p>
+                    )}
+                    <div
+                      ref={cajaTextoRef}
+                      className="mt-3 bg-stone-50 border border-stone-200 rounded-lg p-4 text-sm leading-relaxed max-h-48 overflow-y-auto"
+                    >
+                      {palabras.map((palabra, i) => (
+                        <span
+                          key={i}
+                          ref={i === cantidadVisible - 1 ? marcaActualRef : null}
+                          className={i < cantidadVisible ? "text-stone-900" : "text-stone-300"}
+                        >
+                          {palabra}{" "}
+                        </span>
+                      ))}
+                    </div>
+                  </React.Fragment>
+                )}
+              </div>
+
+              <p className="text-stone-700 text-sm leading-relaxed whitespace-pre-line mb-6">{shiur.descripcion}</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Reproductor flotante (barra inferior, con audio real)
+    // ---------------------------------------------------------------------
+    function FloatingPlayer({ current, isPlaying, speed, progreso, actual, duracion, onTogglePlay, onSeek, onSpeedChange, onClose, onOpenDetail }) {
+      if (!current) return null;
+
+      const cycleSpeed = () => {
+        const idx = SPEEDS.indexOf(speed);
+        onSpeedChange(SPEEDS[(idx + 1) % SPEEDS.length]);
+      };
+
+      return (
+        <div
+          className="fixed bottom-0 inset-x-0 bg-stone-900 text-stone-50 border-t border-stone-700 z-40"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
+          <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 flex items-center gap-3 sm:gap-4">
+            <button
+              onClick={onTogglePlay}
+              className="shrink-0 w-11 h-11 flex items-center justify-center rounded-full bg-white text-stone-900 active:scale-95 transition-transform"
+              aria-label={isPlaying ? "Pausar" : "Reproducir"}
+            >
+              {isPlaying ? <IconPause size={18} /> : <IconPlay size={18} />}
+            </button>
+
+            <div className="min-w-0 flex-1 cursor-pointer" onClick={onOpenDetail}>
+              <p className="text-sm font-medium truncate">{tituloPrincipalDe(current)}</p>
+              <div className="flex items-center gap-2 mt-1.5">
+                <span className="text-[10px] text-stone-400 w-8 text-right shrink-0">{formatTiempo(actual)}</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={0.1}
+                  value={isNaN(progreso) ? 0 : progreso}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => onSeek(Number(e.target.value))}
+                  className="w-full accent-white h-3 sm:h-1 cursor-pointer"
+                />
+                <span className="text-[10px] text-stone-400 w-8 shrink-0">{formatTiempo(duracion)}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={cycleSpeed}
+              className="shrink-0 text-xs px-2.5 py-2.5 sm:py-2 rounded border border-stone-600 text-stone-200 active:scale-95 transition-transform"
+            >
+              {speed}x
+            </button>
+
+            <button
+              onClick={onClose}
+              className="shrink-0 w-9 h-9 flex items-center justify-center text-stone-400 hover:text-white active:scale-95 transition-transform"
+              aria-label="Cerrar reproductor"
+            >
+              <IconX size={18} />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Modal de Contacto (usa EmailJS; el email del rabino no se muestra
+    // en ninguna parte visible de la página)
+    // ---------------------------------------------------------------------
+    function ContactModal({ onClose, adminEmail }) {
+      const [form, setForm] = useState({ nombre: "", apellido: "", email: "", mensaje: "" });
+      const [estado, setEstado] = useState("idle"); // idle | enviando | ok | error
+
+      const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!EMAILJS_CONFIGURADO) { setEstado("no-config"); return; }
+        setEstado("enviando");
+        try {
+          await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+            from_name: `${form.nombre} ${form.apellido}`.trim(),
+            reply_to: form.email,
+            message: form.mensaje,
+            to_email: adminEmail || "",
+          });
+          setEstado("ok");
+          setForm({ nombre: "", apellido: "", email: "", mensaje: "" });
+        } catch (err) {
+          console.error(err);
+          setEstado("error");
+        }
+      };
+
+      return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-lg p-6 relative shadow-xl max-h-[92vh] overflow-y-auto">
+            <button onClick={onClose} className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center text-stone-400 hover:text-stone-700">
+              <IconX size={20} />
+            </button>
+            <div className="w-10 h-10 rounded-full bg-stone-900 text-white flex items-center justify-center mb-4">
+              <IconMail size={18} />
+            </div>
+            <h2 className="font-serif text-xl text-stone-900 mb-1">Consultar al Rabino</h2>
+            <p className="text-sm text-stone-500 mb-6">Escribí tu consulta y te va a llegar una respuesta por email.</p>
+
+            {estado === "ok" ? (
+              <p className="text-sm text-blue-900 bg-blue-50 border border-blue-100 rounded-lg p-4">
+                Tu mensaje fue enviado. ¡Gracias por escribir!
+              </p>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    required
+                    value={form.nombre}
+                    onChange={update("nombre")}
+                    placeholder="Nombre"
+                    className="w-full border border-stone-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-blue-900"
+                  />
+                  <input
+                    required
+                    value={form.apellido}
+                    onChange={update("apellido")}
+                    placeholder="Apellido"
+                    className="w-full border border-stone-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-blue-900"
+                  />
+                </div>
+                <input
+                  required
+                  type="email"
+                  value={form.email}
+                  onChange={update("email")}
+                  placeholder="Tu email"
+                  className="w-full border border-stone-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-blue-900"
+                />
+                <textarea
+                  required
+                  rows={4}
+                  value={form.mensaje}
+                  onChange={update("mensaje")}
+                  placeholder="Tu mensaje o duda..."
+                  className="w-full border border-stone-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-blue-900 resize-none"
+                />
+
+                {estado === "no-config" && (
+                  <p className="text-xs text-amber-600">El formulario todavía no está configurado. Probá de nuevo más adelante.</p>
+                )}
+                {estado === "error" && (
+                  <p className="text-xs text-red-500">No se pudo enviar el mensaje. Intentá de nuevo en unos minutos.</p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={estado === "enviando"}
+                  className="w-full bg-stone-900 text-white text-sm font-medium py-3 rounded hover:bg-stone-800 disabled:opacity-60"
+                >
+                  {estado === "enviando" ? "Enviando..." : "Enviar consulta"}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Modal de Donación (Mercado Pago)
+    // ---------------------------------------------------------------------
+    function DonateModal({ onClose, mercadoPagoLink }) {
+      return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-lg p-6 relative shadow-xl text-center">
+            <button onClick={onClose} className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center text-stone-400 hover:text-stone-700">
+              <IconX size={20} />
+            </button>
+            <h2 className="font-serif text-xl text-stone-900 mb-2">Aportar al proyecto</h2>
+            <p className="text-sm text-stone-500 mb-6 leading-relaxed">
+              Tu aporte ayuda a sostener la difusión de estos shiurim. Cualquier colaboración es muy valorada.
+            </p>
+            {mercadoPagoLink ? (
+              <a
+                href={mercadoPagoLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block w-full bg-stone-900 text-white text-sm font-medium py-3 rounded hover:bg-stone-800 transition-colors"
+              >
+                Donar con Mercado Pago
+              </a>
+            ) : (
+              <p className="text-xs text-stone-400">El link de donación todavía no fue configurado.</p>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Modal de ayuda para instalar en iOS (Safari no permite el prompt
+    // automático, así que se explican los pasos manuales)
+    // ---------------------------------------------------------------------
+    function InstallHelpModal({ onClose }) {
+      return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-lg p-6 relative shadow-xl">
+            <button onClick={onClose} className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center text-stone-400 hover:text-stone-700">
+              <IconX size={20} />
+            </button>
+            <div className="w-10 h-10 rounded-full bg-stone-900 text-white flex items-center justify-center mb-4">
+              <IconInstall size={18} />
+            </div>
+            <h2 className="font-serif text-xl text-stone-900 mb-3">Instalar en iPhone / iPad</h2>
+            <ol className="text-sm text-stone-600 leading-relaxed space-y-2 list-decimal list-inside">
+              <li>Abrí esta página en Safari (no funciona desde otra app).</li>
+              <li>Tocá el ícono de Compartir (el cuadrado con la flecha hacia arriba).</li>
+              <li>Elegí "Agregar a pantalla de inicio".</li>
+              <li>Confirmá tocando "Agregar".</li>
+            </ol>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Login del Panel Admin (contraseña simple, sin servicios externos)
+    // ---------------------------------------------------------------------
+    function AdminLogin({ onSuccess, onCancel }) {
+      const [password, setPassword] = useState("");
+      const [error, setError] = useState(false);
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (password === ADMIN_PASSWORD) onSuccess();
+        else setError(true);
+      };
+
+      return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6 shadow-xl">
+            <div className="w-10 h-10 rounded-full bg-stone-900 text-white flex items-center justify-center mb-4">
+              <IconLock size={18} />
+            </div>
+            <h2 className="font-serif text-lg text-stone-900 mb-1">Acceso administrador</h2>
+            <p className="text-sm text-stone-500 mb-5">Ingresa la contraseña para continuar.</p>
+            <form onSubmit={handleSubmit}>
+              <input
+                type="password"
+                autoFocus
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError(false); }}
+                className={`w-full border rounded px-3 py-2.5 text-sm mb-2 focus:outline-none ${
+                  error ? "border-red-400" : "border-stone-300 focus:border-blue-900"
+                }`}
+                placeholder="Contraseña"
+              />
+              {error && <p className="text-xs text-red-500 mb-3">Contraseña incorrecta.</p>}
+              <div className="flex gap-2 mt-4">
+                <button type="button" onClick={onCancel} className="flex-1 text-sm border border-stone-300 rounded py-2.5 text-stone-600 hover:bg-stone-50">
+                  Cancelar
+                </button>
+                <button type="submit" className="flex-1 text-sm bg-stone-900 text-white rounded py-2.5 hover:bg-stone-800">
+                  Ingresar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Panel Admin (crear / editar / eliminar + publicar data.json)
+    // ---------------------------------------------------------------------
+    const EMPTY_FORM = {
+      titulo: "",
+      tituloPrincipal: "",
+      categoria: CATEGORIAS[0],
+      fecha: "",
+      audioUrl: "",
+      portadaUrl: "",
+      descripcion: "",
+      transcripcion: "",
+      reproducciones: 0,
+    };
+
+    function AdminPanel({ shiurim, editingShiur, onSave, onEdit, onDelete, onClose, onLogout, onCancelEdit, config, onConfigChange, onExportBackup, onImportBackup, onSyncRss, errorCargaDatos }) {
+      const [form, setForm] = useState(editingShiur ? { ...EMPTY_FORM, ...editingShiur } : EMPTY_FORM);
+      const [sincronizandoRss, setSincronizandoRss] = useState(false);
+      const [mensajeRss, setMensajeRss] = useState(null); // { tipo: "ok" | "error" | "info", texto }
+
+      const handleImportFile = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const data = JSON.parse(ev.target.result);
+            onImportBackup(data);
+          } catch (err) {
+            alert("No se pudo leer el archivo. Asegúrate de que sea un backup (data.json) válido.");
+          }
+        };
+        reader.readAsText(file);
+        e.target.value = "";
+      };
+
+      const handleSincronizarRss = async () => {
+        const url = (config.rssFeedUrl || "").trim();
+        if (!url) { setMensajeRss({ tipo: "error", texto: "Pegá primero el link de tu feed RSS." }); return; }
+        setSincronizandoRss(true);
+        setMensajeRss({ tipo: "info", texto: "Leyendo el feed..." });
+        try {
+          const xml = await fetchTextUrl(url);
+          const episodios = parsearFeedRSS(xml);
+          if (episodios.length === 0) {
+            setMensajeRss({ tipo: "error", texto: "El feed se leyó bien pero no se encontraron episodios con audio." });
+          } else {
+            setMensajeRss({ tipo: "info", texto: `Encontrados ${episodios.length} episodios. Buscando transcripciones publicadas en el feed...` });
+            await enriquecerConTranscripciones(episodios, (hechos, total) => {
+              setMensajeRss({ tipo: "info", texto: `Procesando transcripciones: ${hechos}/${total}...` });
+            });
+            const { agregados, actualizados, conTranscripcion } = onSyncRss(episodios);
+            setMensajeRss({
+              tipo: "ok",
+              texto: `Listo: se importaron ${episodios.length} episodios del feed (${agregados} nuevo(s), ${actualizados} actualizado(s)). ${conTranscripcion} quedaron con transcripción real importada. No te olvides de "Exportar Backup" para publicarlo.`,
+            });
+          }
+        } catch (err) {
+          console.error(err);
+          setMensajeRss({ tipo: "error", texto: "No se pudo leer el feed. Revisá que el link sea correcto e intentá de nuevo." });
+        } finally {
+          setSincronizandoRss(false);
+        }
+      };
+
+      const totalReproducciones = useMemo(
+        () => shiurim.reduce((acc, s) => acc + (Number(s.reproducciones) || 0), 0),
+        [shiurim]
+      );
+      const topShiurim = useMemo(
+        () => [...shiurim].sort((a, b) => (Number(b.reproducciones) || 0) - (Number(a.reproducciones) || 0)).slice(0, 5),
+        [shiurim]
+      );
+      const maxReproducciones = topShiurim.length ? (Number(topShiurim[0].reproducciones) || 0) : 0;
+
+      useEffect(() => {
+        setForm(editingShiur ? { ...EMPTY_FORM, ...editingShiur } : EMPTY_FORM);
+      }, [editingShiur && editingShiur.id]);
+
+      const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!form.titulo || !form.fecha || !form.audioUrl) return;
+        onSave({ ...form, reproducciones: Number(form.reproducciones) || 0 });
+        setForm(EMPTY_FORM);
+      };
+
+      return (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-lg max-w-2xl w-full p-5 sm:p-6 relative shadow-xl max-h-[92vh] overflow-y-auto">
+            <button onClick={onClose} className="absolute top-4 right-4 text-stone-400 hover:text-stone-700 w-9 h-9 flex items-center justify-center">
+              <IconX size={20} />
+            </button>
+
+            <div className="flex items-center justify-between pr-10 mb-1">
+              <h2 className="font-serif text-xl text-stone-900">Panel Admin</h2>
+              <button onClick={onLogout} className="text-xs text-stone-400 hover:text-stone-700 underline shrink-0">
+                Cerrar sesión
+              </button>
+            </div>
+            <p className="text-sm text-stone-500 mb-4">{editingShiur ? "Editando shiur existente." : "Cargar un nuevo shiur."}</p>
+
+            {errorCargaDatos && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-sm text-red-700 flex items-start gap-2">
+                <IconAlert size={16} className="shrink-0 mt-0.5" />
+                <p className="leading-relaxed">
+                  No se pudo leer <code>data.json</code> desde el servidor recién (puede estar caído, no subido, o con un
+                  error de formato). Se está mostrando una copia de respaldo guardada en este navegador, que puede estar
+                  desactualizada. Revisá que <code>data.json</code> esté en la misma carpeta que <code>index.html</code>{" "}
+                  al subirlo a tu hosting, y que sea un JSON válido.
+                </p>
+              </div>
+            )}
+
+            <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6 text-sm text-stone-700 space-y-2">
+              <div className="flex items-start gap-2">
+                <IconCheck size={16} className="text-blue-900 shrink-0 mt-0.5" />
+                <p className="leading-relaxed">
+                  <strong><code>data.json</code> es siempre la versión que ve todo el mundo</strong> — vos incluida/o, en
+                  cualquier navegador. Cada vez que se abre la página, se vuelve a leer ese archivo desde cero (sin usar
+                  ninguna versión guardada en caché), así que todos ven exactamente lo mismo.
+                </p>
+              </div>
+              <p className="leading-relaxed">
+                Por eso, mientras estés agregando o editando shiurim acá, <strong>tocá "Exportar Backup" seguido</strong>{" "}
+                (no hace falta esperar a terminar todo). Esa descarga queda segura en tu computadora aunque cierres la
+                pestaña. Cuando quieras publicar lo que hiciste para que lo vea cualquier visitante: reemplazá{" "}
+                <code>data.json</code> en la carpeta de tu proyecto por el que acabás de exportar, y volvé a subir ese
+                archivo a tu hosting (GitHub Pages, Netlify, Vercel, etc.).
+              </p>
+            </div>
+
+            {/* Importar episodios automáticamente desde el feed RSS de Spotify for Creators */}
+            <div className="border border-stone-200 rounded-lg p-4 mb-4">
+              <h3 className="font-serif text-base text-stone-900 mb-1">Importar episodios desde Spotify (RSS)</h3>
+              <p className="text-xs text-stone-500 mb-4">
+                Pegá el link del feed RSS de tu podcast (Spotify for Creators / Anchor) y tocá "Sincronizar Todo": se
+                importan automáticamente TODOS los episodios de una sola vez —título, audio, portada, fecha, categoría
+                y transcripción, si el feed la publica— sin cargar ni clasificar nada a mano. La categoría se detecta
+                sola según palabras clave del título y la descripción de cada episodio. Podés volver a sincronizar
+                cuando subas episodios nuevos: los que ya existen se actualizan, nunca se duplican.
+              </p>
+              <div className="space-y-3">
+                <input
+                  value={config.rssFeedUrl || ""}
+                  onChange={(e) => onConfigChange("rssFeedUrl", e.target.value)}
+                  placeholder="https://anchor.fm/s/xxxxxxx/podcast/rss"
+                  className="w-full border border-stone-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-blue-900"
+                />
+                <button
+                  type="button"
+                  onClick={handleSincronizarRss}
+                  disabled={sincronizandoRss}
+                  className="w-full flex items-center justify-center gap-1.5 text-sm bg-stone-900 text-white rounded px-4 py-2.5 hover:bg-stone-800 disabled:opacity-50"
+                >
+                  <IconRefresh size={14} />
+                  {sincronizandoRss ? "Sincronizando..." : "Sincronizar Todo"}
+                </button>
+                {mensajeRss && (
+                  <p className={`text-xs ${mensajeRss.tipo === "ok" ? "text-blue-900" : mensajeRss.tipo === "error" ? "text-red-500" : "text-stone-500"}`}>
+                    {mensajeRss.texto}
+                  </p>
+                )}
+                <p className="text-xs text-stone-400">
+                  Si un episodio no encaja claramente en ninguna categoría por su título, se asigna a "Pensamientos" y
+                  después lo podés recategorizar a mano desde "Shiurim existentes". El título que trae Spotify queda
+                  como subtítulo; para ponerle un título principal propio, editá el shiur y completá el campo
+                  "Título principal".
+                </p>
+              </div>
+            </div>
+
+            {/* Configuración general: email de contacto y link de Mercado Pago */}
+            <div className="border border-stone-200 rounded-lg p-4 mb-4">
+              <h3 className="font-serif text-base text-stone-900 mb-1">Configuración general</h3>
+              <p className="text-xs text-stone-500 mb-4">Estos datos son privados: no se muestran en ninguna parte visible de la web.</p>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs uppercase tracking-wide text-stone-500 mb-1">Email para recibir consultas</label>
+                  <input
+                    type="email"
+                    value={config.adminEmail}
+                    onChange={(e) => onConfigChange("adminEmail", e.target.value)}
+                    placeholder="turabino@ejemplo.com"
+                    className="w-full border border-stone-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-blue-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs uppercase tracking-wide text-stone-500 mb-1">Link de Mercado Pago (donaciones)</label>
+                  <input
+                    value={config.mercadoPagoLink}
+                    onChange={(e) => onConfigChange("mercadoPagoLink", e.target.value)}
+                    placeholder="https://mpago.la/..."
+                    className="w-full border border-stone-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-blue-900"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Backup: un solo archivo con shiurim + configuración */}
+            <div className="border border-stone-200 rounded-lg p-4 mb-6">
+              <h3 className="font-serif text-base text-stone-900 mb-1">Exportar e integrar data.json</h3>
+              <p className="text-xs text-stone-500 mb-4">
+                Descarga la lista COMPLETA y actualizada de shiurim (todo lo que ves en "Shiurim existentes" ahí abajo)
+                más la configuración, en un solo archivo <code>data.json</code>. Reemplazá el archivo con ese mismo
+                nombre dentro de la carpeta de tu proyecto y volvé a subirlo a tu hosting: esa es la única forma
+                de que un cambio se vuelva definitivo y visible para cualquier visitante.
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onExportBackup}
+                  className="flex items-center gap-1.5 text-xs bg-stone-900 text-white rounded-full px-4 py-2 hover:bg-stone-800"
+                >
+                  <IconDownload size={14} />
+                  Exportar Backup (data.json)
+                </button>
+                <label className="flex items-center gap-1.5 text-xs border border-stone-300 rounded-full px-4 py-2 text-stone-600 hover:bg-stone-50 cursor-pointer">
+                  <IconUpload size={14} />
+                  Restaurar Backup
+                  <input type="file" accept="application/json" className="hidden" onChange={handleImportFile} />
+                </label>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4 mb-8">
+              <div>
+                <label className="block text-xs uppercase tracking-wide text-stone-500 mb-1">Título principal (opcional)</label>
+                <input
+                  value={form.tituloPrincipal}
+                  onChange={update("tituloPrincipal")}
+                  className="w-full border border-stone-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-blue-900"
+                  placeholder="Ej. La lucha interior — Tania cap. 3"
+                />
+                <p className="text-xs text-stone-400 mt-1">
+                  Si lo completás, este es el que se muestra grande. El título de abajo pasa a mostrarse como subtítulo.
+                  Si lo dejás vacío, se usa el título de abajo como principal.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs uppercase tracking-wide text-stone-500 mb-1">Título (el que trae Spotify/RSS, o el que quieras)</label>
+                <input
+                  required
+                  value={form.titulo}
+                  onChange={update("titulo")}
+                  className="w-full border border-stone-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-blue-900"
+                  placeholder="Ej. Tania cap. 3 — La lucha interior"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs uppercase tracking-wide text-stone-500 mb-1">Categoría</label>
+                  <select
+                    value={form.categoria}
+                    onChange={update("categoria")}
+                    className="w-full border border-stone-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-blue-900"
+                  >
+                    {CATEGORIAS.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs uppercase tracking-wide text-stone-500 mb-1">Fecha</label>
+                  <input
+                    required
+                    type="date"
+                    value={form.fecha}
+                    onChange={update("fecha")}
+                    className="w-full border border-stone-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-blue-900"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs uppercase tracking-wide text-stone-500 mb-1">URL de la portada / Imagen</label>
+                <input
+                  value={form.portadaUrl}
+                  onChange={update("portadaUrl")}
+                  className="w-full border border-stone-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-blue-900"
+                  placeholder="https://... (opcional, ej. link directo de ImgBB)"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs uppercase tracking-wide text-stone-500 mb-1">URL del audio (MP3)</label>
+                <input
+                  required
+                  value={form.audioUrl}
+                  onChange={update("audioUrl")}
+                  className="w-full border border-stone-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-blue-900"
+                  placeholder="https://..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs uppercase tracking-wide text-stone-500 mb-1">Descripción</label>
+                <textarea
+                  rows={3}
+                  value={form.descripcion}
+                  onChange={update("descripcion")}
+                  className="w-full border border-stone-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-blue-900 resize-none"
+                  placeholder="Breve resumen del contenido..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs uppercase tracking-wide text-stone-500 mb-1">Transcripción completa</label>
+                <textarea
+                  rows={5}
+                  value={form.transcripcion}
+                  onChange={update("transcripcion")}
+                  className="w-full border border-stone-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-blue-900 resize-none"
+                  placeholder="Pega aquí la transcripción completa (opcional)..."
+                />
+                <p className="text-xs text-stone-400 mt-1">Si la cargás, en la vista del shiur aparece un botón "Transcripción" que va revelando este texto a medida que avanza el audio.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs uppercase tracking-wide text-stone-500 mb-1">Reproducciones (número, opcional)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.reproducciones}
+                  onChange={update("reproducciones")}
+                  className="w-full border border-stone-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-blue-900"
+                  placeholder="0"
+                />
+                <p className="text-xs text-stone-400 mt-1">Se usa para ordenar "Más escuchados". Lo actualizás vos a mano cuando quieras.</p>
+              </div>
+
+              <div className="flex gap-2">
+                {editingShiur && (
+                  <button
+                    type="button"
+                    onClick={() => { onCancelEdit(); setForm(EMPTY_FORM); }}
+                    className="flex-1 text-sm border border-stone-300 rounded py-3 text-stone-600 hover:bg-stone-50"
+                  >
+                    Cancelar edición
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  className="flex-1 flex items-center justify-center gap-2 bg-stone-900 text-white text-sm font-medium py-3 rounded hover:bg-stone-800 active:scale-[0.99] transition-all"
+                >
+                  <IconUpload size={16} />
+                  {editingShiur ? "Guardar cambios" : "Agregar shiur"}
+                </button>
+              </div>
+            </form>
+
+            <div className="border-t border-stone-200 pt-5 mb-8">
+              <h3 className="font-serif text-base text-stone-900 mb-1">Popularidad</h3>
+              <p className="text-sm text-stone-500 mb-4">
+                Total: <span className="font-medium text-stone-900">{totalReproducciones}</span> reproducciones (suma de los números que cargaste)
+              </p>
+              {topShiurim.length === 0 ? (
+                <p className="text-sm text-stone-400">Todavía no hay datos.</p>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs uppercase tracking-wide text-stone-400">Más populares</p>
+                  {topShiurim.map((s, i) => (
+                    <div key={s.id}>
+                      <div className="flex items-center justify-between mb-1 gap-2">
+                        <span className="text-sm text-stone-700 truncate">{i + 1}. {tituloPrincipalDe(s)}</span>
+                        <span className="text-sm text-stone-500 shrink-0">{s.reproducciones || 0}</span>
+                      </div>
+                      <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-blue-900 rounded-full"
+                          style={{ width: maxReproducciones ? `${((Number(s.reproducciones) || 0) / maxReproducciones) * 100}%` : "0%" }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-stone-200 pt-5">
+              <h3 className="font-serif text-base text-stone-900 mb-3">Shiurim existentes ({shiurim.length})</h3>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {shiurim.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between gap-2 border border-stone-200 rounded px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-sm text-stone-800 truncate">{tituloPrincipalDe(s)}</p>
+                      <p className="text-xs text-stone-400">{s.categoria} · {formatFecha(s.fecha)} · {s.reproducciones || 0} reproducciones</p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => onEdit(s)} className="w-9 h-9 flex items-center justify-center text-stone-500 hover:text-blue-900" aria-label="Editar">
+                        <IconPencil size={15} />
+                      </button>
+                      <button onClick={() => onDelete(s.id)} className="w-9 h-9 flex items-center justify-center text-stone-500 hover:text-red-600" aria-label="Eliminar">
+                        <IconTrash size={15} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Componente principal
+    // ---------------------------------------------------------------------
+    function ShiurimApp() {
+      const [shiurim, setShiurim] = useState([]);
+      const [cargando, setCargando] = useState(true);
+      const [config, setConfig] = useState(CONFIG_DEFECTO);
+      const [errorCargaDatos, setErrorCargaDatos] = useState(false);
+
+      // Carga inicial: data.json del servidor es SIEMPRE la fuente de verdad
+      // pública. Se pide con un parámetro de versión (cache-buster) y
+      // "cache: no-store" para que ni el navegador ni la CDN del hosting
+      // devuelvan una copia vieja guardada en caché — todos los visitantes
+      // (cualquier navegador, modo incógnito, otro dispositivo) ven siempre
+      // el archivo real y actual. localStorage NUNCA pisa una lectura
+      // exitosa de data.json: solo se usa como respaldo si data.json no se
+      // pudo leer (sin conexión, archivo roto o ausente).
+      useEffect(() => {
+        let cancelado = false;
+        const url = `./data.json?v=${Date.now()}`;
+
+        fetch(url, { cache: "no-store" })
+          .then((r) => {
+            if (!r.ok) throw new Error("data.json respondió HTTP " + r.status);
+            return r.json();
+          })
+          .then((data) => {
+            if (cancelado) return;
+            if (!data || !Array.isArray(data.shiurim)) {
+              throw new Error("data.json no tiene el formato esperado (falta el array 'shiurim').");
+            }
+            const shiurimValidos = data.shiurim.filter(esShiurValido);
+            const configFinal = { ...CONFIG_DEFECTO, ...(data.config || {}) };
+            setShiurim(shiurimValidos);
+            setConfig(configFinal);
+            setErrorCargaDatos(false);
+            // Se guarda como respaldo (no como prioridad) para el caso de que,
+            // en una próxima visita, no haya conexión o data.json esté caído.
+            try { localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify({ config: configFinal, shiurim: shiurimValidos })); } catch (e) {}
+          })
+          .catch((err) => {
+            console.error("No se pudo cargar data.json:", err);
+            if (cancelado) return;
+            let datosLocales = null;
+            try {
+              const guardado = localStorage.getItem(STORAGE_KEY_DATA);
+              if (guardado) datosLocales = JSON.parse(guardado);
+            } catch (e) {}
+            if (datosLocales && Array.isArray(datosLocales.shiurim)) {
+              setShiurim(datosLocales.shiurim);
+              setConfig({ ...CONFIG_DEFECTO, ...(datosLocales.config || {}) });
+            } else {
+              setShiurim(MOCK_SHIURIM);
+              setConfig(CONFIG_DEFECTO);
+            }
+            setErrorCargaDatos(true);
+          })
+          .finally(() => { if (!cancelado) setCargando(false); });
+
+        return () => { cancelado = true; };
+      }, []);
+
+      // Mientras editás en el Panel Admin (o sincronizás RSS) DENTRO de esta
+      // misma sesión, se guarda una copia de respaldo en este navegador a cada
+      // cambio. Esto es solo una red de seguridad para no perder trabajo si la
+      // pestaña se cierra sin querer antes de exportar — en la PRÓXIMA carga de
+      // la página, data.json (del servidor) sigue siendo lo que se muestra.
+      useEffect(() => {
+        if (cargando) return;
+        try {
+          localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify({ config, shiurim }));
+        } catch (e) {
+          // localStorage lleno o no disponible (ej. modo privado): la app sigue
+          // funcionando igual, solo que sin este respaldo automático extra.
+        }
+      }, [shiurim, config, cargando]);
+
+      // Registro del Service Worker (necesario para que el navegador considere
+      // la web instalable como PWA, y para que funcione offline). Se usa
+      // updateViaCache: "none" para que el propio navegador NUNCA sirva una
+      // copia en caché del archivo service-worker.js: así, apenas hay una
+      // versión nueva publicada en el hosting, el navegador la detecta de
+      // inmediato en la próxima visita en vez de tardar horas en notarlo.
+      useEffect(() => {
+        if (!("serviceWorker" in navigator) || !navigator.serviceWorker) return;
+
+        navigator.serviceWorker
+          .register("./service-worker.js", { updateViaCache: "none" })
+          .then((registro) => {
+            // Pide de una vez, al cargar la página, que se fije si hay una
+            // versión nueva del Service Worker (no espera al chequeo periódico
+            // automático del navegador).
+            registro.update().catch(() => {});
+          })
+          .catch((e) => {
+            console.error("No se pudo registrar el service worker:", e);
+          });
+
+        // Cuando el Service Worker nuevo termina de tomar el control de la
+        // página (gracias a skipWaiting + clients.claim en service-worker.js),
+        // se recarga la página UNA sola vez de forma automática. Así, alguien
+        // que ya tenía la pestaña abierta ve los shiurim nuevos sin tener que
+        // cerrar y volver a abrir la web ni enterarse de que hubo un redeploy.
+        let yaRecargo = false;
+        const alCambiarControlador = () => {
+          if (yaRecargo) return;
+          yaRecargo = true;
+          window.location.reload();
+        };
+        navigator.serviceWorker.addEventListener("controllerchange", alCambiarControlador);
+        return () => navigator.serviceWorker.removeEventListener("controllerchange", alCambiarControlador);
+      }, []);
+
+      // Instalación como App (PWA). Chrome/Edge/Android avisan con el evento
+      // "beforeinstallprompt" cuando la web cumple los requisitos para
+      // instalarse; ahí se guarda ese evento para poder disparar el prompt
+      // nativo del navegador al tocar el botón. Safari (iOS/Mac) no tiene este
+      // evento: ahí se muestra un instructivo manual en su lugar.
+      const [promptInstalacion, setPromptInstalacion] = useState(null);
+      const [appInstalada, setAppInstalada] = useState(false);
+      const [showInstallHelp, setShowInstallHelp] = useState(false);
+
+      useEffect(() => {
+        const alAntesDeInstalar = (e) => {
+          e.preventDefault();
+          setPromptInstalacion(e);
+        };
+        const alInstalar = () => {
+          setAppInstalada(true);
+          setPromptInstalacion(null);
+        };
+        window.addEventListener("beforeinstallprompt", alAntesDeInstalar);
+        window.addEventListener("appinstalled", alInstalar);
+        return () => {
+          window.removeEventListener("beforeinstallprompt", alAntesDeInstalar);
+          window.removeEventListener("appinstalled", alInstalar);
+        };
+      }, []);
+
+      const esIOS = typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent || "");
+
+      const handleInstalarApp = async () => {
+        if (promptInstalacion) {
+          promptInstalacion.prompt();
+          try { await promptInstalacion.userChoice; } catch (e) {}
+          setPromptInstalacion(null);
+        } else if (esIOS) {
+          setShowInstallHelp(true);
+        }
+      };
+
+      const mostrarBotonInstalar = !appInstalada && (promptInstalacion || esIOS);
+
+      const [query, setQuery] = useState("");
+      const [categoriaActiva, setCategoriaActiva] = useState("Todas");
+      const [selectedShiur, setSelectedShiur] = useState(null);
+      const [showContact, setShowContact] = useState(false);
+      const [showDonate, setShowDonate] = useState(false);
+
+      const [isAdmin, setIsAdmin] = useState(() => {
+        try { return localStorage.getItem(STORAGE_KEY_AUTH) === "true"; } catch (e) { return false; }
+      });
+      const [showLogin, setShowLogin] = useState(false);
+      const [adminOpen, setAdminOpen] = useState(false);
+      const [editingShiur, setEditingShiur] = useState(null);
+
+      // Audio global (compartido entre barra inferior y vista detalle)
+      const audioRef = useRef(null);
+      const [current, setCurrent] = useState(null);
+      const [isPlaying, setIsPlaying] = useState(false);
+      const [speed, setSpeed] = useState(1);
+      const [progreso, setProgreso] = useState(0);
+      const [actual, setActual] = useState(0);
+      const [duracion, setDuracion] = useState(0);
+
+      // Acceso admin por URL: ?admin=true
+      useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("admin") === "true" && !isAdmin) setShowLogin(true);
+      }, []);
+
+      // Atajo de teclado: Ctrl+Shift+A
+      useEffect(() => {
+        const handler = (e) => {
+          if (e.ctrlKey && e.shiftKey && (e.key === "A" || e.key === "a")) {
+            if (!isAdmin) setShowLogin(true);
+            else setAdminOpen(true);
+          }
+        };
+        window.addEventListener("keydown", handler);
+        return () => window.removeEventListener("keydown", handler);
+      }, [isAdmin]);
+
+      // Play / pausa reales
+      useEffect(() => {
+        const audio = audioRef.current;
+        if (!audio) return;
+        if (isPlaying) audio.play().catch(() => {});
+        else audio.pause();
+      }, [isPlaying, current && current.id]);
+
+      // Velocidad real
+      useEffect(() => {
+        if (audioRef.current) audioRef.current.playbackRate = speed;
+      }, [speed, current && current.id]);
+
+      // Reinicio al cambiar de shiur
+      useEffect(() => {
+        setProgreso(0);
+        setActual(0);
+        setDuracion(0);
+      }, [current && current.id]);
+
+      // Media Session API: controles desde pantalla de bloqueo / notificaciones del celular
+      useEffect(() => {
+        if (!("mediaSession" in navigator) || !current) return;
+        try {
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title: tituloPrincipalDe(current),
+            artist: "Rabino Yoel Migdal",
+            album: current.categoria,
+            artwork: current.portadaUrl ? [{ src: current.portadaUrl, sizes: "512x512", type: "image/jpeg" }] : [],
+          });
+          navigator.mediaSession.setActionHandler("play", () => setIsPlaying(true));
+          navigator.mediaSession.setActionHandler("pause", () => setIsPlaying(false));
+          navigator.mediaSession.setActionHandler("seekbackward", (details) => {
+            const audio = audioRef.current;
+            if (audio) audio.currentTime = Math.max(0, audio.currentTime - (details.seekOffset || 10));
+          });
+          navigator.mediaSession.setActionHandler("seekforward", (details) => {
+            const audio = audioRef.current;
+            if (audio) audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + (details.seekOffset || 10));
+          });
+        } catch (e) {}
+        return () => {
+          try {
+            ["play", "pause", "seekbackward", "seekforward"].forEach((a) => navigator.mediaSession.setActionHandler(a, null));
+          } catch (e) {}
+        };
+      }, [current && current.id]);
+
+      useEffect(() => {
+        if ("mediaSession" in navigator) {
+          try { navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused"; } catch (e) {}
+        }
+      }, [isPlaying]);
+
+      const handleTimeUpdate = () => {
+        const audio = audioRef.current;
+        if (!audio || !audio.duration) return;
+        setActual(audio.currentTime);
+        setProgreso((audio.currentTime / audio.duration) * 100);
+      };
+      const handleLoadedMetadata = () => { if (audioRef.current) setDuracion(audioRef.current.duration || 0); };
+      const handleSeek = (valor) => {
+        const audio = audioRef.current;
+        setProgreso(valor);
+        if (audio && audio.duration) audio.currentTime = (valor / 100) * audio.duration;
+      };
+
+      const handlePlay = (shiur) => {
+        if (current && current.id === shiur.id) setIsPlaying((p) => !p);
+        else { setCurrent(shiur); setIsPlaying(true); }
+      };
+
+      const RECIENTES_LIMITE = 6;
+      const POPULARES_LIMITE = 6;
+      const filtrados = useMemo(() => {
+        const coincideTexto = (s) =>
+          s.titulo.toLowerCase().includes(query.toLowerCase()) ||
+          (s.tituloPrincipal || "").toLowerCase().includes(query.toLowerCase()) ||
+          (s.descripcion || "").toLowerCase().includes(query.toLowerCase());
+
+        if (categoriaActiva === "Populares") {
+          const base = shiurim.filter(coincideTexto);
+          return [...base].sort((a, b) => (Number(b.reproducciones) || 0) - (Number(a.reproducciones) || 0)).slice(0, POPULARES_LIMITE);
+        }
+
+        const base = shiurim.filter((s) => {
+          const coincideCategoria = categoriaActiva === "Todas" || s.categoria === categoriaActiva;
+          return coincideTexto(s) && coincideCategoria;
+        });
+        const ordenados = [...base].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+        return categoriaActiva === "Todas" ? ordenados.slice(0, RECIENTES_LIMITE) : ordenados;
+      }, [shiurim, query, categoriaActiva]);
+
+      const handleLoginSuccess = () => {
+        setIsAdmin(true);
+        try { localStorage.setItem(STORAGE_KEY_AUTH, "true"); } catch (e) {}
+        setShowLogin(false);
+        setAdminOpen(true);
+      };
+
+      const handleLogout = () => {
+        setIsAdmin(false);
+        try { localStorage.removeItem(STORAGE_KEY_AUTH); } catch (e) {}
+        setAdminOpen(false);
+        setEditingShiur(null);
+      };
+
+      const handleSaveShiur = (data) => {
+        if (editingShiur) {
+          setShiurim((prev) => prev.map((s) => (s.id === editingShiur.id ? { ...data, id: editingShiur.id } : s)));
+        } else {
+          setShiurim((prev) => [{ ...data, id: Date.now() }, ...prev]);
+        }
+        setEditingShiur(null);
+      };
+
+      const handleDeleteShiur = (id) => {
+        if (!window.confirm("¿Eliminar este shiur? Esta acción no se puede deshacer.")) return;
+        setShiurim((prev) => prev.filter((s) => s.id !== id));
+        if (current && current.id === id) { setCurrent(null); setIsPlaying(false); }
+        if (selectedShiur && selectedShiur.id === id) setSelectedShiur(null);
+      };
+
+      const openEdit = (shiur) => { setEditingShiur(shiur); setAdminOpen(true); };
+
+      const handleConfigChange = (field, value) => setConfig((c) => ({ ...c, [field]: value }));
+
+      // Importa episodios ya parseados desde un feed RSS: agrega los que no
+      // existen (por audioUrl, para nunca duplicar) y actualiza
+      // título/portada/fecha/descripción de los que ya existen. La categoría y
+      // el título principal (si lo cargaste a mano) NUNCA se pisan en un shiur
+      // ya existente, y la transcripción solo se completa si todavía estaba
+      // vacía. Las reproducciones cargadas a mano tampoco se tocan.
+      const handleSyncRss = (episodios) => {
+        const porAudio = new Map(shiurim.map((s) => [s.audioUrl, s]));
+        let agregados = 0;
+        let actualizados = 0;
+        let conTranscripcion = 0;
+        const resultado = [...shiurim];
+        episodios.forEach((ep, idx) => {
+          const existente = porAudio.get(ep.audioUrl);
+          if (existente) {
+            const i = resultado.findIndex((s) => s.id === existente.id);
+            const yaTeniaTranscripcion = existente.transcripcion && existente.transcripcion.trim();
+            const transcripcionFinal = yaTeniaTranscripcion ? existente.transcripcion : (ep.transcripcion || "");
+            if (!yaTeniaTranscripcion && transcripcionFinal) conTranscripcion++;
+            resultado[i] = {
+              ...existente,
+              titulo: ep.titulo || existente.titulo,
+              portadaUrl: ep.portadaUrl || existente.portadaUrl,
+              fecha: ep.fecha || existente.fecha,
+              descripcion: ep.descripcion || existente.descripcion,
+              transcripcion: transcripcionFinal,
+            };
+            actualizados++;
+          } else {
+            if (ep.transcripcion) conTranscripcion++;
+            resultado.push({
+              id: Date.now() + idx,
+              titulo: ep.titulo,
+              tituloPrincipal: "",
+              categoria: ep.categoria,
+              fecha: ep.fecha,
+              audioUrl: ep.audioUrl,
+              portadaUrl: ep.portadaUrl,
+              descripcion: ep.descripcion,
+              transcripcion: ep.transcripcion || "",
+              reproducciones: 0,
+            });
+            agregados++;
+          }
+        });
+        setShiurim(resultado);
+        return { agregados, actualizados, conTranscripcion };
+      };
+
+      // Backup único: junta shiurim + configuración en un solo archivo (data.json),
+      // con EXACTAMENTE la misma forma que la carga inicial espera leer.
+      const handleExportBackup = () => {
+        const blob = new Blob([JSON.stringify({ config, shiurim }, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "data.json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      };
+
+      const handleImportBackup = (data) => {
+        if (!data || typeof data !== "object") { alert("El archivo no tiene un formato válido."); return; }
+        if (Array.isArray(data.shiurim)) setShiurim(data.shiurim);
+        else if (Array.isArray(data)) setShiurim(data); // compatibilidad con backups viejos (solo shiurim.json)
+        if (data.config) setConfig({ ...CONFIG_DEFECTO, ...data.config });
+      };
+
+      return (
+        <div className="min-h-screen bg-stone-50 pb-28 flex flex-col">
+          {/* Encabezado */}
+          <header className="border-b border-stone-200 bg-white">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+              <div className="flex items-start justify-between gap-4 mb-6">
+                <div>
+                  <h1 className="font-serif text-2xl md:text-3xl text-stone-900 tracking-tight">Rabino Yoel Migdal</h1>
+                  <p className="text-stone-500 text-sm mt-1">Shiurim</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                  {mostrarBotonInstalar && (
+                    <button
+                      onClick={handleInstalarApp}
+                      className="flex items-center gap-1.5 text-xs sm:text-sm text-stone-600 border border-stone-300 rounded-full px-3 py-2 hover:bg-stone-50 transition-colors"
+                    >
+                      <IconInstall size={14} />
+                      <span className="hidden sm:inline">Instalar App</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowContact(true)}
+                    className="flex items-center gap-1.5 text-xs sm:text-sm text-stone-600 border border-stone-300 rounded-full px-3 py-2 hover:bg-stone-50 transition-colors"
+                  >
+                    <IconMail size={14} />
+                    <span className="hidden sm:inline">Contacto</span>
+                  </button>
+                  <button
+                    onClick={() => setShowDonate(true)}
+                    className="flex items-center gap-1.5 text-xs sm:text-sm text-stone-600 border border-stone-300 rounded-full px-3 py-2 hover:bg-stone-50 transition-colors"
+                  >
+                    <span className="hidden sm:inline">Donar</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Buscador y categorías, dentro del mismo encabezado */}
+              <div className="relative mb-4">
+                <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Buscar por título o palabra clave..."
+                  className="w-full border border-stone-300 rounded-full pl-10 pr-4 py-3 sm:py-2.5 text-sm bg-white focus:outline-none focus:border-blue-900"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {["Todas", "Populares", ...CATEGORIAS].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setCategoriaActiva(cat)}
+                    className={`text-xs px-3 py-2 sm:py-1.5 rounded-full border transition-colors ${
+                      categoriaActiva === cat
+                        ? "bg-stone-900 text-white border-stone-900"
+                        : "border-stone-300 text-stone-600 hover:border-stone-500"
+                    }`}
+                  >
+                    {cat === "Populares" ? "Más escuchados" : cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </header>
+
+          {/* Grilla de shiurim */}
+          <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 flex-1 w-full">
+            <h2 className="font-serif text-lg text-stone-800 mb-4">
+              {categoriaActiva === "Todas" ? "Últimos Shiurim" : categoriaActiva === "Populares" ? "Más Escuchados" : categoriaActiva}
+            </h2>
+            {cargando ? (
+              <p className="text-stone-400 text-sm py-16 text-center">Cargando shiurim...</p>
+            ) : filtrados.length === 0 ? (
+              <p className="text-stone-500 text-sm py-16 text-center">No se encontraron shiurim con esos criterios.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                {filtrados.map((shiur) => (
+                  <ShiurCard
+                    key={shiur.id}
+                    shiur={shiur}
+                    isActive={current && current.id === shiur.id}
+                    isPlaying={isPlaying}
+                    onOpenDetail={setSelectedShiur}
+                    onPlay={handlePlay}
+                    isAdmin={isAdmin}
+                    onEdit={openEdit}
+                    onDelete={handleDeleteShiur}
+                  />
+                ))}
+              </div>
+            )}
+          </main>
+
+          {/* Pie de página: acceso alternativo a Contacto y Donar */}
+          <footer className="border-t border-stone-200 bg-white mt-12">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-stone-500">
+              <p>© {new Date().getFullYear()} Rabino Yoel Migdal</p>
+              <div className="flex items-center gap-5">
+                <button onClick={() => setShowContact(true)} className="hover:text-stone-800 underline-offset-2 hover:underline">
+                  Consultar al Rabino
+                </button>
+                <button onClick={() => setShowDonate(true)} className="hover:text-stone-800 underline-offset-2 hover:underline">
+                  Aportar al proyecto
+                </button>
+              </div>
+            </div>
+          </footer>
+
+          {/* Elemento de audio único, compartido por toda la app */}
+          <audio
+            ref={audioRef}
+            src={current ? current.audioUrl : undefined}
+            onTimeUpdate={handleTimeUpdate}
+            onLoadedMetadata={handleLoadedMetadata}
+            onEnded={() => setIsPlaying(false)}
+            preload="metadata"
+          />
+
+          {/* Reproductor flotante */}
+          <FloatingPlayer
+            current={current}
+            isPlaying={isPlaying}
+            speed={speed}
+            progreso={progreso}
+            actual={actual}
+            duracion={duracion}
+            onTogglePlay={() => setIsPlaying((p) => !p)}
+            onSeek={handleSeek}
+            onSpeedChange={setSpeed}
+            onClose={() => { setCurrent(null); setIsPlaying(false); }}
+            onOpenDetail={() => current && setSelectedShiur(current)}
+          />
+
+          {/* Vista detallada */}
+          {selectedShiur && (
+            <ShiurDetailModal
+              shiur={selectedShiur}
+              onClose={() => setSelectedShiur(null)}
+              isActive={current && current.id === selectedShiur.id}
+              isPlaying={isPlaying}
+              speed={speed}
+              progreso={progreso}
+              actual={actual}
+              duracion={duracion}
+              onPlayToggle={() => handlePlay(selectedShiur)}
+              onSeek={handleSeek}
+              onSpeedChange={setSpeed}
+            />
+          )}
+
+          {/* Contacto y Donación */}
+          {showContact && <ContactModal onClose={() => setShowContact(false)} adminEmail={config.adminEmail} />}
+          {showDonate && <DonateModal onClose={() => setShowDonate(false)} mercadoPagoLink={config.mercadoPagoLink} />}
+
+          {/* Ayuda de instalación manual para iOS */}
+          {showInstallHelp && <InstallHelpModal onClose={() => setShowInstallHelp(false)} />}
+
+          {/* Login admin (solo aparece via ?admin=true o Ctrl+Shift+A) */}
+          {showLogin && <AdminLogin onSuccess={handleLoginSuccess} onCancel={() => setShowLogin(false)} />}
+
+          {/* Botón discreto para reabrir el panel, solo visible ya logueado como admin */}
+          {isAdmin && !adminOpen && (
+            <button
+              onClick={() => setAdminOpen(true)}
+              className="fixed top-4 right-4 z-40 w-9 h-9 rounded-full bg-white/90 border border-stone-200 shadow-sm flex items-center justify-center text-stone-500 hover:text-stone-900"
+              aria-label="Abrir Panel Admin"
+              title="Panel Admin"
+            >
+              <IconSettings size={16} />
+            </button>
+          )}
+
+          {/* Panel Admin */}
+          {isAdmin && adminOpen && (
+            <AdminPanel
+              shiurim={shiurim}
+              editingShiur={editingShiur}
+              onSave={handleSaveShiur}
+              onEdit={openEdit}
+              onDelete={handleDeleteShiur}
+              onClose={() => { setAdminOpen(false); setEditingShiur(null); }}
+              onLogout={handleLogout}
+              onCancelEdit={() => setEditingShiur(null)}
+              config={config}
+              onConfigChange={handleConfigChange}
+              onExportBackup={handleExportBackup}
+              onImportBackup={handleImportBackup}
+              onSyncRss={handleSyncRss}
+              errorCargaDatos={errorCargaDatos}
+            />
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<ShiurimApp />);
+  </script>
+</body>
+</html>
