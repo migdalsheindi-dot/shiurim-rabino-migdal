@@ -7,11 +7,19 @@
 
   <!-- PWA: instalable en pantalla de inicio del celular / computadora -->
   <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#1c1917" />
+  <meta name="theme-color" content="#211b13" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Shiurim" />
+
+  <!-- Tipografía: Newsreader (títulos) + Work Sans (todo lo demás) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Work+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
 
   <!-- Tailwind CSS (via CDN, no requiere instalación) -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -26,9 +34,40 @@
   <!-- EmailJS: envía el formulario de contacto sin exponer el email del rabino -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
+  <!-- Paleta: "stone" pasa de gris neutro a un lino cálido; "blue" (el acento
+       de siempre: badges, foco, bordes activos) pasa a azul noche. Solo se
+       redefinen colores — ninguna clase del componente cambia de nombre. -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            stone: {
+              50: "#F7F3EA",
+              100: "#F0EADB",
+              200: "#E3DAC3",
+              300: "#D2C6A9",
+              400: "#B0A488",
+              500: "#86795E",
+              600: "#665C46",
+              700: "#4B4332",
+              800: "#332C21",
+              900: "#211B13",
+            },
+            blue: {
+              50: "#E9ECF3",
+              100: "#D2D9E8",
+              900: "#1C2B4A",
+            },
+          },
+        },
+      },
+    };
+  </script>
+
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    .font-serif { font-family: Georgia, "Times New Roman", serif; }
+    body { font-family: "Work Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .font-serif { font-family: "Newsreader", Georgia, "Times New Roman", serif; }
   </style>
 </head>
 <body class="bg-stone-50">
@@ -475,8 +514,8 @@
       return (
         <div
           onClick={() => onOpenDetail(shiur)}
-          className={`group border rounded-lg overflow-hidden flex flex-col justify-between transition-shadow bg-white cursor-pointer relative ${
-            isActive ? "border-blue-900 shadow-md" : "border-stone-200 hover:shadow-sm"
+          className={`group border rounded-lg overflow-hidden flex flex-col justify-between bg-white cursor-pointer relative transition-all duration-200 ${
+            isActive ? "border-blue-900 shadow-md" : "border-stone-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-stone-300"
           }`}
         >
           {isAdmin && (
@@ -515,7 +554,7 @@
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); onPlay(shiur); }}
-              className="mt-4 inline-flex items-center gap-2 self-start text-sm font-medium text-stone-800 border border-stone-300 rounded-full px-4 py-2 sm:py-1.5 active:scale-95 hover:bg-stone-900 hover:text-white transition-colors"
+              className="mt-4 inline-flex items-center gap-2 self-start text-sm font-medium text-stone-800 border border-stone-300 rounded-full px-4 py-2 sm:py-1.5 active:scale-95 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-colors duration-200"
             >
               {isActive && isPlaying ? <IconPause size={14} /> : <IconPlay size={14} />}
               {isActive && isPlaying ? "Pausar" : "Reproducir"}
@@ -1743,7 +1782,7 @@
               <div className="flex items-start justify-between gap-4 mb-6">
                 <div>
                   <h1 className="font-serif text-2xl md:text-3xl text-stone-900 tracking-tight">Rabino Yoel Migdal</h1>
-                  <p className="text-stone-500 text-sm mt-1">Shiurim</p>
+                  <p className="font-serif italic text-stone-500 text-sm mt-1">Shiurim</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                   {mostrarBotonInstalar && (
@@ -1764,9 +1803,9 @@
                   </button>
                   <button
                     onClick={() => setShowDonate(true)}
-                    className="flex items-center gap-1.5 text-xs sm:text-sm text-stone-600 border border-stone-300 rounded-full px-3 py-2 hover:bg-stone-50 transition-colors"
+                    className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-blue-50 bg-blue-900 border border-blue-900 rounded-full px-4 py-2 hover:bg-stone-900 hover:border-stone-900 transition-colors duration-200"
                   >
-                    <span className="hidden sm:inline">Donar</span>
+                    Donar
                   </button>
                 </div>
               </div>
@@ -1778,7 +1817,7 @@
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Buscar por título o palabra clave..."
-                  className="w-full border border-stone-300 rounded-full pl-10 pr-4 py-3 sm:py-2.5 text-sm bg-white focus:outline-none focus:border-blue-900"
+                  className="w-full border border-stone-300 rounded-full pl-10 pr-4 py-3 sm:py-2.5 text-sm bg-white focus:outline-none focus:border-blue-900 transition-colors duration-200"
                 />
               </div>
 
@@ -1787,10 +1826,10 @@
                   <button
                     key={cat}
                     onClick={() => setCategoriaActiva(cat)}
-                    className={`text-xs px-3 py-2 sm:py-1.5 rounded-full border transition-colors ${
+                    className={`text-xs px-3 py-2 sm:py-1.5 rounded-full border transition-colors duration-200 ${
                       categoriaActiva === cat
                         ? "bg-stone-900 text-white border-stone-900"
-                        : "border-stone-300 text-stone-600 hover:border-stone-500"
+                        : "border-stone-300 text-stone-600 hover:border-stone-500 hover:text-stone-900"
                     }`}
                   >
                     {cat === "Populares" ? "Más escuchados" : cat}
