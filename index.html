@@ -68,6 +68,10 @@
   <style>
     body { font-family: "Work Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
     .font-serif { font-family: "Newsreader", Georgia, "Times New Roman", serif; }
+    /* Zona segura (notch / barra de estado) en PWA instalada, iOS y Android:
+       el encabezado nunca queda tapado, sin restarle aire en dispositivos
+       sin notch (ahí env(safe-area-inset-top) vale 0 y queda el mínimo de 20px). */
+    .safe-top { padding-top: max(20px, env(safe-area-inset-top)); }
   </style>
 </head>
 <body class="bg-stone-50">
@@ -237,6 +241,25 @@
       "Discursos Jasídicos",
       "Historia judía",
     ];
+
+    // Un color propio por categoría (texto + fondo suave) para las etiquetas
+    // y para el pill de navegación activo — mismo criterio de "tonos joya"
+    // apagados que ya usa el acento azul noche del resto del sitio, así se
+    // ve colorido sin perder la base clara y minimalista.
+    const CATEGORIA_COLOR = {
+      "Tania": { texto: "#1C2B4A", fondo: "#E9ECF3" },
+      "Parashá de la semana": { texto: "#7C2D3B", fondo: "#F3E3E4" },
+      "Conferencias": { texto: "#23503F", fondo: "#E1EAE2" },
+      "Pensamientos": { texto: "#8A5A1F", fondo: "#F3E7D4" },
+      "Historias Jasídicas": { texto: "#9C4A2E", fondo: "#F1E1D8" },
+      "Pirkei Avot": { texto: "#5B6B3F", fondo: "#E7EBDD" },
+      "Fechas especiales": { texto: "#5C3A5E", fondo: "#EBE1EC" },
+      "Discursos Jasídicos": { texto: "#1F5257", fondo: "#DEEBEC" },
+      "Historia judía": { texto: "#5A4632", fondo: "#EAE3D6" },
+    };
+    function colorDeCategoria(categoria) {
+      return CATEGORIA_COLOR[categoria] || CATEGORIA_COLOR["Tania"];
+    }
 
     // ---------------------------------------------------------------------
     // Datos de respaldo mínimos: se usan SOLO si data.json no se pudo leer Y
@@ -537,14 +560,23 @@
             </div>
           )}
 
-          {shiur.portadaUrl && (
-            <div className="w-full h-36 sm:h-40 bg-stone-100 flex items-center justify-center overflow-hidden">
-              <img src={shiur.portadaUrl} alt={titulo} className="w-full h-full object-contain" loading="lazy" />
-            </div>
-          )}
+          <div className="w-full aspect-square bg-stone-100 overflow-hidden">
+            {shiur.portadaUrl && (
+              <img
+                src={shiur.portadaUrl}
+                alt={titulo}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                loading="lazy"
+                decoding="async"
+              />
+            )}
+          </div>
           <div className="p-4 sm:p-5 flex flex-col justify-between flex-1">
             <div>
-              <span className="inline-block text-[11px] tracking-wide uppercase text-blue-900 bg-blue-50 px-2 py-1 rounded mb-3">
+              <span
+                className="inline-block text-[11px] tracking-wide uppercase px-2 py-1 rounded mb-3"
+                style={{ color: colorDeCategoria(shiur.categoria).texto, backgroundColor: colorDeCategoria(shiur.categoria).fondo }}
+              >
                 {shiur.categoria}
               </span>
               <h3 className="text-stone-900 font-serif text-lg leading-snug mb-0.5">{titulo}</h3>
@@ -601,7 +633,7 @@
           >
             {shiur.portadaUrl ? (
               <div className="w-full h-52 sm:h-72 bg-stone-100 flex items-center justify-center overflow-hidden">
-                <img src={shiur.portadaUrl} alt={titulo} className="w-full h-full object-contain" />
+                <img src={shiur.portadaUrl} alt={titulo} className="w-full h-full object-contain" loading="lazy" decoding="async" />
               </div>
             ) : (
               <div className="w-full h-16 bg-stone-100" />
@@ -616,7 +648,10 @@
                 <IconX size={20} />
               </button>
 
-              <span className="inline-block text-[11px] tracking-wide uppercase text-blue-900 bg-blue-50 px-2 py-1 rounded mb-3">
+              <span
+                className="inline-block text-[11px] tracking-wide uppercase px-2 py-1 rounded mb-3"
+                style={{ color: colorDeCategoria(shiur.categoria).texto, backgroundColor: colorDeCategoria(shiur.categoria).fondo }}
+              >
                 {shiur.categoria}
               </span>
               <h2 className="font-serif text-2xl text-stone-900 mb-1 pr-8 leading-snug">{titulo}</h2>
@@ -1777,7 +1812,7 @@
       return (
         <div className="min-h-screen bg-stone-50 pb-28 flex flex-col">
           {/* Encabezado */}
-          <header className="border-b border-stone-200 bg-white">
+          <header className="border-b border-stone-200 bg-white safe-top">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
               <div className="flex items-start justify-between gap-4 mb-6">
                 <div>
@@ -1822,19 +1857,24 @@
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {["Todas", "Populares", ...CATEGORIAS].map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setCategoriaActiva(cat)}
-                    className={`text-xs px-3 py-2 sm:py-1.5 rounded-full border transition-colors duration-200 ${
-                      categoriaActiva === cat
-                        ? "bg-stone-900 text-white border-stone-900"
-                        : "border-stone-300 text-stone-600 hover:border-stone-500 hover:text-stone-900"
-                    }`}
-                  >
-                    {cat === "Populares" ? "Más escuchados" : cat}
-                  </button>
-                ))}
+                {["Todas", "Populares", ...CATEGORIAS].map((cat) => {
+                  const activo = categoriaActiva === cat;
+                  const colorCategoria = activo && CATEGORIA_COLOR[cat] ? colorDeCategoria(cat) : null;
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => setCategoriaActiva(cat)}
+                      className={`text-xs px-3 py-2 sm:py-1.5 rounded-full border transition-colors duration-200 ${
+                        activo
+                          ? colorCategoria ? "text-white" : "bg-stone-900 text-white border-stone-900"
+                          : "border-stone-300 text-stone-600 hover:border-stone-500 hover:text-stone-900"
+                      }`}
+                      style={colorCategoria ? { backgroundColor: colorCategoria.texto, borderColor: colorCategoria.texto } : undefined}
+                    >
+                      {cat === "Populares" ? "Más escuchados" : cat}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </header>
