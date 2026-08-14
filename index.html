@@ -12,6 +12,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Shiurim" />
+  <!-- Safari/iOS no lee los íconos del manifest.json: necesita este link aparte
+       para el ícono de "Agregar a pantalla de inicio". -->
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
 
   <!-- Tipografía: Newsreader (títulos) + Work Sans (todo lo demás) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -571,22 +574,22 @@
               />
             )}
           </div>
-          <div className="p-4 sm:p-5 flex flex-col justify-between flex-1">
+          <div className="p-3 sm:p-4 md:p-5 flex flex-col justify-between flex-1">
             <div>
               <span
-                className="inline-block text-[11px] tracking-wide uppercase px-2 py-1 rounded mb-3"
+                className="inline-block text-[10px] sm:text-[11px] tracking-wide uppercase px-2 py-1 rounded mb-2 sm:mb-3"
                 style={{ color: colorDeCategoria(shiur.categoria).texto, backgroundColor: colorDeCategoria(shiur.categoria).fondo }}
               >
                 {shiur.categoria}
               </span>
-              <h3 className="text-stone-900 font-serif text-lg leading-snug mb-0.5">{titulo}</h3>
-              {subtitulo && <p className="text-stone-500 text-sm italic mb-1">{subtitulo}</p>}
-              <p className="text-stone-500 text-xs mb-3">{formatFecha(shiur.fecha)}</p>
-              <p className="text-stone-600 text-sm leading-relaxed line-clamp-3">{shiur.descripcion}</p>
+              <h3 className="text-stone-900 font-serif text-base sm:text-lg leading-snug mb-0.5 line-clamp-2">{titulo}</h3>
+              {subtitulo && <p className="text-stone-500 text-sm italic mb-1 line-clamp-1">{subtitulo}</p>}
+              <p className="text-stone-500 text-xs mb-2 sm:mb-3">{formatFecha(shiur.fecha)}</p>
+              <p className="hidden sm:block text-stone-600 text-sm leading-relaxed line-clamp-3">{shiur.descripcion}</p>
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); onPlay(shiur); }}
-              className="mt-4 inline-flex items-center gap-2 self-start text-sm font-medium text-stone-800 border border-stone-300 rounded-full px-4 py-2 sm:py-1.5 active:scale-95 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-colors duration-200"
+              className="mt-3 sm:mt-4 inline-flex items-center gap-1.5 sm:gap-2 self-start text-xs sm:text-sm font-medium text-stone-800 border border-stone-300 rounded-full px-3 sm:px-4 py-2 sm:py-1.5 active:scale-95 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-colors duration-200"
             >
               {isActive && isPlaying ? <IconPause size={14} /> : <IconPlay size={14} />}
               {isActive && isPlaying ? "Pausar" : "Reproducir"}
@@ -603,6 +606,10 @@
     // ---------------------------------------------------------------------
     function ShiurDetailModal({ shiur, onClose, isActive, isPlaying, speed, progreso, actual, duracion, onPlayToggle, onSeek, onSpeedChange }) {
       const [mostrarTranscripcion, setMostrarTranscripcion] = useState(false);
+      // null = todavía no se intentó cargar; [] = se intentó y no hay tiempos
+      // reales para este shiur (shiurim viejos aún no procesados); array con
+      // datos = tiempos reales por palabra, listos para usar.
+      const [tiempos, setTiempos] = useState(null);
       const cajaTextoRef = useRef(null);
       const marcaActualRef = useRef(null);
 
@@ -610,14 +617,57 @@
       const subtitulo = subtituloDe(shiur);
 
       const tieneTranscripcion = !!(shiur.transcripcion && shiur.transcripcion.trim());
-      const palabras = useMemo(
+      const palabrasPlano = useMemo(
         () => (tieneTranscripcion ? shiur.transcripcion.trim().split(/\s+/) : []),
         [shiur.transcripcion]
       );
-      // Progreso real del audio de este shiur (0 a 1). Si este shiur no es el que
-      // está cargado en el reproductor, no hay progreso que mostrar todavía.
-      const progresoTexto = isActive && duracion > 0 ? Math.min(1, Math.max(0, actual / duracion)) : 0;
-      const cantidadVisible = Math.round(palabras.length * progresoTexto);
+
+      // Carga bajo demanda (solo al abrir la transcripción, una vez por
+      // shiur) los tiempos reales por palabra generados por Whisper. Es un
+      // archivo aparte de data.json porque puede pesar varios cientos de KB
+      // por shiur — cargarlo para los 200+ shiurim en cada visita haría la
+      // web lenta. Si el archivo no existe todavía (shiurim a los que
+      // todavía no les tocó transcribirse con tiempos), sigue funcionando
+      // con la estimación proporcional de siempre como respaldo.
+      useEffect(() => {
+        if (!mostrarTranscripcion || !tieneTranscripcion) return;
+        let cancelado = false;
+        setTiempos(null);
+        fetch(`./transcripts/${shiur.id}.json`, { cache: "force-cache" })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            if (!cancelado) setTiempos(data && Array.isArray(data.palabras) ? data.palabras : []);
+          })
+          .catch(() => { if (!cancelado) setTiempos([]); });
+        return () => { cancelado = true; };
+      }, [mostrarTranscripcion, tieneTranscripcion, shiur.id]);
+
+      const tieneTiempos = Array.isArray(tiempos) && tiempos.length > 0;
+      // Cuando hay tiempos reales, el texto que se muestra sale de ahí mismo
+      // (misma fuente que los tiempos), así el resaltado nunca se desalinea
+      // por una tokenización distinta a la del texto plano.
+      const palabras = tieneTiempos ? tiempos.map((t) => t.w) : palabrasPlano;
+
+      // Palabra actual: con tiempos reales, se busca por búsqueda binaria la
+      // última palabra cuyo inicio ya pasó — funciona igual en cualquier
+      // velocidad de reproducción, después de pausar, o al saltar hacia
+      // adelante/atrás, porque currentTime del audio siempre refleja la
+      // posición real (el navegador ya se encarga de eso). Sin tiempos
+      // todavía, se usa la estimación proporcional anterior.
+      const cantidadVisible = useMemo(() => {
+        if (!isActive) return 0;
+        if (tieneTiempos) {
+          let lo = 0, hi = tiempos.length - 1, resultado = 0;
+          while (lo <= hi) {
+            const mid = (lo + hi) >> 1;
+            if (tiempos[mid].s <= actual) { resultado = mid + 1; lo = mid + 1; }
+            else hi = mid - 1;
+          }
+          return resultado;
+        }
+        const progresoTexto = duracion > 0 ? Math.min(1, Math.max(0, actual / duracion)) : 0;
+        return Math.round(palabrasPlano.length * progresoTexto);
+      }, [isActive, tieneTiempos, tiempos, actual, duracion, palabrasPlano.length]);
 
       useEffect(() => {
         if (mostrarTranscripcion && marcaActualRef.current && typeof marcaActualRef.current.scrollIntoView === "function") {
@@ -1537,8 +1587,16 @@
       // instalarse; ahí se guarda ese evento para poder disparar el prompt
       // nativo del navegador al tocar el botón. Safari (iOS/Mac) no tiene este
       // evento: ahí se muestra un instructivo manual en su lugar.
+      // Si ya se está corriendo instalada (abierta desde el ícono en la
+      // pantalla de inicio), no hay nada que "instalar": display-mode
+      // standalone cubre Android/Chrome/Edge, navigator.standalone es la
+      // forma específica de Safari/iOS de indicar lo mismo.
+      const yaEstaInstalada = () =>
+        typeof window !== "undefined" &&
+        (window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true);
+
       const [promptInstalacion, setPromptInstalacion] = useState(null);
-      const [appInstalada, setAppInstalada] = useState(false);
+      const [appInstalada, setAppInstalada] = useState(yaEstaInstalada);
       const [showInstallHelp, setShowInstallHelp] = useState(false);
 
       useEffect(() => {
@@ -1558,7 +1616,13 @@
         };
       }, []);
 
-      const esIOS = typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent || "");
+      // Los iPad modernos (iPadOS 13+) se identifican con user-agent de
+      // escritorio ("Macintosh"), sin "iPad" — la forma confiable de
+      // distinguirlos de una Mac real es que sí tienen pantalla táctil.
+      const esIOS =
+        typeof navigator !== "undefined" &&
+        (/iphone|ipad|ipod/i.test(navigator.userAgent || "") ||
+          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
 
       const handleInstalarApp = async () => {
         if (promptInstalacion) {
@@ -1889,7 +1953,7 @@
             ) : filtrados.length === 0 ? (
               <p className="text-stone-500 text-sm py-16 text-center">No se encontraron shiurim con esos criterios.</p>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
                 {filtrados.map((shiur) => (
                   <ShiurCard
                     key={shiur.id}

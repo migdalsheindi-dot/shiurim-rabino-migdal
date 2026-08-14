@@ -18,7 +18,7 @@ env:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - name: Descargar el repositorio
         uses: actions/checkout@v4
@@ -39,17 +39,18 @@ jobs:
           path: ~/.cache/huggingface
           key: whisper-model-${{ env.WHISPER_MODEL }}
 
-      - name: Leer el feed RSS, transcribir episodios nuevos y actualizar data.json
+      - name: Leer el feed RSS, transcribir episodios pendientes y actualizar data.json
         run: python3 scripts/sync_spotify.py
 
-      - name: Publicar cambios (si hay episodios nuevos o actualizados)
+      - name: Publicar cambios (si hay episodios nuevos, actualizados o transcripciones)
         run: |
-          if git diff --quiet -- data.json; then
-            echo "Sin cambios: data.json ya estaba al día."
+          mkdir -p transcripts
+          git add data.json transcripts/
+          if git diff --cached --quiet; then
+            echo "Sin cambios: data.json y transcripts/ ya estaban al día."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data.json
           git commit -m "Sincronizar episodios de Spotify [skip ci]"
           git push

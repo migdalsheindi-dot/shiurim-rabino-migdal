@@ -12,8 +12,12 @@ Replica exactamente la lógica de importación por RSS del Panel Admin
   - Nunca se borra nada: si un episodio desaparece del feed, sigue en
     data.json.
 
-Además, cada episodio nuevo se transcribe automáticamente y gratis con
-Whisper corriendo localmente (ver transcribe.py) — sin ninguna API paga.
+Además, los episodios sin transcripción (los nuevos de esta corrida y,
+cuando sobra cupo, shiurim viejos del backlog) se transcriben
+automáticamente y gratis con Whisper corriendo localmente (ver
+transcribe.py) — sin ninguna API paga. El texto va a data.json (campo
+"transcripcion") y los tiempos por palabra a transcripts/{id}.json (los
+usa el front para resaltar la palabra exacta en sincronía con el audio).
 Solo esa parte necesita una dependencia externa (faster-whisper, instalada
 por el workflow vía scripts/requirements.txt); el resto de este archivo usa
 únicamente la librería estándar de Python.
@@ -30,6 +34,7 @@ from xml.etree import ElementTree
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_JSON = REPO_ROOT / "data.json"
+TRANSCRIPTS_DIR = REPO_ROOT / "transcripts"
 FEED_FALLBACK_URL = "https://anchor.fm/s/2fd6a950/podcast/rss"
 
 NS = {"itunes": "http://www.itunes.com/dtds/podcast-1.0.dtd"}
@@ -179,34 +184,47 @@ def sincronizar(data, episodios):
     return agregados, actualizados, nuevos_shiurim
 
 
-# Tope de seguridad: cuántos episodios nuevos se transcriben como máximo en
-# una sola corrida (protege contra una corrida rarísima con muchos episodios
-# nuevos a la vez, por ejemplo tras una interrupción larga del workflow). En
-# uso normal (0-2 episodios nuevos cada 2 horas) nunca se llega a este límite.
+# Tope de seguridad: cuántos episodios se transcriben como máximo en una
+# sola corrida (protege contra corridas larguísimas). Se priorizan siempre
+# los episodios nuevos de esta corrida; el resto del cupo se usa para ir
+# rellenando de a poco los shiurim viejos que todavía no tienen
+# transcripción (backlog), así con el tiempo terminan teniéndola todos sin
+# necesitar una corrida gigante de una sola vez.
 MAX_TRANSCRIPCIONES_POR_CORRIDA = int(os.environ.get("MAX_TRANSCRIPCIONES_POR_CORRIDA", "5"))
 
 
-def transcribir_nuevos(nuevos_shiurim):
-    if not nuevos_shiurim:
+def transcribir_pendientes(todos_los_shiurim, nuevos_shiurim):
+    nuevos_ids = {s["id"] for s in nuevos_shiurim}
+    backlog = [s for s in todos_los_shiurim if s["id"] not in nuevos_ids and not (s.get("transcripcion") or "").strip()]
+    pendientes = (nuevos_shiurim + backlog)[:MAX_TRANSCRIPCIONES_POR_CORRIDA]
+    if not pendientes:
         return 0
-    pendientes = nuevos_shiurim[:MAX_TRANSCRIPCIONES_POR_CORRIDA]
-    if len(nuevos_shiurim) > MAX_TRANSCRIPCIONES_POR_CORRIDA:
+
+    total_sin_transcripcion = len(nuevos_shiurim) + len(backlog)
+    if total_sin_transcripcion > MAX_TRANSCRIPCIONES_POR_CORRIDA:
         print(
-            f"Aviso: hay {len(nuevos_shiurim)} episodios nuevos, pero el tope por corrida es "
-            f"{MAX_TRANSCRIPCIONES_POR_CORRIDA}. El resto queda sin transcripción por ahora."
+            f"Aviso: hay {total_sin_transcripcion} episodios sin transcripción, pero el tope por corrida es "
+            f"{MAX_TRANSCRIPCIONES_POR_CORRIDA}. El resto se va a ir completando en próximas corridas."
         )
 
     from transcribe import transcribir_audio_url
 
+    TRANSCRIPTS_DIR.mkdir(exist_ok=True)
     hechas = 0
     for shiur in pendientes:
         print(f"Transcribiendo: {shiur['titulo']}...")
         try:
-            texto = transcribir_audio_url(shiur["audioUrl"])
+            resultado = transcribir_audio_url(shiur["audioUrl"])
+            texto = resultado["texto"]
             if texto:
                 shiur["transcripcion"] = texto
+                archivo = TRANSCRIPTS_DIR / f"{shiur['id']}.json"
+                archivo.write_text(
+                    json.dumps({"palabras": resultado["palabras"]}, ensure_ascii=False),
+                    encoding="utf-8",
+                )
                 hechas += 1
-                print(f"  OK ({len(texto)} caracteres).")
+                print(f"  OK ({len(texto)} caracteres, {len(resultado['palabras'])} palabras con tiempos).")
             else:
                 print("  Transcripción vacía, se deja el campo en blanco.")
         except Exception as e:
@@ -238,8 +256,8 @@ def main():
     agregados, actualizados, nuevos_shiurim = sincronizar(data, episodios)
 
     transcritas = 0
-    if nuevos_shiurim and os.environ.get("SKIP_TRANSCRIPCION") != "1":
-        transcritas = transcribir_nuevos(nuevos_shiurim)
+    if os.environ.get("SKIP_TRANSCRIPCION") != "1":
+        transcritas = transcribir_pendientes(data["shiurim"], nuevos_shiurim)
 
     # Sin salto de línea final: así, si no hay cambios reales, el archivo
     # queda byte a byte igual al original y el workflow no genera un commit vacío.

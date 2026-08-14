@@ -40,7 +40,14 @@ def _descargar_audio(url, destino):
 
 
 def transcribir_audio_url(audio_url):
-    """Descarga el audio de audio_url y devuelve el texto transcrito (o "" si falla)."""
+    """Descarga el audio de audio_url y devuelve {"texto": str, "palabras": [...]}.
+
+    "palabras" trae, para cada palabra, su tiempo real de inicio/fin en el
+    audio (en segundos) — es lo que permite resaltar en el front la palabra
+    exacta que se está escuchando, sincronizado de verdad (no una
+    estimación proporcional), sin importar velocidad de reproducción,
+    pausas o saltos hacia adelante/atrás.
+    """
     modelo = _obtener_modelo()
     with tempfile.TemporaryDirectory() as tmp:
         audio_path = Path(tmp) / f"audio{_extension_de(audio_url)}"
@@ -50,6 +57,17 @@ def transcribir_audio_url(audio_url):
             language="es",
             vad_filter=True,
             beam_size=5,
+            word_timestamps=True,
         )
-        texto = " ".join(seg.text.strip() for seg in segments)
-        return texto.strip()
+        piezas_texto = []
+        palabras = []
+        for seg in segments:
+            texto_seg = seg.text.strip()
+            if texto_seg:
+                piezas_texto.append(texto_seg)
+            for w in seg.words or []:
+                palabra = w.word.strip()
+                if not palabra:
+                    continue
+                palabras.append({"w": palabra, "s": round(float(w.start), 2), "e": round(float(w.end), 2)})
+        return {"texto": " ".join(piezas_texto).strip(), "palabras": palabras}
