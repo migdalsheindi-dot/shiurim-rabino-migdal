@@ -586,7 +586,7 @@
                 {shiur.categoria}
               </span>
               <h3 className="text-stone-900 font-serif text-base sm:text-lg leading-snug mb-0.5 line-clamp-2">{titulo}</h3>
-              {subtitulo && <p className="text-stone-500 text-sm italic mb-1 line-clamp-1">{subtitulo}</p>}
+              {subtitulo && <h4 className="text-stone-500 text-sm italic font-normal mb-1 line-clamp-1">{subtitulo}</h4>}
               <p className="text-stone-500 text-xs mb-2 sm:mb-3">{formatFecha(shiur.fecha)}</p>
               <p className="hidden sm:block text-stone-600 text-sm leading-relaxed line-clamp-3">{descripcion}</p>
             </div>
@@ -708,7 +708,7 @@
                 {shiur.categoria}
               </span>
               <h2 className="font-serif text-2xl text-stone-900 mb-1 pr-8 leading-snug">{titulo}</h2>
-              {subtitulo && <p className="text-stone-500 text-sm italic mb-1">{subtitulo}</p>}
+              {subtitulo && <h3 className="text-stone-500 text-base italic font-normal mb-1">{subtitulo}</h3>}
               <p className="text-stone-500 text-sm mb-3">{formatFecha(shiur.fecha)}</p>
               {descripcion && <p className="text-stone-700 text-sm leading-relaxed whitespace-pre-line mb-5">{descripcion}</p>}
 
