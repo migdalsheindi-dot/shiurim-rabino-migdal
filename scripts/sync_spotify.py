@@ -77,8 +77,18 @@ def detectar_categoria(titulo, descripcion):
 
 
 def strip_html(html):
-    texto = re.sub(r"<[^>]+>", " ", html or "")
-    texto = re.sub(r"\s+", " ", texto)
+    # El editor de Spotify for Creators separa "subtítulo" de "descripción"
+    # con un párrafo aparte (</p><p>...), sin ningún espacio entre las
+    # etiquetas. Por eso los cierres de <p>/<div> y los <br> se convierten a
+    # salto de línea ANTES de sacar el resto de las etiquetas — si no, esa
+    # separación se perdía (</p><p> quedaba como un simple espacio) y todo
+    # el texto se veía pegado en un solo bloque en la web.
+    texto = re.sub(r"<\s*/\s*(p|div)\s*>", "\n", html or "", flags=re.I)
+    texto = re.sub(r"<\s*br\s*/?\s*>", "\n", texto, flags=re.I)
+    texto = re.sub(r"<[^>]+>", " ", texto)
+    texto = re.sub(r"[ \t]*\n[ \t]*", "\n", texto)  # espacios pegados a saltos de línea
+    texto = re.sub(r"\n{3,}", "\n\n", texto)  # como mucho una línea en blanco
+    texto = re.sub(r"[ \t]+", " ", texto)
     import html as html_module
     return html_module.unescape(texto).strip()
 

@@ -515,6 +515,24 @@
       return episodios;
     }
 
+    // El editor de Spotify for Creators separa "subtítulo" de "descripción"
+    // con un párrafo aparte (</p><p>...), sin espacio entre las etiquetas.
+    // Si se usa .textContent directamente esa separación se pierde (queda
+    // todo pegado); acá se convierten los cierres de <p>/<div> y los <br> a
+    // salto de línea ANTES de sacar el resto de las etiquetas, igual que
+    // hace strip_html() en scripts/sync_spotify.py.
+    function descripcionDeHTML(html) {
+      const conSaltos = (html || "")
+        .replace(/<\s*\/\s*(p|div)\s*>/gi, "\n")
+        .replace(/<\s*br\s*\/?\s*>/gi, "\n");
+      const texto = new DOMParser().parseFromString(conSaltos, "text/html").body.textContent;
+      return texto
+        .replace(/[ \t]*\n[ \t]*/g, "\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .replace(/[ \t]+/g, " ")
+        .trim();
+    }
+
     function parsearFeedRSS(xmlText) {
       const xml = new DOMParser().parseFromString(xmlText, "text/xml");
       if (xml.getElementsByTagName("parsererror").length) {
@@ -534,7 +552,7 @@
           const fechaObj = pubDateRaw ? new Date(pubDateRaw) : null;
           const fecha = fechaObj && !isNaN(fechaObj.getTime()) ? fechaObj.toISOString().slice(0, 10) : "";
           const descRaw = textoDe(item, "description") || textoDe(item, "itunes:summary") || "";
-          const descripcion = new DOMParser().parseFromString(descRaw, "text/html").body.textContent.trim();
+          const descripcion = descripcionDeHTML(descRaw);
           const categoria = detectarCategoria(titulo, descripcion);
           return { titulo, categoria, audioUrl, portadaUrl, fecha, descripcion, _item: item };
         })
