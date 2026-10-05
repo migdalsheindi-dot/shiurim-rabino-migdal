@@ -145,6 +145,13 @@
         <line x1="3" y1="18" x2="21" y2="18" />
       </Icon>
     );
+    const IconShare = (p) => (
+      <Icon {...p}>
+        <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7" />
+        <polyline points="16 6 12 2 8 6" />
+        <line x1="12" y1="2" x2="12" y2="15" />
+      </Icon>
+    );
     const IconPlay = (p) => (
       <Icon {...p} fill="currentColor" stroke="none">
         <polygon points="6 3 20 12 6 21 6 3" />
@@ -334,6 +341,40 @@
       const salto = texto.indexOf("\n");
       if (salto === -1) return { subtitulo: "", descripcion: texto };
       return { subtitulo: texto.slice(0, salto).trim(), descripcion: texto.slice(salto + 1).trim() };
+    }
+
+    // Enlace directo a un shiur: la web es una sola página en GitHub Pages
+    // (sin servidor), así que no hay rutas tipo /shiur/123 — se usa el
+    // parámetro ?shiur=<id>, igual que ?admin=true. Se parte de la URL actual
+    // sin otros parámetros ni hash, para no filtrar ?admin=true al compartir.
+    function urlDeShiur(shiur) {
+      const url = new URL(window.location.href);
+      url.search = "";
+      url.hash = "";
+      url.searchParams.set("shiur", shiur.id);
+      return url.toString();
+    }
+
+    // Copia texto al portapapeles. Usa la API moderna (solo en contexto seguro,
+    // HTTPS) y, si falla o no existe, el método antiguo con el input ya
+    // seleccionado. Devuelve true/false según haya funcionado.
+    async function copiarAlPortapapeles(texto, inputEl) {
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(texto);
+          return true;
+        }
+      } catch (e) {}
+      try {
+        if (inputEl) {
+          inputEl.focus();
+          inputEl.select();
+          inputEl.setSelectionRange(0, texto.length);
+        }
+        return document.execCommand("copy");
+      } catch (e) {
+        return false;
+      }
     }
 
     // ---------------------------------------------------------------------
@@ -630,7 +671,7 @@
     // ---------------------------------------------------------------------
     // Tarjeta de Shiur
     // ---------------------------------------------------------------------
-    function ShiurCard({ shiur, isActive, isPlaying, onOpenDetail, onPlay, isAdmin, onEdit, onDelete }) {
+    function ShiurCard({ shiur, isActive, isPlaying, onOpenDetail, onPlay, onShare, isAdmin, onEdit, onDelete }) {
       const titulo = tituloPrincipalDe(shiur);
       const { subtitulo, descripcion } = separarDescripcion(shiur.descripcion);
       return (
@@ -680,7 +721,17 @@
               </span>
               <h3 className="text-stone-900 font-serif text-base sm:text-lg leading-snug mb-0.5 line-clamp-2">{titulo}</h3>
               {subtitulo && <h4 className="text-stone-500 text-sm italic font-normal mb-1 line-clamp-1">{subtitulo}</h4>}
-              <p className="text-stone-500 text-xs mb-2 sm:mb-3">{formatFecha(shiur.fecha)}</p>
+              <div className="flex items-center justify-between gap-2 mb-2 sm:mb-3">
+                <p className="text-stone-500 text-xs">{formatFecha(shiur.fecha)}</p>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onShare(shiur); }}
+                  className="shrink-0 -my-2 w-9 h-9 inline-flex items-center justify-center rounded-full text-stone-400 active:scale-95 hover:text-blue-900 hover:bg-blue-50 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-900"
+                  aria-label={`Compartir: ${titulo}`}
+                  title="Compartir"
+                >
+                  <IconShare size={15} />
+                </button>
+              </div>
               <p className="hidden sm:block text-stone-600 text-sm leading-relaxed line-clamp-3">{descripcion}</p>
             </div>
             <button
@@ -700,7 +751,7 @@
     // sincronizada con el tiempo real de reproducción del audio (no usa
     // micrófono ni reconocimiento de voz).
     // ---------------------------------------------------------------------
-    function ShiurDetailModal({ shiur, onClose, isActive, isPlaying, speed, progreso, actual, duracion, onPlayToggle, onSeek, onSpeedChange }) {
+    function ShiurDetailModal({ shiur, onClose, isActive, isPlaying, speed, progreso, actual, duracion, onPlayToggle, onSeek, onSpeedChange, onShare }) {
       const [mostrarTranscripcion, setMostrarTranscripcion] = useState(false);
       // null = todavía no se intentó cargar; [] = se intentó y no hay tiempos
       // reales para este shiur (shiurim viejos aún no procesados); array con
@@ -802,7 +853,16 @@
               </span>
               <h2 className="font-serif text-2xl text-stone-900 mb-1 pr-8 leading-snug">{titulo}</h2>
               {subtitulo && <h3 className="text-stone-500 text-base italic font-normal mb-1">{subtitulo}</h3>}
-              <p className="text-stone-500 text-sm mb-3">{formatFecha(shiur.fecha)}</p>
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <p className="text-stone-500 text-sm">{formatFecha(shiur.fecha)}</p>
+                <button
+                  onClick={() => onShare(shiur)}
+                  className="shrink-0 inline-flex items-center gap-1.5 text-xs sm:text-sm text-stone-600 border border-stone-300 rounded-full px-3 py-2 sm:py-1.5 active:scale-95 hover:text-blue-900 hover:border-blue-900 hover:bg-blue-50 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-900"
+                >
+                  <IconShare size={14} />
+                  Compartir
+                </button>
+              </div>
               {descripcion && <p className="text-stone-700 text-sm leading-relaxed whitespace-pre-line mb-5">{descripcion}</p>}
 
               {/* Reproductor embebido */}
@@ -1103,6 +1163,117 @@
               <li>Elegí "Agregar a pantalla de inicio".</li>
               <li>Confirmá tocando "Agregar".</li>
             </ol>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Compartir un shiur (respaldo cuando el navegador no tiene navigator.share,
+    // típico de escritorio): enlace preseleccionado, botón para copiarlo con
+    // confirmación o error visible, y atajos a WhatsApp y Telegram.
+    // ---------------------------------------------------------------------
+    function CompartirModal({ shiur, onClose }) {
+      const url = urlDeShiur(shiur);
+      const titulo = tituloPrincipalDe(shiur);
+      const inputRef = useRef(null);
+      const [estado, setEstado] = useState("idle"); // idle | ok | error
+
+      // Enlace seleccionado apenas se abre, para poder copiarlo a mano si hace falta.
+      useEffect(() => {
+        if (inputRef.current) inputRef.current.select();
+      }, []);
+
+      useEffect(() => {
+        const alTeclear = (e) => { if (e.key === "Escape") onClose(); };
+        window.addEventListener("keydown", alTeclear);
+        return () => window.removeEventListener("keydown", alTeclear);
+      }, [onClose]);
+
+      useEffect(() => {
+        if (estado !== "ok") return;
+        const t = setTimeout(() => setEstado("idle"), 2500);
+        return () => clearTimeout(t);
+      }, [estado]);
+
+      const copiar = async () => {
+        const ok = await copiarAlPortapapeles(url, inputRef.current);
+        setEstado(ok ? "ok" : "error");
+      };
+
+      const textoRedes = `${titulo} — Rabino Yoel Migdal`;
+      const hrefWhatsApp = `https://wa.me/?text=${encodeURIComponent(`${textoRedes}\n${url}`)}`;
+      const hrefTelegram = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(textoRedes)}`;
+      const claseRed =
+        "flex-1 text-center text-sm text-stone-700 border border-stone-300 rounded-full px-4 py-2.5 hover:bg-stone-50 hover:border-stone-500 transition-colors duration-200";
+
+      return (
+        <div
+          className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={onClose}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="compartir-titulo"
+            className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-lg p-6 relative shadow-xl"
+            style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center text-stone-400 hover:text-stone-700"
+              aria-label="Cerrar"
+            >
+              <IconX size={20} />
+            </button>
+            <div className="w-10 h-10 rounded-full bg-stone-900 text-white flex items-center justify-center mb-4">
+              <IconShare size={18} />
+            </div>
+            <h2 id="compartir-titulo" className="font-serif text-xl text-stone-900 mb-1">Compartir shiur</h2>
+            <p className="text-sm text-stone-500 mb-4 line-clamp-2">{titulo}</p>
+
+            <label htmlFor="compartir-enlace" className="block text-xs uppercase tracking-wide text-stone-500 mb-1">
+              Enlace directo
+            </label>
+            <input
+              id="compartir-enlace"
+              ref={inputRef}
+              readOnly
+              value={url}
+              onFocus={(e) => e.target.select()}
+              className="w-full border border-stone-300 rounded px-3 py-2.5 text-sm text-stone-700 bg-stone-50 focus:outline-none focus:border-blue-900 mb-3"
+            />
+
+            <button
+              onClick={copiar}
+              className={`w-full flex items-center justify-center gap-2 text-sm font-medium rounded-full px-4 py-2.5 border transition-colors duration-200 ${
+                estado === "ok"
+                  ? "bg-blue-900 border-blue-900 text-blue-50"
+                  : "bg-stone-900 border-stone-900 text-white hover:bg-stone-800"
+              }`}
+            >
+              {estado === "ok" ? <IconCheck size={16} /> : null}
+              {estado === "ok" ? "¡Enlace copiado!" : "Copiar enlace"}
+            </button>
+
+            <div aria-live="polite" className="min-h-[1.25rem] mt-2">
+              {estado === "error" && (
+                <p className="text-xs text-red-500 flex items-start gap-1.5">
+                  <IconAlert size={14} className="shrink-0 mt-0.5" />
+                  No se pudo copiar automáticamente. El enlace quedó seleccionado: copialo con Ctrl+C (o Cmd+C).
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-2 mt-3">
+              <a href={hrefWhatsApp} target="_blank" rel="noopener noreferrer" className={claseRed}>
+                WhatsApp
+              </a>
+              <a href={hrefTelegram} target="_blank" rel="noopener noreferrer" className={claseRed}>
+                Telegram
+              </a>
+            </div>
           </div>
         </div>
       );
@@ -1721,6 +1892,7 @@
       const [categoriaActiva, setCategoriaActiva] = useState("Todas");
       const [menuAbierto, setMenuAbierto] = useState(false);
       const [selectedShiur, setSelectedShiur] = useState(null);
+      const [shiurACompartir, setShiurACompartir] = useState(null);
       const [showContact, setShowContact] = useState(false);
       const [showDonate, setShowDonate] = useState(false);
 
@@ -1745,6 +1917,48 @@
         const params = new URLSearchParams(window.location.search);
         if (params.get("admin") === "true" && !isAdmin) setShowLogin(true);
       }, []);
+
+      // Compartir: si el navegador tiene la hoja nativa de compartir
+      // (celulares, Safari, Chrome de escritorio en Windows/Mac) se usa esa;
+      // si no existe, o falla por algo distinto a que la persona la cierre,
+      // se abre el modal con el enlace para copiar. navigator.share se llama
+      // de forma síncrona dentro del click, que es lo que exigen los navegadores.
+      const handleCompartir = async (shiur) => {
+        if (navigator.share) {
+          const titulo = tituloPrincipalDe(shiur);
+          try {
+            await navigator.share({ title: titulo, text: `${titulo} — Rabino Yoel Migdal`, url: urlDeShiur(shiur) });
+            return;
+          } catch (e) {
+            if (e && e.name === "AbortError") return; // cerró la hoja sin compartir: no es un error
+          }
+        }
+        setShiurACompartir(shiur);
+      };
+
+      // Enlace directo ?shiur=<id>: al terminar de cargar los datos se abre
+      // ese shiur (si el id no existe, simplemente se ignora). Después, el
+      // parámetro de la URL acompaña al modal de detalle (se agrega al abrir
+      // y se quita al cerrar) sin tocar otros parámetros como ?admin=true.
+      const idEnUrl = useRef(new URLSearchParams(window.location.search).get("shiur"));
+      const [enlaceResuelto, setEnlaceResuelto] = useState(!idEnUrl.current);
+
+      useEffect(() => {
+        if (cargando || enlaceResuelto) return;
+        const encontrado = shiurim.find((s) => String(s.id) === String(idEnUrl.current));
+        if (encontrado) setSelectedShiur(encontrado);
+        setEnlaceResuelto(true);
+      }, [cargando, enlaceResuelto, shiurim]);
+
+      useEffect(() => {
+        if (!enlaceResuelto) return;
+        try {
+          const url = new URL(window.location.href);
+          if (selectedShiur) url.searchParams.set("shiur", selectedShiur.id);
+          else url.searchParams.delete("shiur");
+          window.history.replaceState(null, "", url);
+        } catch (e) {}
+      }, [selectedShiur, enlaceResuelto]);
 
       // Atajo de teclado: Ctrl+Shift+A
       useEffect(() => {
@@ -2028,6 +2242,7 @@
                     isPlaying={isPlaying}
                     onOpenDetail={setSelectedShiur}
                     onPlay={handlePlay}
+                    onShare={handleCompartir}
                     isAdmin={isAdmin}
                     onEdit={openEdit}
                     onDelete={handleDeleteShiur}
@@ -2076,8 +2291,12 @@
               onPlayToggle={() => handlePlay(selectedShiur)}
               onSeek={handleSeek}
               onSpeedChange={setSpeed}
+              onShare={handleCompartir}
             />
           )}
+
+          {/* Compartir (respaldo sin navigator.share) */}
+          {shiurACompartir && <CompartirModal shiur={shiurACompartir} onClose={() => setShiurACompartir(null)} />}
 
           {/* Contacto y Donación */}
           {showContact && <ContactModal onClose={() => setShowContact(false)} adminEmail={config.adminEmail} />}
