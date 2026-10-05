@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rabino Yoel Migdal — Shiurim</title>
+<meta name="robots" content="noindex">
+<style>
+  body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #F7F3EA; color: #211B13; font-family: Georgia, serif; text-align: center; padding: 24px; }
+  a { color: #1C2B4A; }
+</style>
+</head>
+<body>
+<p id="mensaje">Página no encontrada. <a id="inicio" href="/">Ir a los shiurim</a></p>
+<script>
+  // GitHub Pages sirve este archivo cuando una URL no existe. Si es un enlace
+  // de compartir (…/s/<id>.html) cuya página todavía no se generó (por ejemplo
+  // un shiur recién agregado a mano), igual se lleva a la persona al shiur.
+  (function () {
+    var m = location.pathname.match(/^(.*\/)s\/(\d+)\.html$/);
+    if (m) {
+      document.getElementById("mensaje").textContent = "Abriendo el shiur…";
+      location.replace(m[1] + "?shiur=" + m[2]);
+      return;
+    }
+    // En un sitio de proyecto de GitHub Pages el inicio es /<repositorio>/
+    var partes = location.pathname.split("/");
+    var inicio = location.hostname.slice(-10) === ".github.io" && partes[1] ? "/" + partes[1] + "/" : "/";
+    document.getElementById("inicio").setAttribute("href", inicio);
+  })();
+</script>
+</body>
+</html>

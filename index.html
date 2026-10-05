@@ -343,16 +343,19 @@
       return { subtitulo: texto.slice(0, salto).trim(), descripcion: texto.slice(salto + 1).trim() };
     }
 
-    // Enlace directo a un shiur: la web es una sola página en GitHub Pages
-    // (sin servidor), así que no hay rutas tipo /shiur/123 — se usa el
-    // parámetro ?shiur=<id>, igual que ?admin=true. Se parte de la URL actual
-    // sin otros parámetros ni hash, para no filtrar ?admin=true al compartir.
+    // Enlace para compartir un shiur: s/<id>.html, una página estática con la
+    // portada y el título de ESE shiur (etiquetas Open Graph) que redirige al
+    // shiur real (?shiur=<id>). Hace falta porque WhatsApp/Telegram arman la
+    // vista previa leyendo solo el HTML, sin ejecutar JavaScript. Las páginas
+    // las genera scripts/generar_paginas_shiur.py en el workflow de sync; si
+    // una todavía no existe, 404.html redirige igual al shiur. Se resuelve
+    // relativo a la URL actual, así no se filtra ?admin=true al compartir.
     function urlDeShiur(shiur) {
-      const url = new URL(window.location.href);
-      url.search = "";
-      url.hash = "";
-      url.searchParams.set("shiur", shiur.id);
-      return url.toString();
+      try {
+        return new URL(`s/${shiur.id}.html`, window.location.href).toString();
+      } catch (e) {
+        return `${window.location.href.split(/[?#]/)[0]}?shiur=${shiur.id}`;
+      }
     }
 
     // Copia texto al portapapeles. Usa la API moderna (solo en contexto seguro,
