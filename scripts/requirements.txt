@@ -1,2 +1,5 @@
 faster-whisper==1.2.1
+# av 19 eliminó el parámetro metadata_errors que faster-whisper 1.2.1 le pasa a
+# av.open() y toda transcripción falla ("unexpected keyword argument").
+av>=16,<19
 Pillow>=12
