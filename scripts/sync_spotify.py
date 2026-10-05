@@ -244,7 +244,11 @@ def transcribir_pendientes(todos_los_shiurim, nuevos_shiurim):
 
 def main():
     data = json.loads(DATA_JSON.read_text(encoding="utf-8"))
-    feed_url = (data.get("config", {}).get("rssFeedUrl") or "").strip() or FEED_FALLBACK_URL
+    # data.json es público: el email que recibe las consultas del formulario
+    # vive solo en EmailJS. Si alguna vez se cuela acá (por ejemplo desde un
+    # backup viejo del Panel Admin), se saca en la próxima sincronización.
+    data.get("config", {}).pop("adminEmail", None)
+    feed_url =(data.get("config", {}).get("rssFeedUrl") or "").strip() or FEED_FALLBACK_URL
 
     print(f"Leyendo feed: {feed_url}")
     try:

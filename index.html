@@ -95,9 +95,21 @@
     const STORAGE_KEY_DATA = "ry_migdal_data_v1";
 
     // ---------------------------------------------------------------------
-    // EmailJS (formulario de contacto). Ver guía para obtener estos 3 datos.
-    // Mientras no los configures, el formulario simplemente avisa que no
-    // está disponible todavía — nunca rompe la página.
+    // EmailJS (formulario de contacto). Mientras no se completen estos 3 datos,
+    // el formulario simplemente avisa que no está disponible todavía — nunca
+    // rompe la página.
+    //
+    // Estos 3 valores son públicos POR DISEÑO (EmailJS los entrega para usar
+    // en el navegador): no son una contraseña. El email que RECIBE las
+    // consultas NO va en ningún archivo de este proyecto ni en data.json
+    // (este repositorio y el sitio son públicos): se configura únicamente en
+    // el panel de EmailJS, en el campo "To Email" del template, y por eso
+    // nunca llega al navegador. Tampoco hay que guardarlo en un .env: en un
+    // sitio estático (GitHub Pages) un .env no se oculta, se publicaría igual.
+    //
+    // El campo "Reply To" del template tiene que ser {{reply_to}}: es el email
+    // que escribe la persona en el formulario, así se le responde directo
+    // desde Gmail con el botón "Responder".
     // ---------------------------------------------------------------------
     const EMAILJS_PUBLIC_KEY = "PEGA_AQUI_TU_EMAILJS_PUBLIC_KEY";
     const EMAILJS_SERVICE_ID = "PEGA_AQUI_TU_EMAILJS_SERVICE_ID";
@@ -296,7 +308,7 @@
       },
     ];
 
-    const CONFIG_DEFECTO = { adminEmail: "", mercadoPagoLink: "", rssFeedUrl: "" };
+    const CONFIG_DEFECTO = { mercadoPagoLink: "", rssFeedUrl: "" };
 
     // ---------------------------------------------------------------------
     // Utilidades
@@ -1017,7 +1029,7 @@
     // Modal de Contacto (usa EmailJS; el email del rabino no se muestra
     // en ninguna parte visible de la página)
     // ---------------------------------------------------------------------
-    function ContactModal({ onClose, adminEmail }) {
+    function ContactModal({ onClose }) {
       const [form, setForm] = useState({ nombre: "", apellido: "", email: "", mensaje: "" });
       const [estado, setEstado] = useState("idle"); // idle | enviando | ok | error
 
@@ -1032,7 +1044,6 @@
             from_name: `${form.nombre} ${form.apellido}`.trim(),
             reply_to: form.email,
             message: form.mensaje,
-            to_email: adminEmail || "",
           });
           setEstado("ok");
           setForm({ nombre: "", apellido: "", email: "", mensaje: "" });
@@ -1502,22 +1513,15 @@
               </div>
             </div>
 
-            {/* Configuración general: email de contacto y link de Mercado Pago */}
+            {/* Configuración general: link de Mercado Pago */}
             <div className="border border-stone-200 rounded-lg p-4 mb-4">
               <h3 className="font-serif text-base text-stone-900 mb-1">Configuración general</h3>
-              <p className="text-xs text-stone-500 mb-4">Estos datos son privados: no se muestran en ninguna parte visible de la web.</p>
+              <p className="text-xs text-stone-500 mb-4">
+                El link de donación se publica en la web. El email que recibe las consultas no se guarda acá: se
+                configura solo en EmailJS, para que nunca quede visible.
+              </p>
 
               <div className="space-y-3">
-                <div>
-                  <label className="block text-xs uppercase tracking-wide text-stone-500 mb-1">Email para recibir consultas</label>
-                  <input
-                    type="email"
-                    value={config.adminEmail}
-                    onChange={(e) => onConfigChange("adminEmail", e.target.value)}
-                    placeholder="turabino@ejemplo.com"
-                    className="w-full border border-stone-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-blue-900"
-                  />
-                </div>
                 <div>
                   <label className="block text-xs uppercase tracking-wide text-stone-500 mb-1">Link de Mercado Pago (donaciones)</label>
                   <input
@@ -2152,7 +2156,9 @@
       // Backup único: junta shiurim + configuración en un solo archivo (data.json),
       // con EXACTAMENTE la misma forma que la carga inicial espera leer.
       const handleExportBackup = () => {
-        const blob = new Blob([JSON.stringify({ config, shiurim }, null, 2)], { type: "application/json" });
+        // data.json es público: si un backup viejo trae adminEmail, no se vuelve a publicar.
+        const { adminEmail, ...configPublica } = config;
+        const blob = new Blob([JSON.stringify({ config: configPublica, shiurim }, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -2302,7 +2308,7 @@
           {shiurACompartir && <CompartirModal shiur={shiurACompartir} onClose={() => setShiurACompartir(null)} />}
 
           {/* Contacto y Donación */}
-          {showContact && <ContactModal onClose={() => setShowContact(false)} adminEmail={config.adminEmail} />}
+          {showContact && <ContactModal onClose={() => setShowContact(false)} />}
           {showDonate && <DonateModal onClose={() => setShowDonate(false)} mercadoPagoLink={config.mercadoPagoLink} />}
 
           {/* Ayuda de instalación manual para iOS */}

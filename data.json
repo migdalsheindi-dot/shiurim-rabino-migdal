@@ -1,6 +1,5 @@
 {
   "config": {
-    "adminEmail": "",
     "mercadoPagoLink": "",
     "rssFeedUrl": "https://anchor.fm/s/2fd6a950/podcast/rss"
   },
