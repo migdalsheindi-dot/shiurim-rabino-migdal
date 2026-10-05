@@ -2074,6 +2074,44 @@
         return categoriaActiva === "Todas" ? ordenados.slice(0, RECIENTES_LIMITE) : ordenados;
       }, [shiurim, query, categoriaActiva]);
 
+      // Pantalla de inicio (categoría "Todas" y sin buscar): primero los 2
+      // shiurim más nuevos y después los 4 más escuchados. Spotify no ofrece
+      // ninguna API pública con las reproducciones de un episodio (solo se ven
+      // en el panel de Spotify for Creators), así que "más escuchados" sale del
+      // campo "reproducciones" de cada shiur, que se carga con esos números. Si
+      // todavía no hay ninguno cargado, la sección no se muestra (mejor que
+      // mostrar 4 shiurim al azar como si fueran los más escuchados).
+      const INICIO_RECIENTES = 2;
+      const INICIO_MAS_ESCUCHADOS = 4;
+      const esInicio = categoriaActiva === "Todas" && !query.trim();
+      const inicioRecientes = useMemo(
+        () => [...shiurim].sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, INICIO_RECIENTES),
+        [shiurim]
+      );
+      const inicioMasEscuchados = useMemo(
+        () =>
+          shiurim
+            .filter((s) => (Number(s.reproducciones) || 0) > 0)
+            .sort((a, b) => (Number(b.reproducciones) || 0) - (Number(a.reproducciones) || 0) || new Date(b.fecha) - new Date(a.fecha))
+            .slice(0, INICIO_MAS_ESCUCHADOS),
+        [shiurim]
+      );
+      const claseGrilla = "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5";
+      const tarjetaDeShiur = (shiur) => (
+        <ShiurCard
+          key={shiur.id}
+          shiur={shiur}
+          isActive={current && current.id === shiur.id}
+          isPlaying={isPlaying}
+          onOpenDetail={setSelectedShiur}
+          onPlay={handlePlay}
+          onShare={handleCompartir}
+          isAdmin={isAdmin}
+          onEdit={openEdit}
+          onDelete={handleDeleteShiur}
+        />
+      );
+
       const handleLoginSuccess = () => {
         setIsAdmin(true);
         try { localStorage.setItem(STORAGE_KEY_AUTH, "true"); } catch (e) {}
@@ -2237,30 +2275,35 @@
 
           {/* Grilla de shiurim */}
           <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-10 flex-1 w-full">
-            <h2 className="font-serif text-lg text-stone-800 mb-4">
-              {categoriaActiva === "Todas" ? "Últimos Shiurim" : categoriaActiva === "Populares" ? "Más Escuchados" : categoriaActiva}
-            </h2>
             {cargando ? (
-              <p className="text-stone-400 text-sm py-16 text-center">Cargando shiurim...</p>
-            ) : filtrados.length === 0 ? (
-              <p className="text-stone-500 text-sm py-16 text-center">No se encontraron shiurim con esos criterios.</p>
+              <React.Fragment>
+                <h2 className="font-serif text-lg text-stone-800 mb-4">Últimos Shiurim</h2>
+                <p className="text-stone-400 text-sm py-16 text-center">Cargando shiurim...</p>
+              </React.Fragment>
+            ) : esInicio && shiurim.length > 0 ? (
+              <React.Fragment>
+                <section aria-labelledby="inicio-recientes">
+                  <h2 id="inicio-recientes" className="font-serif text-lg text-stone-800 mb-4">Últimos Shiurim</h2>
+                  <div className={claseGrilla}>{inicioRecientes.map(tarjetaDeShiur)}</div>
+                </section>
+                {inicioMasEscuchados.length > 0 && (
+                  <section aria-labelledby="inicio-mas-escuchados" className="mt-10 sm:mt-12">
+                    <h2 id="inicio-mas-escuchados" className="font-serif text-lg text-stone-800 mb-4">Más Escuchados</h2>
+                    <div className={claseGrilla}>{inicioMasEscuchados.map(tarjetaDeShiur)}</div>
+                  </section>
+                )}
+              </React.Fragment>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
-                {filtrados.map((shiur) => (
-                  <ShiurCard
-                    key={shiur.id}
-                    shiur={shiur}
-                    isActive={current && current.id === shiur.id}
-                    isPlaying={isPlaying}
-                    onOpenDetail={setSelectedShiur}
-                    onPlay={handlePlay}
-                    onShare={handleCompartir}
-                    isAdmin={isAdmin}
-                    onEdit={openEdit}
-                    onDelete={handleDeleteShiur}
-                  />
-                ))}
-              </div>
+              <React.Fragment>
+                <h2 className="font-serif text-lg text-stone-800 mb-4">
+                  {categoriaActiva === "Todas" ? "Últimos Shiurim" : categoriaActiva === "Populares" ? "Más Escuchados" : categoriaActiva}
+                </h2>
+                {filtrados.length === 0 ? (
+                  <p className="text-stone-500 text-sm py-16 text-center">No se encontraron shiurim con esos criterios.</p>
+                ) : (
+                  <div className={claseGrilla}>{filtrados.map(tarjetaDeShiur)}</div>
+                )}
+              </React.Fragment>
             )}
           </main>
 
