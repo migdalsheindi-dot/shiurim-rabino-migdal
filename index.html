@@ -311,7 +311,7 @@
       },
     ];
 
-    const CONFIG_DEFECTO = { mercadoPagoLink: "", rssFeedUrl: "" };
+    const CONFIG_DEFECTO = { mercadoPagoLink: "", rssFeedUrl: "", destacados: [] };
 
     // ---------------------------------------------------------------------
     // Utilidades
@@ -2075,26 +2075,23 @@
       }, [shiurim, query, categoriaActiva]);
 
       // Pantalla de inicio (categoría "Todas" y sin buscar): primero los 2
-      // shiurim más nuevos y después los 4 más escuchados. Spotify no ofrece
-      // ninguna API pública con las reproducciones de un episodio (solo se ven
-      // en el panel de Spotify for Creators), así que "más escuchados" sale del
-      // campo "reproducciones" de cada shiur, que se carga con esos números. Si
-      // todavía no hay ninguno cargado, la sección no se muestra (mejor que
-      // mostrar 4 shiurim al azar como si fueran los más escuchados).
+      // shiurim más nuevos y después los 4 shiurim destacados, elegidos a mano.
+      // La lista es config.destacados en data.json (ids de shiurim, en el orden
+      // en que se muestran). Si un id ya no existe, simplemente se saltea.
       const INICIO_RECIENTES = 2;
-      const INICIO_MAS_ESCUCHADOS = 4;
+      const INICIO_DESTACADOS = 4;
       const esInicio = categoriaActiva === "Todas" && !query.trim();
       const inicioRecientes = useMemo(
         () => [...shiurim].sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, INICIO_RECIENTES),
         [shiurim]
       );
-      const inicioMasEscuchados = useMemo(
+      const inicioDestacados = useMemo(
         () =>
-          shiurim
-            .filter((s) => (Number(s.reproducciones) || 0) > 0)
-            .sort((a, b) => (Number(b.reproducciones) || 0) - (Number(a.reproducciones) || 0) || new Date(b.fecha) - new Date(a.fecha))
-            .slice(0, INICIO_MAS_ESCUCHADOS),
-        [shiurim]
+          (Array.isArray(config.destacados) ? config.destacados : [])
+            .map((id) => shiurim.find((s) => String(s.id) === String(id)))
+            .filter(Boolean)
+            .slice(0, INICIO_DESTACADOS),
+        [shiurim, config.destacados]
       );
       const claseGrilla = "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5";
       const tarjetaDeShiur = (shiur) => (
@@ -2286,10 +2283,10 @@
                   <h2 id="inicio-recientes" className="font-serif text-lg text-stone-800 mb-4">Últimos Shiurim</h2>
                   <div className={claseGrilla}>{inicioRecientes.map(tarjetaDeShiur)}</div>
                 </section>
-                {inicioMasEscuchados.length > 0 && (
-                  <section aria-labelledby="inicio-mas-escuchados" className="mt-10 sm:mt-12">
-                    <h2 id="inicio-mas-escuchados" className="font-serif text-lg text-stone-800 mb-4">Más Escuchados</h2>
-                    <div className={claseGrilla}>{inicioMasEscuchados.map(tarjetaDeShiur)}</div>
+                {inicioDestacados.length > 0 && (
+                  <section aria-labelledby="inicio-destacados" className="mt-10 sm:mt-12">
+                    <h2 id="inicio-destacados" className="font-serif text-lg text-stone-800 mb-4">Shiurim Destacados</h2>
+                    <div className={claseGrilla}>{inicioDestacados.map(tarjetaDeShiur)}</div>
                   </section>
                 )}
               </React.Fragment>

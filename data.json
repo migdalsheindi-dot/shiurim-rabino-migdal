@@ -1,7 +1,13 @@
 {
   "config": {
     "mercadoPagoLink": "https://link.mercadopago.com.ar/isej770",
-    "rssFeedUrl": "https://anchor.fm/s/2fd6a950/podcast/rss"
+    "rssFeedUrl": "https://anchor.fm/s/2fd6a950/podcast/rss",
+    "destacados": [
+      1786037186750,
+      1786037186749,
+      1786037186923,
+      1786037186922
+    ]
   },
   "shiurim": [
     {
