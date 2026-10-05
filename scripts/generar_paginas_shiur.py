@@ -39,10 +39,28 @@ DATA_JSON = REPO_ROOT / "data.json"
 PAGES_DIR = REPO_ROOT / "s"
 THUMBS_DIR = REPO_ROOT / "og"
 
-# URL pública del sitio (con barra final). Las etiquetas og:url / og:image
-# tienen que ser absolutas. Se puede cambiar con la variable SITE_URL si algún
-# día se mueve a un dominio propio.
-SITE_URL = os.environ.get("SITE_URL", "https://migdalsheindi-dot.github.io/shiurim-rabino-migdal").rstrip("/") + "/"
+URL_GITHUB_PAGES = "https://migdalsheindi-dot.github.io/shiurim-rabino-migdal"
+
+
+def url_del_sitio():
+    # URL pública del sitio (con barra final). Las etiquetas og:url / og:image
+    # tienen que ser absolutas. Prioridad: variable SITE_URL; si no hay, el
+    # dominio propio del archivo CNAME (el que crea GitHub Pages al configurar
+    # un dominio personalizado); si tampoco hay, la dirección de github.io.
+    # Así, al comprar el dominio alcanza con agregar el CNAME: las páginas de
+    # compartir se regeneran solas con la URL nueva en la próxima corrida.
+    explicita = os.environ.get("SITE_URL", "").strip()
+    if explicita:
+        return explicita.rstrip("/") + "/"
+    cname = REPO_ROOT / "CNAME"
+    if cname.exists():
+        lineas = cname.read_text(encoding="utf-8").split()
+        if lineas:
+            return f"https://{lineas[0]}/"
+    return URL_GITHUB_PAGES + "/"
+
+
+SITE_URL = url_del_sitio()
 IMAGEN_RESPALDO = SITE_URL + "icons/icon-512.png"
 
 LADO_MINIATURA = 512

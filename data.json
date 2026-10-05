@@ -1,6 +1,6 @@
 {
   "config": {
-    "mercadoPagoLink": "",
+    "mercadoPagoLink": "https://link.mercadopago.com.ar/isej770",
     "rssFeedUrl": "https://anchor.fm/s/2fd6a950/podcast/rss"
   },
   "shiurim": [
