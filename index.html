@@ -90,6 +90,14 @@
     // ⚠️ Contraseña del Panel Admin. Cámbiala editando esta línea.
     const ADMIN_PASSWORD = "Migdal2026";
     const STORAGE_KEY_AUTH = "ry_migdal_admin_auth";
+
+    // Contador propio de reproducciones (servicio gratuito en Cloudflare, ver la
+    // carpeta contador/). Cuenta lo que se escucha EN ESTA WEB y se muestra en la
+    // sección "Popularidad" del Panel Admin. Spotify no ofrece ninguna API con
+    // sus reproducciones. Vacío = desactivado (el panel usa el número a mano).
+    const CONTADOR_URL = "";
+    const SEGUNDOS_PARA_CONTAR = 30; // una escucha cuenta tras 30 s reales de audio
+    const HORAS_ENTRE_CONTEOS = 6; // la misma persona suma 1 vez cada 6 h por shiur
     // Copia de respaldo local (en ESTE navegador) de la última versión de
     // shiurim + configuración conocida. Se actualiza sola cada vez que
     // data.json se lee con éxito, y también mientras editás en el Panel Admin.
@@ -1357,7 +1365,10 @@
       reproducciones: 0,
     };
 
-    function AdminPanel({ shiurim, editingShiur, onSave, onEdit, onDelete, onClose, onLogout, onCancelEdit, config, onConfigChange, onExportBackup, onImportBackup, onSyncRss, errorCargaDatos }) {
+    function AdminPanel({ shiurim, editingShiur, onSave, onEdit, onDelete, onClose, onLogout, onCancelEdit, config, onConfigChange, onExportBackup, onImportBackup, onSyncRss, errorCargaDatos, conteos }) {
+      // Con el contador automático activo, las reproducciones son las contadas en
+      // la web; si no, el número cargado a mano en cada shiur.
+      const reproduccionesDe = (s) => (conteos ? Number(conteos[s.id]) || 0 : Number(s.reproducciones) || 0);
       const [form, setForm] = useState(editingShiur ? { ...EMPTY_FORM, ...editingShiur } : EMPTY_FORM);
       const [sincronizandoRss, setSincronizandoRss] = useState(false);
       const [mensajeRss, setMensajeRss] = useState(null); // { tipo: "ok" | "error" | "info", texto }
@@ -1408,14 +1419,14 @@
       };
 
       const totalReproducciones = useMemo(
-        () => shiurim.reduce((acc, s) => acc + (Number(s.reproducciones) || 0), 0),
-        [shiurim]
+        () => shiurim.reduce((acc, s) => acc + reproduccionesDe(s), 0),
+        [shiurim, conteos]
       );
       const topShiurim = useMemo(
-        () => [...shiurim].sort((a, b) => (Number(b.reproducciones) || 0) - (Number(a.reproducciones) || 0)).slice(0, 5),
-        [shiurim]
+        () => [...shiurim].sort((a, b) => reproduccionesDe(b) - reproduccionesDe(a)).slice(0, 5),
+        [shiurim, conteos]
       );
-      const maxReproducciones = topShiurim.length ? (Number(topShiurim[0].reproducciones) || 0) : 0;
+      const maxReproducciones = topShiurim.length ? reproduccionesDe(topShiurim[0]) : 0;
 
       useEffect(() => {
         setForm(editingShiur ? { ...EMPTY_FORM, ...editingShiur } : EMPTY_FORM);
@@ -1644,18 +1655,20 @@
                 <p className="text-xs text-stone-400 mt-1">Si la cargás, en la vista del shiur aparece un botón "Transcripción" que va revelando este texto a medida que avanza el audio.</p>
               </div>
 
-              <div>
-                <label className="block text-xs uppercase tracking-wide text-stone-500 mb-1">Reproducciones (número, opcional)</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={form.reproducciones}
-                  onChange={update("reproducciones")}
-                  className="w-full border border-stone-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-blue-900"
-                  placeholder="0"
-                />
-                <p className="text-xs text-stone-400 mt-1">Se usa para ordenar "Más escuchados". Lo actualizás vos a mano cuando quieras.</p>
-              </div>
+              {!conteos && (
+                <div>
+                  <label className="block text-xs uppercase tracking-wide text-stone-500 mb-1">Reproducciones (número, opcional)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.reproducciones}
+                    onChange={update("reproducciones")}
+                    className="w-full border border-stone-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-blue-900"
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-stone-400 mt-1">Se usa para ordenar "Más escuchados". Lo actualizás vos a mano cuando quieras.</p>
+                </div>
+              )}
 
               <div className="flex gap-2">
                 {editingShiur && (
@@ -1680,7 +1693,10 @@
             <div className="border-t border-stone-200 pt-5 mb-8">
               <h3 className="font-serif text-base text-stone-900 mb-1">Popularidad</h3>
               <p className="text-sm text-stone-500 mb-4">
-                Total: <span className="font-medium text-stone-900">{totalReproducciones}</span> reproducciones (suma de los números que cargaste)
+                Total: <span className="font-medium text-stone-900">{totalReproducciones}</span> reproducciones{" "}
+                {conteos
+                  ? "(contadas en la web: cada una son 30 segundos reales de escucha; una misma persona suma 1 vez cada 6 horas por shiur)"
+                  : "(suma de los números que cargaste)"}
               </p>
               {topShiurim.length === 0 ? (
                 <p className="text-sm text-stone-400">Todavía no hay datos.</p>
@@ -1691,12 +1707,12 @@
                     <div key={s.id}>
                       <div className="flex items-center justify-between mb-1 gap-2">
                         <span className="text-sm text-stone-700 truncate">{i + 1}. {tituloPrincipalDe(s)}</span>
-                        <span className="text-sm text-stone-500 shrink-0">{s.reproducciones || 0}</span>
+                        <span className="text-sm text-stone-500 shrink-0">{reproduccionesDe(s)}</span>
                       </div>
                       <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-blue-900 rounded-full"
-                          style={{ width: maxReproducciones ? `${((Number(s.reproducciones) || 0) / maxReproducciones) * 100}%` : "0%" }}
+                          style={{ width: maxReproducciones ? `${(reproduccionesDe(s) / maxReproducciones) * 100}%` : "0%" }}
                         />
                       </div>
                     </div>
@@ -1712,7 +1728,7 @@
                   <div key={s.id} className="flex items-center justify-between gap-2 border border-stone-200 rounded px-3 py-2">
                     <div className="min-w-0">
                       <p className="text-sm text-stone-800 truncate">{tituloPrincipalDe(s)}</p>
-                      <p className="text-xs text-stone-400">{s.categoria} · {formatFecha(s.fecha)} · {s.reproducciones || 0} reproducciones</p>
+                      <p className="text-xs text-stone-400">{s.categoria} · {formatFecha(s.fecha)} · {reproduccionesDe(s)} reproducciones</p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <button onClick={() => onEdit(s)} className="w-9 h-9 flex items-center justify-center text-stone-500 hover:text-blue-900" aria-label="Editar">
@@ -2036,11 +2052,58 @@
         }
       }, [isPlaying]);
 
+      // Reproducciones contadas por el servicio propio (shiur.id -> total). Solo
+      // se piden cuando se entra como administrador: es lo que muestra el Panel
+      // Admin. null = servicio desactivado o sin respuesta (se usa el número a mano).
+      const [conteos, setConteos] = useState(null);
+      useEffect(() => {
+        if (!CONTADOR_URL || !isAdmin) return;
+        let cancelado = false;
+        fetch(`${CONTADOR_URL}/conteos`, { cache: "no-store" })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => { if (!cancelado && d && d.conteos) setConteos(d.conteos); })
+          .catch(() => {});
+        return () => { cancelado = true; };
+      }, [isAdmin]);
+
+      // Cuenta una reproducción cuando se escuchan 30 s reales seguidos de un
+      // shiur. Solo suma el avance normal del audio (un salto al adelantar o
+      // retroceder no cuenta), tiene en cuenta la velocidad, y la misma persona
+      // suma como mucho 1 vez cada 6 h por shiur. Las escuchas del
+      // administrador no cuentan.
+      const escuchaRef = useRef({ id: null, ultimo: 0, segundos: 0, enviado: false });
+      const registrarEscucha = (tiempoActual) => {
+        if (!CONTADOR_URL || isAdmin || !current) return;
+        const r = escuchaRef.current;
+        if (r.id !== current.id) {
+          escuchaRef.current = { id: current.id, ultimo: tiempoActual, segundos: 0, enviado: false };
+          return;
+        }
+        const avance = tiempoActual - r.ultimo;
+        r.ultimo = tiempoActual;
+        if (avance > 0 && avance < 3) r.segundos += avance / (speed || 1);
+        if (r.enviado || r.segundos < SEGUNDOS_PARA_CONTAR) return;
+        r.enviado = true;
+        const clave = `ry_escucha_${current.id}`;
+        try {
+          const ultimaVez = Number(localStorage.getItem(clave)) || 0;
+          if (Date.now() - ultimaVez < HORAS_ENTRE_CONTEOS * 3600 * 1000) return;
+          localStorage.setItem(clave, String(Date.now()));
+        } catch (e) {}
+        fetch(`${CONTADOR_URL}/reproduccion`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: String(current.id) }),
+          keepalive: true,
+        }).catch(() => {});
+      };
+
       const handleTimeUpdate = () => {
         const audio = audioRef.current;
         if (!audio || !audio.duration) return;
         setActual(audio.currentTime);
         setProgreso((audio.currentTime / audio.duration) * 100);
+        registrarEscucha(audio.currentTime);
       };
       const handleLoadedMetadata = () => { if (audioRef.current) setDuracion(audioRef.current.duration || 0); };
       const handleSeek = (valor) => {
@@ -2285,7 +2348,7 @@
                 </section>
                 {inicioDestacados.length > 0 && (
                   <section aria-labelledby="inicio-destacados" className="mt-10 sm:mt-12">
-                    <h2 id="inicio-destacados" className="font-serif text-lg text-stone-800 mb-4">Shiurim Destacados</h2>
+                    <h2 id="inicio-destacados" className="font-serif text-lg text-stone-800 mb-4">Destacados</h2>
                     <div className={claseGrilla}>{inicioDestacados.map(tarjetaDeShiur)}</div>
                   </section>
                 )}
@@ -2383,6 +2446,7 @@
               onClose={() => { setAdminOpen(false); setEditingShiur(null); }}
               onLogout={handleLogout}
               onCancelEdit={() => setEditingShiur(null)}
+              conteos={conteos}
               config={config}
               onConfigChange={handleConfigChange}
               onExportBackup={handleExportBackup}

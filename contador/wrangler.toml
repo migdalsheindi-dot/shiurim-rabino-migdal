@@ -1,0 +1,10 @@
+name = "shiurim-contador"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "shiurim-contador"
+# Se completa al crear la base (wrangler d1 create shiurim-contador). Es un
+# identificador, no una clave secreta.
+database_id = "00000000-0000-0000-0000-000000000000"
