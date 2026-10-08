@@ -53,8 +53,8 @@
               100: "#F0EADB",
               200: "#E3DAC3",
               300: "#D2C6A9",
-              400: "#B0A488",
-              500: "#86795E",
+              400: "#847862",
+              500: "#746850",
               600: "#665C46",
               700: "#4B4332",
               800: "#332C21",
@@ -270,6 +270,9 @@
     // ---------------------------------------------------------------------
     // Categorías oficiales (fijas)
     // ---------------------------------------------------------------------
+    // Es la descripción real del podcast en Spotify for Creators.
+    const FRASE_DE_PRESENTACION = "Clases de judaísmo dictadas por el Rabino Yoel Migdal, director de ISEJ";
+
     const CATEGORIAS = [
       "Tania",
       "Parashá de la semana",
@@ -631,7 +634,7 @@
     // de hamburguesa del encabezado. Reemplaza a la barra de búsqueda y los
     // pills de categoría que antes estaban siempre visibles en el header.
     // ---------------------------------------------------------------------
-    function MenuLateral({ abierto, onClose, query, onQueryChange, categoriaActiva, onCategoriaChange }) {
+    function MenuLateral({ abierto, onClose, query, onQueryChange, categoriaActiva, onCategoriaChange, mostrarInstalar, onInstalar }) {
       return (
         <div
           className={`fixed inset-0 z-50 transition-opacity duration-200 ${
@@ -676,7 +679,7 @@
                     <button
                       key={cat}
                       onClick={() => { onCategoriaChange(cat); onClose(); }}
-                      className={`text-left text-sm px-3 py-2.5 rounded-lg border transition-colors duration-200 ${
+                      className={`text-left text-sm px-3 py-3 rounded-lg border transition-colors duration-200 ${
                         activo
                           ? colorCategoria ? "text-white" : "bg-stone-900 text-white border-stone-900"
                           : "border-transparent text-stone-600 hover:bg-stone-50 hover:text-stone-900"
@@ -688,6 +691,16 @@
                   );
                 })}
               </div>
+
+              {mostrarInstalar && (
+                <button
+                  onClick={onInstalar}
+                  className="mt-6 w-full flex items-center gap-2 min-h-[44px] text-sm text-stone-700 border border-stone-300 rounded-lg px-3 hover:bg-stone-50 transition-colors duration-200"
+                >
+                  <IconInstall size={16} />
+                  Instalar la app
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -697,7 +710,7 @@
     // ---------------------------------------------------------------------
     // Tarjeta de Shiur
     // ---------------------------------------------------------------------
-    function ShiurCard({ shiur, isActive, isPlaying, onOpenDetail, onPlay, onShare, isAdmin, onEdit, onDelete }) {
+    function ShiurCard({ shiur, isActive, isPlaying, onOpenDetail, onPlay, onShare, isAdmin, onEdit, onDelete, compacta }) {
       const titulo = tituloPrincipalDe(shiur);
       const { subtitulo, descripcion } = separarDescripcion(shiur.descripcion);
       return (
@@ -740,7 +753,7 @@
           <div className="p-3 sm:p-4 md:p-5 flex flex-col justify-between flex-1">
             <div>
               <span
-                className="inline-block text-[10px] sm:text-[11px] tracking-wide uppercase px-2 py-1 rounded mb-2 sm:mb-3"
+                className="inline-block text-[11px] sm:text-xs tracking-wide uppercase px-2 py-1 rounded mb-2 sm:mb-3"
                 style={{ color: colorDeCategoria(shiur.categoria).texto, backgroundColor: colorDeCategoria(shiur.categoria).fondo }}
               >
                 {shiur.categoria}
@@ -748,26 +761,168 @@
               <h3 className="text-stone-900 font-serif text-base sm:text-lg leading-snug mb-0.5 line-clamp-2">{titulo}</h3>
               {subtitulo && <h4 className="text-stone-500 text-sm italic font-normal mb-1 line-clamp-1">{subtitulo}</h4>}
               <div className="flex items-center justify-between gap-2 mb-2 sm:mb-3">
-                <p className="text-stone-500 text-xs">{formatFecha(shiur.fecha)}</p>
+                <p className="text-stone-500 text-[13px]">{formatFecha(shiur.fecha)}</p>
                 <button
                   onClick={(e) => { e.stopPropagation(); onShare(shiur); }}
-                  className="shrink-0 -my-2 w-9 h-9 inline-flex items-center justify-center rounded-full text-stone-400 active:scale-95 hover:text-blue-900 hover:bg-blue-50 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-900"
+                  className="shrink-0 -my-3 w-11 h-11 inline-flex items-center justify-center rounded-full text-stone-400 active:scale-95 hover:text-blue-900 hover:bg-blue-50 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-900"
                   aria-label={`Compartir: ${titulo}`}
                   title="Compartir"
                 >
                   <IconShare size={15} />
                 </button>
               </div>
-              <p className="hidden sm:block text-stone-600 text-sm leading-relaxed line-clamp-3">{descripcion}</p>
+              <p className={`${compacta ? "hidden" : "hidden sm:block"} text-stone-600 text-sm leading-relaxed line-clamp-3`}>{descripcion}</p>
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); onPlay(shiur); }}
-              className="mt-3 sm:mt-4 inline-flex items-center gap-1.5 sm:gap-2 self-start text-xs sm:text-sm font-medium text-stone-800 border border-stone-300 rounded-full px-3 sm:px-4 py-2 sm:py-1.5 active:scale-95 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-colors duration-200"
+              className="mt-3 sm:mt-4 inline-flex items-center gap-1.5 sm:gap-2 self-start min-h-[44px] sm:min-h-[36px] text-[13px] sm:text-sm font-medium text-stone-800 border border-stone-300 rounded-full px-3.5 sm:px-4 py-2 sm:py-1.5 active:scale-95 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-colors duration-200"
             >
               {isActive && isPlaying ? <IconPause size={14} /> : <IconPlay size={14} />}
               {isActive && isPlaying ? "Pausar" : "Reproducir"}
             </button>
           </div>
+        </div>
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Tarjeta horizontal (portada a la izquierda, texto a la derecha): se usa en
+    // "Últimos Shiurim" del inicio para aprovechar el ancho y ocupar poco alto.
+    // ---------------------------------------------------------------------
+    function ShiurFila({ shiur, isActive, isPlaying, onOpenDetail, onPlay, onShare, isAdmin, onEdit, onDelete }) {
+      const titulo = tituloPrincipalDe(shiur);
+      const { subtitulo, descripcion } = separarDescripcion(shiur.descripcion);
+      return (
+        <div
+          onClick={() => onOpenDetail(shiur)}
+          className={`group relative flex gap-3 sm:gap-4 border rounded-lg bg-white p-3 sm:p-4 cursor-pointer transition-all duration-200 ${
+            isActive ? "border-blue-900 shadow-md" : "border-stone-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-stone-300"
+          }`}
+        >
+          {isAdmin && (
+            <div className="absolute top-2 right-2 z-10 flex gap-1">
+              <button
+                onClick={(e) => { e.stopPropagation(); onEdit(shiur); }}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/90 text-stone-600 hover:text-blue-900 shadow-sm"
+                aria-label="Editar"
+              >
+                <IconPencil size={14} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete(shiur.id); }}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/90 text-stone-600 hover:text-red-600 shadow-sm"
+                aria-label="Eliminar"
+              >
+                <IconTrash size={14} />
+              </button>
+            </div>
+          )}
+          <div className="shrink-0 w-24 h-24 sm:w-36 sm:h-36 rounded-md bg-stone-100 overflow-hidden">
+            {shiur.portadaUrl && (
+              <img
+                src={shiur.portadaUrl}
+                alt={titulo}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                loading="lazy"
+                decoding="async"
+              />
+            )}
+          </div>
+          <div className="min-w-0 flex-1 flex flex-col">
+            <span
+              className="self-start text-[11px] sm:text-xs tracking-wide uppercase px-2 py-1 rounded mb-1.5"
+              style={{ color: colorDeCategoria(shiur.categoria).texto, backgroundColor: colorDeCategoria(shiur.categoria).fondo }}
+            >
+              {shiur.categoria}
+            </span>
+            <h3 className="text-stone-900 font-serif text-base sm:text-lg leading-snug line-clamp-2">{titulo}</h3>
+            {subtitulo && <h4 className="text-stone-500 text-sm italic font-normal line-clamp-1">{subtitulo}</h4>}
+            <p className="text-stone-500 text-[13px] mt-0.5">{formatFecha(shiur.fecha)}</p>
+            {descripcion && <p className="hidden sm:block text-stone-600 text-sm leading-relaxed line-clamp-2 mt-1">{descripcion}</p>}
+            <div className="mt-auto pt-2 flex items-center gap-1">
+              <button
+                onClick={(e) => { e.stopPropagation(); onPlay(shiur); }}
+                className="inline-flex items-center gap-1.5 sm:gap-2 min-h-[44px] sm:min-h-[36px] text-[13px] sm:text-sm font-medium text-stone-800 border border-stone-300 rounded-full px-3.5 sm:px-4 active:scale-95 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-colors duration-200"
+              >
+                {isActive && isPlaying ? <IconPause size={14} /> : <IconPlay size={14} />}
+                {isActive && isPlaying ? "Pausar" : "Reproducir"}
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onShare(shiur); }}
+                className="shrink-0 w-11 h-11 sm:w-9 sm:h-9 inline-flex items-center justify-center rounded-full text-stone-500 active:scale-95 hover:text-blue-900 hover:bg-blue-50 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-900"
+                aria-label={`Compartir: ${titulo}`}
+                title="Compartir"
+              >
+                <IconShare size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // "Explorar por tema": todas las categorías a la vista en la pantalla de
+    // inicio, con su color y la cantidad real de shiurim. En el mismo orden que
+    // el menú lateral. Tania (una serie numerada, más de la mitad del
+    // contenido) ocupa dos lugares.
+    // ---------------------------------------------------------------------
+    function TemasDelInicio({ shiurim, onElegir }) {
+      const cantidades = useMemo(() => {
+        const m = {};
+        shiurim.forEach((s) => { m[s.categoria] = (m[s.categoria] || 0) + 1; });
+        return m;
+      }, [shiurim]);
+      return (
+        <section aria-labelledby="inicio-temas">
+          <h2 id="inicio-temas" className="font-serif text-lg text-stone-800 mb-4">Explorar por tema</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3">
+            {CATEGORIAS.filter((cat) => cantidades[cat]).map((cat) => {
+              const n = cantidades[cat];
+              return (
+                <button
+                  key={cat}
+                  onClick={() => onElegir(cat)}
+                  className={`text-left bg-white border border-stone-200 rounded-lg px-4 py-3 min-h-[64px] flex flex-col justify-center hover:shadow-md hover:-translate-y-0.5 hover:border-stone-300 active:scale-[0.99] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-900 ${
+                    cat === "Tania" ? "col-span-2 md:col-span-4 lg:col-span-2" : ""
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: colorDeCategoria(cat).texto }} aria-hidden="true" />
+                    <span className="font-serif text-base text-stone-900 leading-tight">{cat}</span>
+                  </span>
+                  <span className="text-[13px] text-stone-500 mt-1 pl-[18px]">{n} {n === 1 ? "shiur" : "shiurim"}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      );
+    }
+
+    // Buscador grande y siempre visible (antes solo estaba dentro del menú ☰).
+    function BarraBusqueda({ query, onChange }) {
+      return (
+        <div className="relative">
+          <IconSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" size={20} />
+          <input
+            type="text"
+            enterKeyHint="search"
+            value={query}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Buscar un shiur o tema…"
+            aria-label="Buscar shiurim"
+            className="w-full h-12 border border-stone-300 rounded-full pl-12 pr-12 text-base bg-white placeholder:text-stone-500 focus:outline-none focus:border-blue-900 transition-colors duration-200"
+          />
+          {query && (
+            <button
+              onClick={() => onChange("")}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full text-stone-500 hover:text-stone-800 hover:bg-stone-100"
+              aria-label="Borrar búsqueda"
+            >
+              <IconX size={18} />
+            </button>
+          )}
         </div>
       );
     }
@@ -2134,7 +2289,7 @@
           return coincideTexto(s) && coincideCategoria;
         });
         const ordenados = [...base].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-        return categoriaActiva === "Todas" ? ordenados.slice(0, RECIENTES_LIMITE) : ordenados;
+        return categoriaActiva === "Todas" && !query.trim() ? ordenados.slice(0, RECIENTES_LIMITE) : ordenados;
       }, [shiurim, query, categoriaActiva]);
 
       // Pantalla de inicio (categoría "Todas" y sin buscar): primero los 2
@@ -2157,9 +2312,24 @@
         [shiurim, config.destacados]
       );
       const claseGrilla = "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5";
-      const tarjetaDeShiur = (shiur) => (
+      const filaDeShiur = (shiur) => (
+        <ShiurFila
+          key={shiur.id}
+          shiur={shiur}
+          isActive={current && current.id === shiur.id}
+          isPlaying={isPlaying}
+          onOpenDetail={setSelectedShiur}
+          onPlay={handlePlay}
+          onShare={handleCompartir}
+          isAdmin={isAdmin}
+          onEdit={openEdit}
+          onDelete={handleDeleteShiur}
+        />
+      );
+      const tarjetaDeShiur = (shiur, compacta = false) => (
         <ShiurCard
           key={shiur.id}
+          compacta={compacta}
           shiur={shiur}
           isActive={current && current.id === shiur.id}
           isPlaying={isPlaying}
@@ -2281,41 +2451,33 @@
         <div className="min-h-screen bg-stone-50 pb-28 flex flex-col">
           {/* Encabezado */}
           <header className="border-b border-stone-200 bg-white safe-top">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-3">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-6">
+              <div className="flex items-center justify-between gap-2 sm:gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <button
                     onClick={() => setMenuAbierto(true)}
-                    className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full border border-stone-300 text-stone-600 hover:bg-stone-50 hover:border-stone-500 transition-colors duration-200"
+                    className="shrink-0 w-11 h-11 flex items-center justify-center rounded-full border border-stone-300 text-stone-600 hover:bg-stone-50 hover:border-stone-500 transition-colors duration-200"
                     aria-label="Abrir menú"
                   >
-                    <IconMenu size={18} />
+                    <IconMenu size={20} />
                   </button>
-                  <div>
-                    <h1 className="font-serif text-2xl md:text-3xl text-stone-900 tracking-tight">Rabino Yoel Migdal</h1>
-                    <p className="font-serif italic text-stone-500 text-sm mt-1">Shiurim</p>
+                  <div className="min-w-0">
+                    <h1 className="font-serif text-[17px] sm:text-2xl md:text-3xl text-stone-900 tracking-tight whitespace-nowrap">Rabino Yoel Migdal</h1>
+                    <p className="hidden sm:block font-serif italic text-stone-500 text-sm mt-0.5">Shiurim</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                  {mostrarBotonInstalar && (
-                    <button
-                      onClick={handleInstalarApp}
-                      className="flex items-center gap-1.5 text-xs sm:text-sm text-stone-600 border border-stone-300 rounded-full px-3 py-2 hover:bg-stone-50 transition-colors"
-                    >
-                      <IconInstall size={14} />
-                      <span className="hidden sm:inline">Instalar App</span>
-                    </button>
-                  )}
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => setShowContact(true)}
-                    className="flex items-center gap-1.5 text-xs sm:text-sm text-stone-600 border border-stone-300 rounded-full px-3 py-2 hover:bg-stone-50 transition-colors"
+                    className="flex items-center justify-center gap-1.5 w-11 h-11 sm:w-auto sm:h-10 sm:px-4 text-sm text-stone-600 border border-stone-300 rounded-full hover:bg-stone-50 transition-colors"
+                    aria-label="Contacto"
                   >
-                    <IconMail size={14} />
+                    <IconMail size={16} />
                     <span className="hidden sm:inline">Contacto</span>
                   </button>
                   <button
                     onClick={() => setShowDonate(true)}
-                    className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-blue-50 bg-blue-900 border border-blue-900 rounded-full px-4 py-2 hover:bg-stone-900 hover:border-stone-900 transition-colors duration-200"
+                    className="flex items-center h-11 sm:h-10 px-5 text-sm font-medium text-blue-50 bg-blue-900 border border-blue-900 rounded-full hover:bg-stone-900 hover:border-stone-900 transition-colors duration-200"
                   >
                     Donar
                   </button>
@@ -2331,37 +2493,66 @@
             onQueryChange={setQuery}
             categoriaActiva={categoriaActiva}
             onCategoriaChange={setCategoriaActiva}
+            mostrarInstalar={!!mostrarBotonInstalar}
+            onInstalar={() => { setMenuAbierto(false); handleInstalarApp(); }}
           />
 
           {/* Grilla de shiurim */}
-          <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-10 flex-1 w-full">
+          <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 pb-10 flex-1 w-full">
+            {/* Presentación y buscador: siempre a mano */}
+            <div className="mb-8 sm:mb-10">
+              {esInicio && (
+                <p className="font-serif text-lg sm:text-xl text-stone-700 leading-snug max-w-2xl mb-4">{FRASE_DE_PRESENTACION}</p>
+              )}
+              {categoriaActiva !== "Todas" && (
+                <button
+                  onClick={() => { setCategoriaActiva("Todas"); setQuery(""); }}
+                  className="inline-flex items-center gap-1 min-h-[44px] -ml-1 px-1 mb-1 text-sm text-stone-600 hover:text-blue-900 transition-colors"
+                >
+                  ‹ Todos los temas
+                </button>
+              )}
+              <div className="max-w-2xl">
+                <BarraBusqueda query={query} onChange={setQuery} />
+              </div>
+            </div>
+
             {cargando ? (
               <React.Fragment>
                 <h2 className="font-serif text-lg text-stone-800 mb-4">Últimos Shiurim</h2>
-                <p className="text-stone-400 text-sm py-16 text-center">Cargando shiurim...</p>
+                <p className="text-stone-500 text-sm py-16 text-center">Cargando shiurim...</p>
               </React.Fragment>
             ) : esInicio && shiurim.length > 0 ? (
-              <React.Fragment>
+              <div className="space-y-10 sm:space-y-12">
+                <TemasDelInicio
+                  shiurim={shiurim}
+                  onElegir={(cat) => { setCategoriaActiva(cat); window.scrollTo({ top: 0 }); }}
+                />
                 <section aria-labelledby="inicio-recientes">
                   <h2 id="inicio-recientes" className="font-serif text-lg text-stone-800 mb-4">Últimos Shiurim</h2>
-                  <div className={claseGrilla}>{inicioRecientes.map(tarjetaDeShiur)}</div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">{inicioRecientes.map(filaDeShiur)}</div>
                 </section>
                 {inicioDestacados.length > 0 && (
-                  <section aria-labelledby="inicio-destacados" className="mt-10 sm:mt-12">
+                  <section aria-labelledby="inicio-destacados">
                     <h2 id="inicio-destacados" className="font-serif text-lg text-stone-800 mb-4">Destacados</h2>
-                    <div className={claseGrilla}>{inicioDestacados.map(tarjetaDeShiur)}</div>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">{inicioDestacados.map((s) => tarjetaDeShiur(s, true))}</div>
                   </section>
                 )}
-              </React.Fragment>
+              </div>
             ) : (
               <React.Fragment>
-                <h2 className="font-serif text-lg text-stone-800 mb-4">
-                  {categoriaActiva === "Todas" ? "Últimos Shiurim" : categoriaActiva === "Populares" ? "Más Escuchados" : categoriaActiva}
-                </h2>
+                <div className="flex items-baseline justify-between gap-3 mb-4">
+                  <h2 className="font-serif text-lg text-stone-800">
+                    {categoriaActiva === "Todas" ? (query.trim() ? "Resultados" : "Últimos Shiurim") : categoriaActiva === "Populares" ? "Más Escuchados" : categoriaActiva}
+                  </h2>
+                  <span className="text-[13px] text-stone-500 shrink-0">
+                    {filtrados.length} {filtrados.length === 1 ? "shiur" : "shiurim"}
+                  </span>
+                </div>
                 {filtrados.length === 0 ? (
-                  <p className="text-stone-500 text-sm py-16 text-center">No se encontraron shiurim con esos criterios.</p>
+                  <p className="text-stone-600 text-sm py-16 text-center">No se encontraron shiurim con esos criterios.</p>
                 ) : (
-                  <div className={claseGrilla}>{filtrados.map(tarjetaDeShiur)}</div>
+                  <div className={claseGrilla}>{filtrados.map((s) => tarjetaDeShiur(s))}</div>
                 )}
               </React.Fragment>
             )}
