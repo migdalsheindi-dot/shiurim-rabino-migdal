@@ -278,6 +278,12 @@
       </Icon>
     );
 
+    const IconX_Red = (p) => (
+      <Icon {...p} fill="currentColor" stroke="none">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+      </Icon>
+    );
+
     // Ilustración mínima (línea fina) de cada categoría, para los mosaicos del inicio.
     const ICONOS_DE_CATEGORIA = {
       "Tania": <path d="M6 4h11a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H6z M6 4v16 M9.5 8.5h5" />,
@@ -663,7 +669,10 @@
     // de hamburguesa del encabezado. Reemplaza a la barra de búsqueda y los
     // pills de categoría que antes estaban siempre visibles en el header.
     // ---------------------------------------------------------------------
-    function MenuLateral({ abierto, onClose, query, onQueryChange, categoriaActiva, onCategoriaChange, mostrarInstalar, onInstalar, onContacto }) {
+    const INSTAGRAM_DEL_RABINO = "https://www.instagram.com/yoelmigdal/";
+    const X_DEL_RABINO = "https://x.com/yoelmigdal";
+
+    function MenuLateral({ abierto, onClose, query, onQueryChange, categoriaActiva, onCategoriaChange, mostrarInstalar, onInstalar, onContacto, onDonar }) {
       return (
         <div
           className={`fixed inset-0 z-50 transition-opacity duration-200 ${
@@ -721,18 +730,48 @@
                 })}
               </div>
 
-              <button
-                onClick={onContacto}
-                className="sm:hidden mt-6 w-full flex items-center gap-2 min-h-[44px] text-sm text-stone-700 border border-stone-300 rounded-lg px-3 hover:bg-stone-50 transition-colors duration-200"
-              >
-                <IconMail size={16} />
-                Contacto
-              </button>
+              <div className="mt-6 pt-5 border-t border-stone-200 flex flex-col gap-2">
+                <button
+                  onClick={onContacto}
+                  className="w-full flex items-center gap-2 min-h-[44px] text-sm text-stone-700 border border-stone-300 rounded-lg px-3 hover:bg-stone-50 transition-colors duration-200"
+                >
+                  <IconMail size={16} />
+                  Contacto
+                </button>
+                <button
+                  onClick={onDonar}
+                  className="w-full flex items-center justify-center min-h-[44px] text-sm font-medium text-blue-50 bg-blue-900 border border-blue-900 rounded-lg px-3 hover:bg-stone-900 hover:border-stone-900 transition-colors duration-200"
+                >
+                  Donar
+                </button>
+              </div>
+
+              <p className="text-[11px] uppercase tracking-wide text-stone-400 mt-6 mb-2">Redes</p>
+              <div className="flex gap-2">
+                <a
+                  href={INSTAGRAM_DEL_RABINO}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-2 min-h-[44px] text-sm text-stone-700 border border-stone-300 rounded-lg px-3 hover:bg-stone-50 transition-colors duration-200"
+                >
+                  <IconInstagram size={16} />
+                  Instagram
+                </a>
+                <a
+                  href={X_DEL_RABINO}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-2 min-h-[44px] text-sm text-stone-700 border border-stone-300 rounded-lg px-3 hover:bg-stone-50 transition-colors duration-200"
+                >
+                  <IconX_Red size={15} />
+                  X
+                </a>
+              </div>
 
               {mostrarInstalar && (
                 <button
                   onClick={onInstalar}
-                  className="mt-3 sm:mt-6 w-full flex items-center gap-2 min-h-[44px] text-sm text-stone-700 border border-stone-300 rounded-lg px-3 hover:bg-stone-50 transition-colors duration-200"
+                  className="mt-6 w-full flex items-center gap-2 min-h-[44px] text-sm text-stone-700 border border-stone-300 rounded-lg px-3 hover:bg-stone-50 transition-colors duration-200"
                 >
                   <IconInstall size={16} />
                   Instalar la app
@@ -938,34 +977,42 @@
     }
 
     // Presentación breve del Rabino, al final del inicio.
-    const INSTAGRAM_DEL_RABINO = "https://www.instagram.com/yoelmigdal/";
     function SobreElRabino() {
       return (
         <section aria-labelledby="inicio-rabino" className="border-t border-stone-200 pt-10 sm:pt-12">
-          <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-6 md:gap-10 text-center md:text-left">
+          <div className="max-w-2xl mx-auto text-center">
+            <h2 id="inicio-rabino" className="font-serif text-lg text-stone-800 mb-3">Sobre el Rabino</h2>
+            <p className="text-stone-700 leading-relaxed">
+              El Rabino Yoel Migdal dirige ISEJ en Buenos Aires y forma parte de Jabad Argentina. Dedica su labor a acercar la Torá y el pensamiento jasídico a quienes quieren estudiar y profundizar en su judaísmo. Acá encontrás sus shiurim para escuchar cuando quieras.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-3 mt-5">
+              <a
+                href={INSTAGRAM_DEL_RABINO}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 h-11 px-5 text-sm text-stone-700 border border-stone-300 rounded-full hover:bg-white hover:border-stone-500 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-900"
+              >
+                <IconInstagram size={16} />
+                Instagram
+              </a>
+              <a
+                href={X_DEL_RABINO}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 h-11 px-5 text-sm text-stone-700 border border-stone-300 rounded-full hover:bg-white hover:border-stone-500 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-900"
+              >
+                <IconX_Red size={15} />
+                X
+              </a>
+            </div>
             <img
               src="img/rabino.jpg"
               alt="El Rabino Yoel Migdal hablando en un evento en Buenos Aires"
               width="1400"
               height="1050"
               loading="lazy"
-              className="w-full max-w-md md:w-[24rem] md:max-w-none shrink-0 h-auto rounded-2xl border border-stone-200 shadow-sm"
+              className="w-full max-w-xl mx-auto mt-8 h-auto rounded-2xl border border-stone-200 shadow-sm"
             />
-            <div>
-              <h2 id="inicio-rabino" className="font-serif text-lg text-stone-800 mb-3">Sobre el Rabino</h2>
-              <p className="text-stone-700 leading-relaxed">
-                El Rabino Yoel Migdal dirige ISEJ en Buenos Aires y forma parte de Jabad Argentina. Dedica su labor a acercar la Torá y el pensamiento jasídico a quienes quieren estudiar y profundizar en su judaísmo. Acá encontrás sus shiurim para escuchar cuando quieras.
-              </p>
-              <a
-                href={INSTAGRAM_DEL_RABINO}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 h-11 mt-5 px-5 text-sm text-stone-700 border border-stone-300 rounded-full hover:bg-white hover:border-stone-500 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-900"
-              >
-                <IconInstagram size={16} />
-                Seguir en Instagram
-              </a>
-            </div>
           </div>
         </section>
       );
@@ -2539,7 +2586,7 @@
                   >
                     <img src="icons/logo-ym.svg" alt="" width="80" height="72" className="shrink-0 h-9 w-10 sm:h-11 sm:w-12 md:h-12 md:w-[53px]" />
                     <span className="min-w-0 block">
-                      <span className="block font-serif text-base min-[390px]:text-[18px] sm:text-2xl md:text-3xl text-stone-900 tracking-tight whitespace-nowrap leading-tight">Rabino Yoel Migdal</span>
+                      <span className="block font-serif text-[16px] min-[390px]:text-[17px] sm:text-2xl md:text-3xl text-stone-900 tracking-tight sm:whitespace-nowrap leading-[1.15]">Rabino<span className="sm:hidden"><br /></span><span className="hidden sm:inline"> </span>Yoel Migdal</span>
                       <span className="hidden sm:block font-serif italic text-stone-500 text-sm mt-0.5">Shiurim</span>
                     </span>
                   </button>
@@ -2547,7 +2594,7 @@
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => setShowContact(true)}
-                    className="hidden sm:flex items-center justify-center gap-1.5 h-10 px-4 text-sm text-stone-600 border border-stone-300 rounded-full hover:bg-stone-50 transition-colors"
+                    className="flex items-center justify-center gap-1.5 w-11 h-11 sm:w-auto sm:h-10 sm:px-4 text-sm text-stone-600 border border-stone-300 rounded-full hover:bg-stone-50 transition-colors"
                     aria-label="Contacto"
                   >
                     <IconMail size={16} />
@@ -2574,6 +2621,7 @@
             mostrarInstalar={!!mostrarBotonInstalar}
             onInstalar={() => { setMenuAbierto(false); handleInstalarApp(); }}
             onContacto={() => { setMenuAbierto(false); setShowContact(true); }}
+            onDonar={() => { setMenuAbierto(false); setShowDonate(true); }}
           />
 
           {/* Grilla de shiurim */}
