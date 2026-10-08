@@ -761,10 +761,10 @@
                   href={X_DEL_RABINO}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="X (Twitter)"
                   className="flex-1 flex items-center justify-center gap-2 min-h-[44px] text-sm text-stone-700 border border-stone-300 rounded-lg px-3 hover:bg-stone-50 transition-colors duration-200"
                 >
                   <IconX_Red size={15} />
-                  X
                 </a>
               </div>
 
@@ -999,20 +999,12 @@
                 href={X_DEL_RABINO}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 h-11 px-5 text-sm text-stone-700 border border-stone-300 rounded-full hover:bg-white hover:border-stone-500 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-900"
+                aria-label="X (Twitter)"
+                className="inline-flex items-center justify-center w-11 h-11 text-stone-700 border border-stone-300 rounded-full hover:bg-white hover:border-stone-500 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-900"
               >
-                <IconX_Red size={15} />
-                X
+                <IconX_Red size={16} />
               </a>
             </div>
-            <img
-              src="img/rabino.jpg"
-              alt="El Rabino Yoel Migdal hablando en un evento en Buenos Aires"
-              width="1400"
-              height="1050"
-              loading="lazy"
-              className="w-full max-w-xl mx-auto mt-8 h-auto rounded-2xl border border-stone-200 shadow-sm"
-            />
           </div>
         </section>
       );
@@ -2566,7 +2558,7 @@
       };
 
       return (
-        <div className="min-h-screen bg-stone-50 pb-28 flex flex-col">
+        <div className={`min-h-screen bg-stone-50 flex flex-col ${current ? "pb-28" : ""}`}>
           {/* Encabezado */}
           <header className="border-b border-stone-200 bg-white safe-top">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-6">
@@ -2685,6 +2677,18 @@
               </React.Fragment>
             )}
           </main>
+
+          {/* Foto del Rabino: franja de punta a punta al final del inicio */}
+          {esInicio && !cargando && shiurim.length > 0 && (
+            <img
+              src="img/rabino-banner.jpg"
+              alt="El Rabino Yoel Migdal hablando en un evento en Buenos Aires"
+              width="2000"
+              height="625"
+              loading="lazy"
+              className="block w-full h-[128px] sm:h-[200px] lg:h-[22vw] lg:max-h-[340px] object-cover object-[88%_20%]"
+            />
+          )}
 
           {/* Elemento de audio único, compartido por toda la app */}
           <audio
