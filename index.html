@@ -14,10 +14,13 @@
   <meta name="apple-mobile-web-app-title" content="Shiurim" />
   <!-- Safari/iOS no lee los íconos del manifest.json: necesita este link aparte
        para el ícono de "Agregar a pantalla de inicio". -->
-  <link rel="apple-touch-icon" href="icons/ym-180.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
   <!-- Favicon de la pestaña del navegador -->
-  <link rel="icon" type="image/png" sizes="32x32" href="icons/ym-32.png" />
-  <link rel="icon" type="image/png" sizes="192x192" href="icons/ym-192.png" />
+  <link rel="icon" href="favicon.ico" sizes="48x48" />
+  <link rel="icon" type="image/svg+xml" href="icons/logo-icon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
 
   <!-- Tipografía: Newsreader (títulos) + Work Sans (todo lo demás) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -634,7 +637,7 @@
     // de hamburguesa del encabezado. Reemplaza a la barra de búsqueda y los
     // pills de categoría que antes estaban siempre visibles en el header.
     // ---------------------------------------------------------------------
-    function MenuLateral({ abierto, onClose, query, onQueryChange, categoriaActiva, onCategoriaChange, mostrarInstalar, onInstalar }) {
+    function MenuLateral({ abierto, onClose, query, onQueryChange, categoriaActiva, onCategoriaChange, mostrarInstalar, onInstalar, onContacto }) {
       return (
         <div
           className={`fixed inset-0 z-50 transition-opacity duration-200 ${
@@ -692,10 +695,18 @@
                 })}
               </div>
 
+              <button
+                onClick={onContacto}
+                className="sm:hidden mt-6 w-full flex items-center gap-2 min-h-[44px] text-sm text-stone-700 border border-stone-300 rounded-lg px-3 hover:bg-stone-50 transition-colors duration-200"
+              >
+                <IconMail size={16} />
+                Contacto
+              </button>
+
               {mostrarInstalar && (
                 <button
                   onClick={onInstalar}
-                  className="mt-6 w-full flex items-center gap-2 min-h-[44px] text-sm text-stone-700 border border-stone-300 rounded-lg px-3 hover:bg-stone-50 transition-colors duration-200"
+                  className="mt-3 sm:mt-6 w-full flex items-center gap-2 min-h-[44px] text-sm text-stone-700 border border-stone-300 rounded-lg px-3 hover:bg-stone-50 transition-colors duration-200"
                 >
                   <IconInstall size={16} />
                   Instalar la app
@@ -2461,15 +2472,22 @@
                   >
                     <IconMenu size={20} />
                   </button>
-                  <div className="min-w-0">
-                    <h1 className="font-serif text-[17px] sm:text-2xl md:text-3xl text-stone-900 tracking-tight whitespace-nowrap">Rabino Yoel Migdal</h1>
-                    <p className="hidden sm:block font-serif italic text-stone-500 text-sm mt-0.5">Shiurim</p>
-                  </div>
+                  <button
+                    onClick={() => { setCategoriaActiva("Todas"); setQuery(""); window.scrollTo({ top: 0 }); }}
+                    className="flex items-center gap-2 sm:gap-3 min-w-0 text-left rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-900"
+                    aria-label="Rabino Yoel Migdal, ir al inicio"
+                  >
+                    <img src="icons/logo-simbolo.svg" alt="" width="40" height="36" className="shrink-0 w-8 h-7 sm:w-11 sm:h-10" />
+                    <span className="min-w-0 block">
+                      <span className="block font-serif text-[18px] sm:text-2xl md:text-3xl text-stone-900 tracking-tight whitespace-nowrap leading-tight">Rabino Yoel Migdal</span>
+                      <span className="hidden sm:block font-serif italic text-stone-500 text-sm mt-0.5">Shiurim</span>
+                    </span>
+                  </button>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => setShowContact(true)}
-                    className="flex items-center justify-center gap-1.5 w-11 h-11 sm:w-auto sm:h-10 sm:px-4 text-sm text-stone-600 border border-stone-300 rounded-full hover:bg-stone-50 transition-colors"
+                    className="hidden sm:flex items-center justify-center gap-1.5 h-10 px-4 text-sm text-stone-600 border border-stone-300 rounded-full hover:bg-stone-50 transition-colors"
                     aria-label="Contacto"
                   >
                     <IconMail size={16} />
@@ -2495,7 +2513,13 @@
             onCategoriaChange={setCategoriaActiva}
             mostrarInstalar={!!mostrarBotonInstalar}
             onInstalar={() => { setMenuAbierto(false); handleInstalarApp(); }}
+            onContacto={() => { setMenuAbierto(false); setShowContact(true); }}
           />
+
+          {/* Silueta de Jerusalén: ilustración suave, solo en el inicio */}
+          {esInicio && (
+            <img src="img/jerusalen.svg" alt="" aria-hidden="true" width="1200" height="220" className="w-full h-[72px] sm:h-28 md:h-36 lg:h-44 block select-none pointer-events-none" />
+          )}
 
           {/* Grilla de shiurim */}
           <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 pb-10 flex-1 w-full">
@@ -2538,6 +2562,7 @@
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">{inicioDestacados.map((s) => tarjetaDeShiur(s, true))}</div>
                   </section>
                 )}
+                <img src="img/seforim.svg" alt="" aria-hidden="true" width="400" height="280" loading="lazy" className="mx-auto w-28 sm:w-36 pt-2 select-none pointer-events-none" />
               </div>
             ) : (
               <React.Fragment>

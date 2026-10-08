@@ -14,7 +14,7 @@
 // sea un cambio chico), conviene subir también el número de versión de acá
 // abajo (v2, v3, ...). Eso invalida cualquier caché vieja que haya quedado
 // de una versión anterior del Service Worker en el navegador de un visitante.
-const CACHE_NAME = "ry-migdal-shiurim-v3";
+const CACHE_NAME = "ry-migdal-shiurim-v4";
 const APP_SHELL = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", (event) => {
