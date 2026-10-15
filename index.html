@@ -128,11 +128,14 @@
     @media (min-width: 768px) {
       .hero-foto { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 30%), linear-gradient(to left, transparent 0, #000 14%), linear-gradient(to bottom, #000 62%, transparent 100%); mask-image: linear-gradient(to right, transparent 0, #000 30%), linear-gradient(to left, transparent 0, #000 14%), linear-gradient(to bottom, #000 62%, transparent 100%); }
     }
+    /* Corazón de "Guardados": late al activarse */
+    @keyframes latido { 0% { transform: scale(1); } 40% { transform: scale(1.4); } 100% { transform: scale(1); } }
+    .es-favorito svg { animation: latido .45s ease; }
     /* Respeta a quienes piden menos movimiento */
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
       .reveal { opacity: 1; transform: none; transition: none; }
-      .sonando, .eq span { animation: none; }
+      .sonando, .eq span, .es-favorito svg { animation: none; }
       * { transition-duration: .01ms !important; }
     }
   </style>
@@ -324,6 +327,11 @@
       </Icon>
     );
 
+    const IconHeart = ({ lleno = false, ...p }) => (
+      <Icon {...p} fill={lleno ? "currentColor" : "none"}>
+        <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21.2l7.8-7.7 1-1.1a5.5 5.5 0 0 0 0-7.8z" />
+      </Icon>
+    );
     const IconChevron = ({ dir = "right", ...p }) => (
       <Icon {...p}>
         <polyline points={dir === "right" ? "9 6 15 12 9 18" : "15 6 9 12 15 18"} />
@@ -769,7 +777,7 @@
 
               <p className="text-[11px] uppercase tracking-wide text-stone-400 mb-2">Categorías</p>
               <div className="flex flex-col gap-1.5">
-                {["Todas", "Populares", ...CATEGORIAS].map((cat) => {
+                {["Todas", "Populares", "Guardados", ...CATEGORIAS].map((cat) => {
                   const activo = categoriaActiva === cat;
                   const colorCategoria = activo && CATEGORIA_COLOR[cat] ? colorDeCategoria(cat) : null;
                   return (
@@ -783,7 +791,7 @@
                       }`}
                       style={colorCategoria ? { backgroundColor: colorCategoria.texto, borderColor: colorCategoria.texto } : undefined}
                     >
-                      {cat === "Populares" ? "Más escuchados" : cat}
+                      {cat === "Populares" ? "Más escuchados" : cat === "Guardados" ? "♡ Guardados" : cat}
                     </button>
                   );
                 })}
@@ -840,6 +848,31 @@
           </div>
         </div>
       );
+    }
+
+    // ---------------------------------------------------------------------
+    // Datos de cada persona, guardados solo en su dispositivo (sin cuentas):
+    // shiurim guardados (corazón) y en qué minuto quedó cada shiur empezado.
+    // ---------------------------------------------------------------------
+    const CLAVE_FAVORITOS = "ry_favoritos";
+    const CLAVE_PROGRESO = "ry_progreso";
+    const MAX_PROGRESOS = 40;
+    function leerJSON(clave, defecto) {
+      try {
+        const v = JSON.parse(localStorage.getItem(clave));
+        return v === null || v === undefined ? defecto : v;
+      } catch (e) { return defecto; }
+    }
+    function guardarJSON(clave, valor) {
+      try { localStorage.setItem(clave, JSON.stringify(valor)); } catch (e) {}
+    }
+    const UsuarioContext = React.createContext({ favoritos: [], toggleFavorito: () => {}, progresos: {} });
+    const useUsuario = () => React.useContext(UsuarioContext);
+    // Avance de un shiur empezado: { porcentaje, quedanMin } o null si no lo empezó / ya lo terminó.
+    function avanceDe(progresos, shiur) {
+      const p = progresos && progresos[String(shiur.id)];
+      if (!p || !p.d || p.t < 5 || p.d - p.t < 20) return null;
+      return { porcentaje: Math.min(100, (p.t / p.d) * 100), quedanMin: Math.max(1, Math.ceil((p.d - p.t) / 60)) };
     }
 
     // ---------------------------------------------------------------------
@@ -917,6 +950,36 @@
       );
     }
 
+    function BotonFavorito({ shiur, titulo, claro = false, vidrio = false, className = "" }) {
+      const { favoritos, toggleFavorito } = useUsuario();
+      const activo = favoritos.includes(String(shiur.id));
+      return (
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleFavorito(shiur.id); }}
+          aria-pressed={activo}
+          aria-label={activo ? `Quitar de guardados: ${titulo}` : `Guardar: ${titulo}`}
+          title={activo ? "Quitar de guardados" : "Guardar"}
+          className={`${activo ? "es-favorito" : ""} shrink-0 w-11 h-11 sm:w-10 sm:h-10 inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-75 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 ${
+            vidrio ? "glass-dark text-white hover:bg-white/20" : claro ? "text-white/70 hover:text-white hover:bg-white/10" : "text-stone-500 hover:text-blue-900 hover:bg-blue-50"
+          } ${activo ? (vidrio || claro ? "!text-gold-400" : "!text-gold-600") : ""} ${className}`}
+        >
+          <IconHeart size={vidrio ? 17 : 16} lleno={activo} />
+        </button>
+      );
+    }
+
+    // Línea dorada fina al pie de la portada de un shiur empezado.
+    function BarraAvance({ shiur }) {
+      const { progresos } = useUsuario();
+      const av = avanceDe(progresos, shiur);
+      if (!av) return null;
+      return (
+        <div className="absolute inset-x-0 bottom-0 h-1 bg-black/25" aria-hidden="true">
+          <div className="h-full bg-gradient-to-r from-gold-400 to-gold-600 rounded-r-full" style={{ width: `${av.porcentaje}%` }} />
+        </div>
+      );
+    }
+
     function BotonCompartir({ shiur, titulo, onShare, claro = false, className = "" }) {
       return (
         <button
@@ -946,7 +1009,7 @@
           }`}
         >
           {isAdmin && <BotonesAdmin shiur={shiur} onEdit={onEdit} onDelete={onDelete} />}
-          <div className="w-full aspect-square bg-stone-100 overflow-hidden">
+          <div className="relative w-full aspect-square bg-stone-100 overflow-hidden">
             {shiur.portadaUrl && (
               <img
                 src={shiur.portadaUrl}
@@ -956,6 +1019,8 @@
                 decoding="async"
               />
             )}
+            <BotonFavorito shiur={shiur} titulo={titulo} vidrio className="absolute top-2 left-2 !w-10 !h-10" />
+            <BarraAvance shiur={shiur} />
           </div>
           <div className="p-3.5 sm:p-5 flex flex-col justify-between flex-1">
             <div>
@@ -981,6 +1046,8 @@
     function ShiurFila({ shiur, isActive, isPlaying, onOpenDetail, onPlay, onShare, isAdmin, onEdit, onDelete }) {
       const titulo = tituloPrincipalDe(shiur);
       const { subtitulo } = separarDescripcion(shiur.descripcion);
+      const { progresos } = useUsuario();
+      const avance = avanceDe(progresos, shiur);
       return (
         <div
           onClick={() => onOpenDetail(shiur)}
@@ -989,7 +1056,7 @@
           }`}
         >
           {isAdmin && <BotonesAdmin shiur={shiur} onEdit={onEdit} onDelete={onDelete} />}
-          <div className="shrink-0 w-[104px] h-[104px] sm:w-32 sm:h-32 rounded-xl bg-stone-100 overflow-hidden">
+          <div className="relative shrink-0 w-[104px] h-[104px] sm:w-32 sm:h-32 rounded-xl bg-stone-100 overflow-hidden">
             {shiur.portadaUrl && (
               <img
                 src={shiur.portadaUrl}
@@ -999,14 +1066,18 @@
                 decoding="async"
               />
             )}
+            <BotonFavorito shiur={shiur} titulo={titulo} vidrio className="absolute top-1.5 left-1.5 !w-8 !h-8" />
+            <BarraAvance shiur={shiur} />
           </div>
           <div className="min-w-0 flex-1 flex flex-col">
             <EtiquetaCategoria categoria={shiur.categoria} className="self-start mb-1.5" />
             <h3 className="text-blue-900 font-serif font-semibold text-[17px] sm:text-lg leading-snug line-clamp-2">{titulo}</h3>
             {subtitulo && <h4 className="text-stone-500 text-sm font-normal line-clamp-1 mt-0.5">{subtitulo}</h4>}
-            <p className="text-stone-500 text-[13px] mt-0.5">{formatFecha(shiur.fecha)}</p>
-            <div className="mt-auto pt-2.5 flex items-center gap-1">
-              <BotonReproducir shiur={shiur} isActive={isActive} isPlaying={isPlaying} onPlay={onPlay} />
+            <p className="text-stone-500 text-[13px] mt-0.5">
+              {avance ? <span className="text-gold-600 font-medium">Quedan {avance.quedanMin} min</span> : formatFecha(shiur.fecha)}
+            </p>
+            <div className="mt-auto pt-2.5 flex items-center gap-0.5">
+              <BotonReproducir shiur={shiur} isActive={isActive} isPlaying={isPlaying} onPlay={onPlay} textoPlay={avance ? "Continuar" : "Reproducir"} />
               <BotonCompartir shiur={shiur} titulo={titulo} onShare={onShare} />
             </div>
           </div>
@@ -1028,7 +1099,7 @@
           }`}
         >
           {isAdmin && <BotonesAdmin shiur={shiur} onEdit={onEdit} onDelete={onDelete} />}
-          <div className="shrink-0 w-[132px] sm:w-[176px] self-stretch bg-[#0E1830] overflow-hidden">
+          <div className="relative shrink-0 w-[132px] sm:w-[176px] self-stretch bg-[#0E1830] overflow-hidden">
             {shiur.portadaUrl && (
               <img
                 src={shiur.portadaUrl}
@@ -1038,6 +1109,8 @@
                 decoding="async"
               />
             )}
+            <BotonFavorito shiur={shiur} titulo={titulo} vidrio className="absolute top-2 left-2 !w-8 !h-8" />
+            <BarraAvance shiur={shiur} />
           </div>
           <div className="min-w-0 flex-1 flex flex-col p-4 sm:p-5">
             <span className="self-start text-[11px] font-medium tracking-wider uppercase text-gold-200 border border-gold-500/50 rounded-full px-2.5 py-0.5 mb-2">{shiur.categoria}</span>
@@ -1103,7 +1176,7 @@
     // "Explorar por tema": píldoras con ícono, todas las categorías a la vista
     // con la cantidad real de shiurim. En celular se deslizan en dos filas.
     // ---------------------------------------------------------------------
-    function TemasDelInicio({ shiurim, onElegir }) {
+    function TemasDelInicio({ shiurim, onElegir, cantidadGuardados = 0 }) {
       const cantidades = useMemo(() => {
         const m = {};
         shiurim.forEach((s) => { m[s.categoria] = (m[s.categoria] || 0) + 1; });
@@ -1114,6 +1187,18 @@
           <h2 id="inicio-temas" className="font-serif text-2xl sm:text-[28px] font-semibold text-blue-900 leading-none mb-4">Explorar por tema</h2>
           <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto sm:overflow-visible no-scrollbar pb-2 -mb-2">
             <div className="grid grid-rows-2 grid-flow-col auto-cols-max gap-2.5 sm:flex sm:flex-wrap sm:gap-3 w-max sm:w-auto">
+              <button
+                onClick={() => onElegir("Guardados")}
+                className="group flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 min-h-[48px] rounded-full glass text-left transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-card active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+              >
+                <span className="shrink-0 w-9 h-9 rounded-full bg-gold-100 group-hover:bg-white flex items-center justify-center transition-colors duration-300 text-gold-600">
+                  <IconHeart size={19} lleno={cantidadGuardados > 0} />
+                </span>
+                <span className="flex flex-col leading-tight">
+                  <span className="font-semibold text-[15px] text-blue-900 whitespace-nowrap">Guardados</span>
+                  <span className="text-xs text-stone-500">{cantidadGuardados > 0 ? `${cantidadGuardados} ${cantidadGuardados === 1 ? "shiur" : "shiurim"}` : "Tu lista"}</span>
+                </span>
+              </button>
               {CATEGORIAS.filter((cat) => cantidades[cat]).map((cat) => {
                 const n = cantidades[cat];
                 const color = colorDeCategoria(cat).texto;
@@ -1358,13 +1443,16 @@
               {subtitulo && <h3 className="text-stone-500 text-base italic font-normal mb-1">{subtitulo}</h3>}
               <div className="flex items-center justify-between gap-3 mb-3">
                 <p className="text-stone-500 text-sm">{formatFecha(shiur.fecha)}</p>
-                <button
-                  onClick={() => onShare(shiur)}
-                  className="shrink-0 inline-flex items-center gap-1.5 text-xs sm:text-sm text-stone-600 border border-stone-300 rounded-full px-3 py-2 sm:py-1.5 active:scale-95 hover:text-blue-900 hover:border-blue-900 hover:bg-blue-50 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-900"
-                >
-                  <IconShare size={14} />
-                  Compartir
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <BotonFavorito shiur={shiur} titulo={titulo} className="!w-9 !h-9 border border-stone-300" />
+                  <button
+                    onClick={() => onShare(shiur)}
+                    className="shrink-0 inline-flex items-center gap-1.5 text-xs sm:text-sm text-stone-600 border border-stone-300 rounded-full px-3 py-2 sm:py-1.5 active:scale-95 hover:text-blue-900 hover:border-blue-900 hover:bg-blue-50 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-900"
+                  >
+                    <IconShare size={14} />
+                    Compartir
+                  </button>
+                </div>
               </div>
               {descripcion && <p className="text-stone-700 text-sm leading-relaxed whitespace-pre-line mb-5">{descripcion}</p>}
 
@@ -1493,6 +1581,8 @@
                 <span className="text-[10px] text-white/60 w-8 shrink-0">{formatTiempo(duracion)}</span>
               </div>
             </div>
+
+            <BotonFavorito shiur={current} titulo={tituloPrincipalDe(current)} claro />
 
             <button
               onClick={cycleSpeed}
@@ -2415,6 +2505,57 @@
       const [actual, setActual] = useState(0);
       const [duracion, setDuracion] = useState(0);
 
+      // Guardados y progreso de escucha (solo en este dispositivo)
+      const [favoritos, setFavoritos] = useState(() => leerJSON(CLAVE_FAVORITOS, []).map(String));
+      const toggleFavorito = (id) =>
+        setFavoritos((prev) => {
+          const clave = String(id);
+          const nuevo = prev.includes(clave) ? prev.filter((x) => x !== clave) : [clave, ...prev];
+          guardarJSON(CLAVE_FAVORITOS, nuevo);
+          return nuevo;
+        });
+      const [progresos, setProgresos] = useState(() => leerJSON(CLAVE_PROGRESO, {}));
+      const progresosRef = useRef(progresos);
+      const ultimoGuardadoRef = useRef(0);
+      const pendienteRef = useRef(0); // minuto al que hay que saltar cuando cargue el audio
+
+      const guardarProgreso = (forzar = false) => {
+        const audio = audioRef.current;
+        if (!audio || !current || !audio.duration || isNaN(audio.duration)) return;
+        const ahora = Date.now();
+        if (!forzar && ahora - ultimoGuardadoRef.current < 5000) return;
+        const t = audio.currentTime;
+        const d = audio.duration;
+        const mapa = { ...progresosRef.current };
+        const clave = String(current.id);
+        if (d - t < 20) delete mapa[clave]; // lo terminó: ya no aparece como "empezado"
+        else if (t >= 5) mapa[clave] = { t: Math.floor(t), d: Math.floor(d), u: ahora };
+        else return;
+        // Máximo de shiurim recordados: se descartan los más viejos
+        const claves = Object.keys(mapa);
+        if (claves.length > MAX_PROGRESOS) {
+          claves.sort((a, b) => mapa[b].u - mapa[a].u).slice(MAX_PROGRESOS).forEach((k) => delete mapa[k]);
+        }
+        ultimoGuardadoRef.current = ahora;
+        progresosRef.current = mapa;
+        setProgresos(mapa);
+        guardarJSON(CLAVE_PROGRESO, mapa);
+      };
+      // Guarda también al pausar, al cerrar la pestaña o al pasar la app a segundo plano
+      const guardarProgresoRef = useRef(guardarProgreso);
+      guardarProgresoRef.current = guardarProgreso;
+      useEffect(() => {
+        const alSalir = () => guardarProgresoRef.current(true);
+        const alOcultar = () => { if (document.visibilityState === "hidden") alSalir(); };
+        window.addEventListener("pagehide", alSalir);
+        document.addEventListener("visibilitychange", alOcultar);
+        return () => {
+          window.removeEventListener("pagehide", alSalir);
+          document.removeEventListener("visibilitychange", alOcultar);
+        };
+      }, []);
+      useEffect(() => { if (!isPlaying) guardarProgresoRef.current(true); }, [isPlaying]);
+
       // Acceso admin por URL: ?admin=true
       useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -2581,8 +2722,17 @@
         setActual(audio.currentTime);
         setProgreso((audio.currentTime / audio.duration) * 100);
         registrarEscucha(audio.currentTime);
+        guardarProgreso();
       };
-      const handleLoadedMetadata = () => { if (audioRef.current) setDuracion(audioRef.current.duration || 0); };
+      const handleLoadedMetadata = () => {
+        const audio = audioRef.current;
+        if (!audio) return;
+        setDuracion(audio.duration || 0);
+        // Si el shiur estaba empezado, retoma donde se quedó
+        const pendiente = pendienteRef.current;
+        pendienteRef.current = 0;
+        if (pendiente > 0 && audio.duration > pendiente + 5) audio.currentTime = pendiente;
+      };
       const handleSeek = (valor) => {
         const audio = audioRef.current;
         setProgreso(valor);
@@ -2591,7 +2741,13 @@
 
       const handlePlay = (shiur) => {
         if (current && current.id === shiur.id) setIsPlaying((p) => !p);
-        else { setCurrent(shiur); setIsPlaying(true); }
+        else {
+          guardarProgreso(true); // guarda dónde quedó el shiur anterior
+          const p = progresosRef.current[String(shiur.id)];
+          pendienteRef.current = p && p.t >= 5 ? p.t : 0;
+          setCurrent(shiur);
+          setIsPlaying(true);
+        }
       };
 
       const RECIENTES_LIMITE = 6;
@@ -2604,6 +2760,13 @@
           normalizar(s.descripcion).includes(q) ||
           normalizar(s.categoria).includes(q);
 
+        if (categoriaActiva === "Guardados") {
+          // En el orden en que se guardaron (el último guardado, primero)
+          return favoritos
+            .map((id) => shiurim.find((x) => String(x.id) === id))
+            .filter((x) => x && coincideTexto(x));
+        }
+
         if (categoriaActiva === "Populares") {
           const base = shiurim.filter(coincideTexto);
           return [...base].sort((a, b) => (Number(b.reproducciones) || 0) - (Number(a.reproducciones) || 0)).slice(0, POPULARES_LIMITE);
@@ -2615,7 +2778,7 @@
         });
         const ordenados = [...base].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
         return categoriaActiva === "Todas" && !query.trim() ? ordenados.slice(0, RECIENTES_LIMITE) : ordenados;
-      }, [shiurim, query, categoriaActiva]);
+      }, [shiurim, query, categoriaActiva, favoritos]);
 
       // Pantalla de inicio (categoría "Todas" y sin buscar): primero los
       // shiurim más nuevos (carrusel) y después los 4 shiurim destacados, elegidos a mano.
@@ -2635,6 +2798,16 @@
             .filter(Boolean)
             .slice(0, INICIO_DESTACADOS),
         [shiurim, config.destacados]
+      );
+      const seguirEscuchando = useMemo(
+        () =>
+          Object.keys(progresos)
+            .map((id) => ({ shiur: shiurim.find((x) => String(x.id) === id), u: progresos[id].u }))
+            .filter((x) => x.shiur && avanceDe(progresos, x.shiur))
+            .sort((a, b) => b.u - a.u)
+            .slice(0, 6)
+            .map((x) => x.shiur),
+        [progresos, shiurim]
       );
       const claseGrilla = "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5";
       const filaDeShiur = (shiur) => (
@@ -2787,6 +2960,7 @@
       };
 
       return (
+        <UsuarioContext.Provider value={{ favoritos, toggleFavorito, progresos }}>
         <div className={`min-h-screen bg-stone-50 flex flex-col ${current ? "pb-32" : ""}`}>
           {/* Encabezado */}
           <header className="sticky top-0 z-40 border-b border-stone-200/70 bg-white/90 backdrop-blur-md safe-top">
@@ -2862,9 +3036,17 @@
               </React.Fragment>
             ) : esInicio && shiurim.length > 0 ? (
               <div className="space-y-12 sm:space-y-16">
+                {seguirEscuchando.length > 0 && (
+                  <Reveal>
+                    <Carrusel id="inicio-seguir" titulo="Seguir escuchando">
+                      {seguirEscuchando.map(filaDeShiur)}
+                    </Carrusel>
+                  </Reveal>
+                )}
                 <Reveal>
                   <TemasDelInicio
                     shiurim={shiurim}
+                    cantidadGuardados={favoritos.filter((id) => shiurim.some((x) => String(x.id) === id)).length}
                     onElegir={(cat) => { setCategoriaActiva(cat); window.scrollTo({ top: 0 }); }}
                   />
                 </Reveal>
@@ -2885,14 +3067,22 @@
               <React.Fragment>
                 <div className="flex items-baseline justify-between gap-3 mb-5">
                   <h2 className="font-serif text-2xl sm:text-[28px] font-semibold text-blue-900 leading-none">
-                    {categoriaActiva === "Todas" ? (query.trim() ? "Resultados" : "Últimos Shiurim") : categoriaActiva === "Populares" ? "Más Escuchados" : categoriaActiva}
+                    {categoriaActiva === "Todas" ? (query.trim() ? "Resultados" : "Últimos Shiurim") : categoriaActiva === "Populares" ? "Más Escuchados" : categoriaActiva === "Guardados" ? "Guardados" : categoriaActiva}
                   </h2>
                   <span className="text-[13px] text-stone-500 shrink-0">
                     {filtrados.length} {filtrados.length === 1 ? "shiur" : "shiurim"}
                   </span>
                 </div>
                 {filtrados.length === 0 ? (
-                  <p className="text-stone-600 text-sm py-16 text-center">No se encontraron shiurim con esos criterios.</p>
+                  categoriaActiva === "Guardados" && !query.trim() ? (
+                    <div className="py-16 text-center max-w-sm mx-auto">
+                      <div className="mx-auto w-14 h-14 rounded-full bg-gold-100 text-gold-600 flex items-center justify-center mb-4"><IconHeart size={26} /></div>
+                      <p className="font-serif text-xl text-blue-900 mb-2">Todavía no guardaste nada</p>
+                      <p className="text-stone-600 text-sm leading-relaxed">Tocá el corazón de cualquier shiur para guardarlo acá y encontrarlo rápido cuando quieras.</p>
+                    </div>
+                  ) : (
+                    <p className="text-stone-600 text-sm py-16 text-center">No se encontraron shiurim con esos criterios.</p>
+                  )
                 ) : (
                   <div className={claseGrilla}>{filtrados.map((s) => tarjetaDeShiur(s))}</div>
                 )}
@@ -2908,7 +3098,17 @@
             src={current ? current.audioUrl : undefined}
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
-            onEnded={() => setIsPlaying(false)}
+            onEnded={() => {
+              pendienteRef.current = 0;
+              if (current) {
+                const mapa = { ...progresosRef.current };
+                delete mapa[String(current.id)];
+                progresosRef.current = mapa;
+                setProgresos(mapa);
+                guardarJSON(CLAVE_PROGRESO, mapa);
+              }
+              setIsPlaying(false);
+            }}
             preload="metadata"
           />
 
@@ -2991,6 +3191,7 @@
             />
           )}
         </div>
+        </UsuarioContext.Provider>
       );
     }
 
