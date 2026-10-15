@@ -22,6 +22,18 @@
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
 
+  <!-- Instalación (Android/Chrome): el navegador avisa con "beforeinstallprompt" apenas
+       la web cumple los requisitos, y a veces eso pasa ANTES de que React termine de
+       compilar. Se guarda acá, desde el primer momento, para no perder el aviso. -->
+  <script>
+    window.__promptInstalacion = null;
+    window.addEventListener("beforeinstallprompt", function (e) {
+      e.preventDefault();
+      window.__promptInstalacion = e;
+      window.dispatchEvent(new Event("ry-prompt-listo"));
+    });
+  </script>
+
   <!-- Tipografía: Playfair Display (títulos) + Plus Jakarta Sans (interfaz y texto) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -1737,23 +1749,33 @@
     // Modal de ayuda para instalar en iOS (Safari no permite el prompt
     // automático, así que se explican los pasos manuales)
     // ---------------------------------------------------------------------
-    function InstallHelpModal({ onClose }) {
+    function InstallHelpModal({ plataforma = "ios", onClose }) {
+      const esAndroid = plataforma === "android";
       return (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-lg p-6 relative shadow-xl">
-            <button onClick={onClose} className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center text-stone-400 hover:text-stone-700">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+          <div className="bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-lg p-6 relative shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <button onClick={onClose} className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center text-stone-400 hover:text-stone-700" aria-label="Cerrar">
               <IconX size={20} />
             </button>
             <div className="w-10 h-10 rounded-full bg-stone-900 text-white flex items-center justify-center mb-4">
               <IconInstall size={18} />
             </div>
-            <h2 className="font-serif text-xl text-stone-900 mb-3">Instalar en iPhone / iPad</h2>
-            <ol className="text-sm text-stone-600 leading-relaxed space-y-2 list-decimal list-inside">
-              <li>Abrí esta página en Safari (no funciona desde otra app).</li>
-              <li>Tocá el ícono de Compartir (el cuadrado con la flecha hacia arriba).</li>
-              <li>Elegí "Agregar a pantalla de inicio".</li>
-              <li>Confirmá tocando "Agregar".</li>
-            </ol>
+            <h2 className="font-serif text-xl text-stone-900 mb-3">{esAndroid ? "Instalar en Android" : "Instalar en iPhone / iPad"}</h2>
+            {esAndroid ? (
+              <ol className="text-sm text-stone-600 leading-relaxed space-y-2 list-decimal list-inside">
+                <li>Abrí esta página en Chrome. Si la abriste desde WhatsApp o Instagram, tocá los tres puntos y elegí "Abrir en el navegador".</li>
+                <li>En Chrome, tocá el menú de tres puntos (⋮) de arriba a la derecha.</li>
+                <li>Elegí "Instalar app" o "Agregar a la pantalla principal".</li>
+                <li>Confirmá tocando "Instalar".</li>
+              </ol>
+            ) : (
+              <ol className="text-sm text-stone-600 leading-relaxed space-y-2 list-decimal list-inside">
+                <li>Abrí esta página en Safari (no funciona desde otra app).</li>
+                <li>Tocá el ícono de Compartir (el cuadrado con la flecha hacia arriba).</li>
+                <li>Elegí "Agregar a pantalla de inicio".</li>
+                <li>Confirmá tocando "Agregar".</li>
+              </ol>
+            )}
           </div>
         </div>
       );
@@ -2439,23 +2461,20 @@
         typeof window !== "undefined" &&
         (window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true);
 
-      const [promptInstalacion, setPromptInstalacion] = useState(null);
+      const [promptInstalacion, setPromptInstalacion] = useState(() => window.__promptInstalacion || null);
       const [appInstalada, setAppInstalada] = useState(yaEstaInstalada);
       const [showInstallHelp, setShowInstallHelp] = useState(false);
 
       useEffect(() => {
-        const alAntesDeInstalar = (e) => {
-          e.preventDefault();
-          setPromptInstalacion(e);
-        };
+        const alAntesDeInstalar = () => setPromptInstalacion(window.__promptInstalacion || null);
         const alInstalar = () => {
           setAppInstalada(true);
           setPromptInstalacion(null);
         };
-        window.addEventListener("beforeinstallprompt", alAntesDeInstalar);
+        window.addEventListener("ry-prompt-listo", alAntesDeInstalar);
         window.addEventListener("appinstalled", alInstalar);
         return () => {
-          window.removeEventListener("beforeinstallprompt", alAntesDeInstalar);
+          window.removeEventListener("ry-prompt-listo", alAntesDeInstalar);
           window.removeEventListener("appinstalled", alInstalar);
         };
       }, []);
@@ -2463,22 +2482,30 @@
       // Los iPad modernos (iPadOS 13+) se identifican con user-agent de
       // escritorio ("Macintosh"), sin "iPad" — la forma confiable de
       // distinguirlos de una Mac real es que sí tienen pantalla táctil.
+      const esAndroid = typeof navigator !== "undefined" && /android/i.test(navigator.userAgent || "");
       const esIOS =
         typeof navigator !== "undefined" &&
+        !esAndroid &&
         (/iphone|ipad|ipod/i.test(navigator.userAgent || "") ||
           (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
 
+      // Con el aviso del navegador (Chrome/Edge en Android o computadora) se abre
+      // el cuadro nativo de instalación. Si no hay aviso (iPhone, otro navegador,
+      // o ya se descartó antes) se muestran los pasos manuales de cada sistema.
       const handleInstalarApp = async () => {
         if (promptInstalacion) {
-          promptInstalacion.prompt();
-          try { await promptInstalacion.userChoice; } catch (e) {}
+          try {
+            promptInstalacion.prompt();
+            await promptInstalacion.userChoice;
+          } catch (e) {}
+          window.__promptInstalacion = null;
           setPromptInstalacion(null);
-        } else if (esIOS) {
+        } else if (esIOS || esAndroid) {
           setShowInstallHelp(true);
         }
       };
 
-      const mostrarBotonInstalar = !appInstalada && (promptInstalacion || esIOS);
+      const mostrarBotonInstalar = !appInstalada && (promptInstalacion || esIOS || esAndroid);
 
       const [query, setQuery] = useState("");
       const [categoriaActiva, setCategoriaActiva] = useState("Todas");
@@ -3152,7 +3179,7 @@
           {showDonate && <DonateModal onClose={() => setShowDonate(false)} mercadoPagoLink={config.mercadoPagoLink} />}
 
           {/* Ayuda de instalación manual para iOS */}
-          {showInstallHelp && <InstallHelpModal onClose={() => setShowInstallHelp(false)} />}
+          {showInstallHelp && <InstallHelpModal plataforma={esIOS ? "ios" : "android"} onClose={() => setShowInstallHelp(false)} />}
 
           {/* Login admin (solo aparece via ?admin=true o Ctrl+Shift+A) */}
           {showLogin && <AdminLogin onSuccess={handleLoginSuccess} onCancel={() => setShowLogin(false)} />}
