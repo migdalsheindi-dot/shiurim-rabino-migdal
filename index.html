@@ -1230,7 +1230,6 @@
     // ---------------------------------------------------------------------
     function SobreElRabino() {
       const boton = "group/red relative inline-flex items-center justify-center w-12 h-12 rounded-full glass-dark text-white hover:-translate-y-1 hover:bg-gold-500 hover:text-[#14203A] hover:border-gold-400 hover:shadow-[0_14px_30px_-8px_rgba(199,154,75,0.7)] active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-400";
-      const etiqueta = "inline-flex items-center gap-1.5 text-xs sm:text-[13px] font-medium tracking-wide text-gold-100 glass-dark rounded-full px-3.5 py-1.5";
       return (
         <section aria-labelledby="inicio-rabino" className="relative overflow-hidden mt-6 sm:mt-10 rounded-t-[2.25rem] sm:rounded-t-[3rem] text-white bg-gradient-to-br from-[#0B1428] via-[#14224A] to-[#223664]">
           <div className="pointer-events-none absolute -top-32 -left-24 w-[480px] h-[480px] rounded-full opacity-25" style={{ background: "radial-gradient(closest-side, rgba(199,154,75,.6), transparent)" }} />
@@ -1238,12 +1237,7 @@
           <div className="relative max-w-6xl mx-auto px-5 sm:px-6 py-14 sm:py-20">
             <Reveal>
               <p className="text-gold-200 text-xs sm:text-[13px] font-semibold tracking-[0.22em] uppercase mb-3">Sobre el Rabino</p>
-              <h2 id="inicio-rabino" className="font-serif font-bold text-[34px] sm:text-5xl leading-[1.08] mb-5">Rabino Yoel Migdal</h2>
-              <div className="flex flex-wrap gap-2 mb-6">
-                <span className={`${etiqueta} !bg-gold-500/90 !text-[#14203A] !border-gold-400 font-semibold`}>Director de ISEJ</span>
-                <span className={etiqueta}>Jabad Lubavitch Argentina</span>
-                <span className={etiqueta}>Buenos Aires</span>
-              </div>
+              <h2 id="inicio-rabino" className="font-serif font-bold text-[34px] sm:text-5xl leading-[1.08] mb-2">Rabino Yoel Migdal</h2>
               <div className="flex items-center gap-3 mt-8">
                 <a href={INSTAGRAM_DEL_RABINO} target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram" className={boton}><IconInstagram size={20} /></a>
                 <a href={X_DEL_RABINO} target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" title="X" className={boton}><IconX_Red size={18} /></a>
