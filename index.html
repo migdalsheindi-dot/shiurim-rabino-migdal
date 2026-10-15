@@ -22,11 +22,11 @@
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
 
-  <!-- Tipografía: Newsreader (títulos) + Work Sans (todo lo demás) -->
+  <!-- Tipografía: Playfair Display (títulos) + Plus Jakarta Sans (interfaz y texto) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Work+Sans:wght@400;500;600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
     rel="stylesheet"
   />
 
@@ -78,8 +78,9 @@
             },
           },
           boxShadow: {
-            card: "0 6px 22px -10px rgba(28, 43, 74, 0.22), 0 1px 2px rgba(28, 43, 74, 0.06)",
-            lift: "0 20px 40px -16px rgba(28, 43, 74, 0.38), 0 2px 6px rgba(28, 43, 74, 0.08)",
+            card: "0 1px 2px rgba(20,32,58,.04), 0 4px 8px rgba(20,32,58,.05), 0 14px 28px -8px rgba(20,32,58,.10), 0 30px 50px -24px rgba(20,32,58,.14)",
+            lift: "0 2px 4px rgba(20,32,58,.05), 0 8px 16px rgba(20,32,58,.08), 0 22px 40px -10px rgba(20,32,58,.18), 0 44px 70px -30px rgba(20,32,58,.28)",
+            float: "0 2px 4px rgba(8,14,28,.18), 0 10px 20px rgba(8,14,28,.22), 0 30px 60px -12px rgba(8,14,28,.45)",
           },
         },
       },
@@ -87,8 +88,9 @@
   </script>
 
   <style>
-    body { font-family: "Work Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    .font-serif { font-family: "Newsreader", Georgia, "Times New Roman", serif; }
+    body { font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; word-spacing: .05em; }
+    .font-serif { font-family: "Playfair Display", Georgia, "Times New Roman", serif; letter-spacing: -0.012em; font-feature-settings: "lnum" 1; }
+    h1, h2, h3 { text-wrap: balance; }
     /* Zona segura (notch / barra de estado) en PWA instalada, iOS y Android:
        el encabezado nunca queda tapado, sin restarle aire en dispositivos
        sin notch (ahí env(safe-area-inset-top) vale 0 y queda el mínimo de 20px). */
@@ -96,17 +98,22 @@
 
     /* ---- Movimiento y detalles de la interfaz ---- */
     html { scroll-behavior: smooth; }
+    /* Vidrio esmerilado (glassmorphism) */
+    .glass { background: rgba(255,255,255,.66); -webkit-backdrop-filter: blur(14px) saturate(170%); backdrop-filter: blur(14px) saturate(170%); border: 1px solid rgba(255,255,255,.7); box-shadow: 0 1px 2px rgba(20,32,58,.04), 0 8px 24px -10px rgba(20,32,58,.18); }
+    .glass-dark { background: rgba(18,29,54,.62); -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%); border: 1px solid rgba(255,255,255,.14); }
+    /* Transiciones fluidas en todo lo que se toca */
+    button, a, input, textarea { transition: background-color .3s ease, color .3s ease, border-color .3s ease, box-shadow .3s ease, transform .3s ease, opacity .3s ease; }
     /* Aparición suave al hacer scroll (fade-in + slide-up) */
     .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s cubic-bezier(.22,.61,.36,1), transform .7s cubic-bezier(.22,.61,.36,1); transition-delay: var(--d, 0ms); }
     .reveal.is-visible { opacity: 1; transform: none; }
     .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     /* Botón dorado principal */
-    .btn-gold { background: linear-gradient(135deg, #EBD197 0%, #C99B4B 55%, #B0802F 100%); color: #14203A; box-shadow: 0 8px 18px -8px rgba(169,125,50,.75); transition: transform .2s ease, box-shadow .2s ease, filter .2s ease; }
+    .btn-gold { background: linear-gradient(135deg, #EBD197 0%, #C99B4B 55%, #B0802F 100%); color: #14203A; box-shadow: 0 8px 18px -8px rgba(169,125,50,.75); transition: all .3s ease; }
     .btn-gold:hover { filter: brightness(1.06); box-shadow: 0 12px 22px -8px rgba(169,125,50,.9); transform: translateY(-1px); }
     .btn-gold:active { transform: scale(.96); }
     /* Botón azul noche */
-    .btn-navy { background: #1C2B4A; color: #fff; transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease; }
+    .btn-navy { background: #1C2B4A; color: #fff; transition: all .3s ease; }
     .btn-navy:hover { background: #14203A; box-shadow: 0 10px 20px -10px rgba(28,43,74,.7); transform: translateY(-1px); }
     .btn-navy:active { transform: scale(.96); }
     /* Onda suave alrededor del botón mientras suena el shiur */
@@ -935,7 +942,7 @@
         <div
           onClick={() => onOpenDetail(shiur)}
           className={`group bg-white rounded-2xl overflow-hidden flex flex-col justify-between cursor-pointer relative transition-all duration-300 ${
-            isActive ? "ring-2 ring-gold-500 shadow-lift" : "border border-stone-200/70 shadow-card hover:shadow-lift hover:-translate-y-1"
+            isActive ? "ring-2 ring-gold-500 shadow-lift" : "ring-1 ring-blue-900/[0.07] shadow-card hover:shadow-lift hover:-translate-y-1"
           }`}
         >
           {isAdmin && <BotonesAdmin shiur={shiur} onEdit={onEdit} onDelete={onDelete} />}
@@ -978,7 +985,7 @@
         <div
           onClick={() => onOpenDetail(shiur)}
           className={`group relative h-full flex gap-3.5 sm:gap-4 bg-white rounded-2xl p-3.5 sm:p-4 cursor-pointer transition-all duration-300 ${
-            isActive ? "ring-2 ring-gold-500 shadow-lift" : "border border-stone-200/70 shadow-card hover:shadow-lift hover:-translate-y-1"
+            isActive ? "ring-2 ring-gold-500 shadow-lift" : "ring-1 ring-blue-900/[0.07] shadow-card hover:shadow-lift hover:-translate-y-1"
           }`}
         >
           {isAdmin && <BotonesAdmin shiur={shiur} onEdit={onEdit} onDelete={onDelete} />}
@@ -1067,7 +1074,7 @@
         if (el) el.scrollBy({ left: dir * el.clientWidth * 0.85, behavior: "smooth" });
       };
       const sobra = !(pos.inicio && pos.fin);
-      const flecha = "w-10 h-10 rounded-full border border-stone-300 bg-white text-blue-900 inline-flex items-center justify-center transition-all duration-200 hover:bg-blue-900 hover:text-white hover:border-blue-900 active:scale-90 disabled:opacity-30 disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500";
+      const flecha = "w-10 h-10 rounded-full glass text-blue-900 inline-flex items-center justify-center transition-all duration-300 hover:!bg-blue-900 hover:text-white active:scale-90 disabled:opacity-30 disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500";
       return (
         <section aria-labelledby={id}>
           <div className="flex items-end justify-between gap-3 mb-3 sm:mb-4">
@@ -1114,7 +1121,7 @@
                   <button
                     key={cat}
                     onClick={() => onElegir(cat)}
-                    className="group flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 min-h-[48px] rounded-full bg-white border border-gold-500/40 shadow-sm text-left transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card hover:border-gold-500 hover:bg-gradient-to-r hover:from-gold-100 hover:to-white active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+                    className="group flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 min-h-[48px] rounded-full glass text-left transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card hover:bg-white hover:shadow-card active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
                   >
                     <span className="shrink-0 w-9 h-9 rounded-full bg-stone-100 group-hover:bg-white flex items-center justify-center transition-colors duration-300" style={{ color }}>
                       <IconoDeCategoria cat={cat} size={19} />
@@ -1133,27 +1140,61 @@
     }
 
     // ---------------------------------------------------------------------
-    // Sobre el Rabino: panel blanco de bordes redondeados al final del inicio.
+    // Sobre el Rabino: banner azul noche con degradé, foto en tarjeta flotante,
+    // cargos como etiquetas de vidrio y redes como botones flotantes.
     // ---------------------------------------------------------------------
-    function SobreElRabino() {
-      const red = "inline-flex items-center justify-center w-11 h-11 rounded-full text-blue-900 hover:bg-blue-900 hover:text-white transition-all duration-200 active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500";
+    function SobreElRabino({ totalShiurim, totalTemas }) {
+      const boton = "group/red relative inline-flex items-center justify-center w-12 h-12 rounded-full glass-dark text-white hover:-translate-y-1 hover:bg-gold-500 hover:text-[#14203A] hover:border-gold-400 hover:shadow-[0_14px_30px_-8px_rgba(199,154,75,0.7)] active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-400";
+      const etiqueta = "inline-flex items-center gap-1.5 text-xs sm:text-[13px] font-medium tracking-wide text-gold-100 glass-dark rounded-full px-3.5 py-1.5";
       return (
-        <section aria-labelledby="inicio-rabino" className="bg-white rounded-t-[2rem] shadow-[0_-18px_40px_-26px_rgba(28,43,74,0.35)] mt-4">
-          <Reveal className="max-w-6xl mx-auto px-5 sm:px-6 pt-9 sm:pt-12 pb-12 sm:pb-16">
-            <div className="max-w-3xl">
-              <div className="flex items-center justify-between gap-4 mb-3">
-                <h2 id="inicio-rabino" className="font-serif text-2xl sm:text-[28px] font-semibold text-blue-900 leading-none">Sobre el Rabino</h2>
-                <div className="flex items-center gap-0.5 rounded-full border border-gold-500/40 bg-stone-50 px-1">
-                  <a href={INSTAGRAM_DEL_RABINO} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className={red}><IconInstagram size={18} /></a>
-                  <a href={X_DEL_RABINO} target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" className={red}><IconX_Red size={16} /></a>
+        <section aria-labelledby="inicio-rabino" className="relative overflow-hidden mt-6 sm:mt-10 rounded-t-[2.25rem] sm:rounded-t-[3rem] text-white bg-gradient-to-br from-[#0B1428] via-[#14224A] to-[#223664]">
+          <div className="pointer-events-none absolute -top-32 -left-24 w-[480px] h-[480px] rounded-full opacity-25" style={{ background: "radial-gradient(closest-side, rgba(199,154,75,.6), transparent)" }} />
+          <div className="pointer-events-none absolute -bottom-40 right-0 w-[560px] h-[560px] rounded-full opacity-30" style={{ background: "radial-gradient(closest-side, rgba(80,110,190,.55), transparent)" }} />
+          <div className="relative max-w-6xl mx-auto px-5 sm:px-6 py-14 sm:py-20 grid md:grid-cols-[1fr_1.1fr] gap-10 md:gap-16 items-center">
+            <Reveal className="relative order-2 md:order-1">
+              <div className="absolute -inset-4 rounded-[2.25rem] bg-gold-500/30 blur-3xl" aria-hidden="true" />
+              <div className="relative rounded-3xl overflow-hidden ring-1 ring-white/25 shadow-float transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.6)]">
+                <img
+                  src="img/rabino-evento.jpg"
+                  alt="El Rabino Yoel Migdal hablando en un evento en Buenos Aires"
+                  width="1100"
+                  height="825"
+                  loading="lazy"
+                  className="block w-full h-auto transition-transform duration-700 hover:scale-[1.03]"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0B1428]/55 via-transparent to-transparent" />
+              </div>
+            </Reveal>
+
+            <Reveal delay={120} className="order-1 md:order-2">
+              <p className="text-gold-200 text-xs sm:text-[13px] font-semibold tracking-[0.22em] uppercase mb-3">Sobre el Rabino</p>
+              <h2 id="inicio-rabino" className="font-serif font-bold text-[34px] sm:text-5xl leading-[1.08] mb-5">Rabino Yoel Migdal</h2>
+              <div className="flex flex-wrap gap-2 mb-6">
+                <span className={`${etiqueta} !bg-gold-500/90 !text-[#14203A] !border-gold-400 font-semibold`}>Director de ISEJ</span>
+                <span className={etiqueta}>Jabad Argentina</span>
+                <span className={etiqueta}>Buenos Aires</span>
+              </div>
+              <p className="text-white/80 text-base sm:text-[17px] leading-[1.85] max-w-xl">
+                Dedica su labor a acercar la Torá y el pensamiento jasídico a quienes quieren estudiar y profundizar en su judaísmo. Acá encontrás sus shiurim para escuchar cuando quieras, a tu ritmo y desde donde estés.
+              </p>
+              <div className="flex items-center gap-8 mt-8">
+                <div>
+                  <p className="font-serif font-bold text-3xl text-gold-200 leading-none">{totalShiurim}</p>
+                  <p className="text-white/60 text-xs mt-1.5 tracking-wide">shiurim</p>
+                </div>
+                <div className="w-px h-10 bg-white/15" />
+                <div>
+                  <p className="font-serif font-bold text-3xl text-gold-200 leading-none">{totalTemas}</p>
+                  <p className="text-white/60 text-xs mt-1.5 tracking-wide">temas</p>
+                </div>
+                <div className="w-px h-10 bg-white/15" />
+                <div className="flex items-center gap-3">
+                  <a href={INSTAGRAM_DEL_RABINO} target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram" className={boton}><IconInstagram size={20} /></a>
+                  <a href={X_DEL_RABINO} target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" title="X" className={boton}><IconX_Red size={18} /></a>
                 </div>
               </div>
-              <div className="w-12 h-0.5 rounded-full bg-gold-500 mb-4" />
-              <p className="text-stone-700 leading-relaxed text-base sm:text-[17px]">
-                El Rabino Yoel Migdal dirige ISEJ en Buenos Aires y forma parte de Jabad Argentina. Dedica su labor a acercar la Torá y el pensamiento jasídico a quienes quieren estudiar y profundizar en su judaísmo. Acá encontrás sus shiurim para escuchar cuando quieras.
-              </p>
-            </div>
-          </Reveal>
+            </Reveal>
+          </div>
         </section>
       );
     }
@@ -1450,13 +1491,13 @@
 
       return (
         <div
-          className="fixed bottom-0 inset-x-0 bg-stone-900 text-stone-50 border-t border-stone-700 z-40"
-          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+          className="fixed inset-x-2.5 sm:inset-x-4 mx-auto max-w-3xl glass-dark shadow-float rounded-2xl text-white z-40"
+          style={{ bottom: "calc(env(safe-area-inset-bottom) + 10px)" }}
         >
-          <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 flex items-center gap-3 sm:gap-4">
+          <div className="px-3 sm:px-4 py-3 flex items-center gap-3 sm:gap-4">
             <button
               onClick={onTogglePlay}
-              className="shrink-0 w-11 h-11 flex items-center justify-center rounded-full bg-white text-stone-900 active:scale-95 transition-transform"
+              className="btn-gold shrink-0 w-11 h-11 flex items-center justify-center rounded-full"
               aria-label={isPlaying ? "Pausar" : "Reproducir"}
             >
               {isPlaying ? <IconPause size={18} /> : <IconPlay size={18} />}
@@ -1465,7 +1506,7 @@
             <div className="min-w-0 flex-1 cursor-pointer" onClick={onOpenDetail}>
               <p className="text-sm font-medium truncate">{tituloPrincipalDe(current)}</p>
               <div className="flex items-center gap-2 mt-1.5">
-                <span className="text-[10px] text-stone-400 w-8 text-right shrink-0">{formatTiempo(actual)}</span>
+                <span className="text-[10px] text-white/60 w-8 text-right shrink-0">{formatTiempo(actual)}</span>
                 <input
                   type="range"
                   min={0}
@@ -1474,22 +1515,22 @@
                   value={isNaN(progreso) ? 0 : progreso}
                   onClick={(e) => e.stopPropagation()}
                   onChange={(e) => onSeek(Number(e.target.value))}
-                  className="w-full accent-white h-3 sm:h-1 cursor-pointer"
+                  className="w-full accent-[#D3A94F] h-3 sm:h-1 cursor-pointer"
                 />
-                <span className="text-[10px] text-stone-400 w-8 shrink-0">{formatTiempo(duracion)}</span>
+                <span className="text-[10px] text-white/60 w-8 shrink-0">{formatTiempo(duracion)}</span>
               </div>
             </div>
 
             <button
               onClick={cycleSpeed}
-              className="shrink-0 text-xs px-2.5 py-2.5 sm:py-2 rounded border border-stone-600 text-stone-200 active:scale-95 transition-transform"
+              className="shrink-0 text-xs font-semibold px-3 py-2.5 sm:py-2 rounded-full border border-white/20 text-white/90 hover:bg-white/10 hover:border-white/40 active:scale-95"
             >
               {speed}x
             </button>
 
             <button
               onClick={onClose}
-              className="shrink-0 w-9 h-9 flex items-center justify-center text-stone-400 hover:text-white active:scale-95 transition-transform"
+              className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/10 active:scale-95"
               aria-label="Cerrar reproductor"
             >
               <IconX size={18} />
@@ -2773,7 +2814,7 @@
       };
 
       return (
-        <div className={`min-h-screen bg-stone-50 flex flex-col ${current ? "pb-28" : ""}`}>
+        <div className={`min-h-screen bg-stone-50 flex flex-col ${current ? "pb-32" : ""}`}>
           {/* Encabezado */}
           <header className="sticky top-0 z-40 border-b border-stone-200/70 bg-white/90 backdrop-blur-md safe-top">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-6">
@@ -2886,7 +2927,7 @@
             )}
           </main>
 
-          {esInicio && !cargando && shiurim.length > 0 && <SobreElRabino />}
+          {esInicio && !cargando && shiurim.length > 0 && <SobreElRabino totalShiurim={shiurim.length} totalTemas={new Set(shiurim.map((x) => x.categoria)).size} />}
 
           {/* Elemento de audio único, compartido por toda la app */}
           <audio
