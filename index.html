@@ -1143,30 +1143,15 @@
     // Sobre el Rabino: banner azul noche con degradé, foto en tarjeta flotante,
     // cargos como etiquetas de vidrio y redes como botones flotantes.
     // ---------------------------------------------------------------------
-    function SobreElRabino({ totalShiurim, totalTemas }) {
+    function SobreElRabino() {
       const boton = "group/red relative inline-flex items-center justify-center w-12 h-12 rounded-full glass-dark text-white hover:-translate-y-1 hover:bg-gold-500 hover:text-[#14203A] hover:border-gold-400 hover:shadow-[0_14px_30px_-8px_rgba(199,154,75,0.7)] active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-400";
       const etiqueta = "inline-flex items-center gap-1.5 text-xs sm:text-[13px] font-medium tracking-wide text-gold-100 glass-dark rounded-full px-3.5 py-1.5";
       return (
         <section aria-labelledby="inicio-rabino" className="relative overflow-hidden mt-6 sm:mt-10 rounded-t-[2.25rem] sm:rounded-t-[3rem] text-white bg-gradient-to-br from-[#0B1428] via-[#14224A] to-[#223664]">
           <div className="pointer-events-none absolute -top-32 -left-24 w-[480px] h-[480px] rounded-full opacity-25" style={{ background: "radial-gradient(closest-side, rgba(199,154,75,.6), transparent)" }} />
           <div className="pointer-events-none absolute -bottom-40 right-0 w-[560px] h-[560px] rounded-full opacity-30" style={{ background: "radial-gradient(closest-side, rgba(80,110,190,.55), transparent)" }} />
-          <div className="relative max-w-6xl mx-auto px-5 sm:px-6 py-14 sm:py-20 grid md:grid-cols-[1fr_1.1fr] gap-10 md:gap-16 items-center">
-            <Reveal className="relative order-2 md:order-1">
-              <div className="absolute -inset-4 rounded-[2.25rem] bg-gold-500/30 blur-3xl" aria-hidden="true" />
-              <div className="relative rounded-3xl overflow-hidden ring-1 ring-white/25 shadow-float transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.6)]">
-                <img
-                  src="img/rabino-evento.jpg"
-                  alt="El Rabino Yoel Migdal hablando en un evento en Buenos Aires"
-                  width="1100"
-                  height="825"
-                  loading="lazy"
-                  className="block w-full h-auto transition-transform duration-700 hover:scale-[1.03]"
-                />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0B1428]/55 via-transparent to-transparent" />
-              </div>
-            </Reveal>
-
-            <Reveal delay={120} className="order-1 md:order-2">
+          <div className="relative max-w-6xl mx-auto px-5 sm:px-6 py-14 sm:py-20">
+            <Reveal>
               <p className="text-gold-200 text-xs sm:text-[13px] font-semibold tracking-[0.22em] uppercase mb-3">Sobre el Rabino</p>
               <h2 id="inicio-rabino" className="font-serif font-bold text-[34px] sm:text-5xl leading-[1.08] mb-5">Rabino Yoel Migdal</h2>
               <div className="flex flex-wrap gap-2 mb-6">
@@ -1177,21 +1162,9 @@
               <p className="text-white/80 text-base sm:text-[17px] leading-[1.85] max-w-xl">
                 Dedica su labor a acercar la Torá y el pensamiento jasídico a quienes quieren estudiar y profundizar en su judaísmo. Acá encontrás sus shiurim para escuchar cuando quieras, a tu ritmo y desde donde estés.
               </p>
-              <div className="flex items-center gap-8 mt-8">
-                <div>
-                  <p className="font-serif font-bold text-3xl text-gold-200 leading-none">{totalShiurim}</p>
-                  <p className="text-white/60 text-xs mt-1.5 tracking-wide">shiurim</p>
-                </div>
-                <div className="w-px h-10 bg-white/15" />
-                <div>
-                  <p className="font-serif font-bold text-3xl text-gold-200 leading-none">{totalTemas}</p>
-                  <p className="text-white/60 text-xs mt-1.5 tracking-wide">temas</p>
-                </div>
-                <div className="w-px h-10 bg-white/15" />
-                <div className="flex items-center gap-3">
-                  <a href={INSTAGRAM_DEL_RABINO} target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram" className={boton}><IconInstagram size={20} /></a>
-                  <a href={X_DEL_RABINO} target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" title="X" className={boton}><IconX_Red size={18} /></a>
-                </div>
+              <div className="flex items-center gap-3 mt-8">
+                <a href={INSTAGRAM_DEL_RABINO} target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram" className={boton}><IconInstagram size={20} /></a>
+                <a href={X_DEL_RABINO} target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" title="X" className={boton}><IconX_Red size={18} /></a>
               </div>
             </Reveal>
           </div>
@@ -2927,7 +2900,7 @@
             )}
           </main>
 
-          {esInicio && !cargando && shiurim.length > 0 && <SobreElRabino totalShiurim={shiurim.length} totalTemas={new Set(shiurim.map((x) => x.categoria)).size} />}
+          {esInicio && !cargando && shiurim.length > 0 && <SobreElRabino />}
 
           {/* Elemento de audio único, compartido por toda la app */}
           <audio
