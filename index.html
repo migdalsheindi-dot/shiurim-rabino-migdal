@@ -68,6 +68,18 @@
               100: "#D2D9E8",
               900: "#1C2B4A",
             },
+            // Dorado cálido: acentos, botones destacados y detalles
+            gold: {
+              100: "#F4E7C6",
+              200: "#EAD39A",
+              400: "#D3A94F",
+              500: "#C79A4B",
+              600: "#A97D32",
+            },
+          },
+          boxShadow: {
+            card: "0 6px 22px -10px rgba(28, 43, 74, 0.22), 0 1px 2px rgba(28, 43, 74, 0.06)",
+            lift: "0 20px 40px -16px rgba(28, 43, 74, 0.38), 0 2px 6px rgba(28, 43, 74, 0.08)",
           },
         },
       },
@@ -81,6 +93,41 @@
        el encabezado nunca queda tapado, sin restarle aire en dispositivos
        sin notch (ahí env(safe-area-inset-top) vale 0 y queda el mínimo de 20px). */
     .safe-top { padding-top: max(20px, env(safe-area-inset-top)); }
+
+    /* ---- Movimiento y detalles de la interfaz ---- */
+    html { scroll-behavior: smooth; }
+    /* Aparición suave al hacer scroll (fade-in + slide-up) */
+    .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s cubic-bezier(.22,.61,.36,1), transform .7s cubic-bezier(.22,.61,.36,1); transition-delay: var(--d, 0ms); }
+    .reveal.is-visible { opacity: 1; transform: none; }
+    .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    /* Botón dorado principal */
+    .btn-gold { background: linear-gradient(135deg, #EBD197 0%, #C99B4B 55%, #B0802F 100%); color: #14203A; box-shadow: 0 8px 18px -8px rgba(169,125,50,.75); transition: transform .2s ease, box-shadow .2s ease, filter .2s ease; }
+    .btn-gold:hover { filter: brightness(1.06); box-shadow: 0 12px 22px -8px rgba(169,125,50,.9); transform: translateY(-1px); }
+    .btn-gold:active { transform: scale(.96); }
+    /* Botón azul noche */
+    .btn-navy { background: #1C2B4A; color: #fff; transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease; }
+    .btn-navy:hover { background: #14203A; box-shadow: 0 10px 20px -10px rgba(28,43,74,.7); transform: translateY(-1px); }
+    .btn-navy:active { transform: scale(.96); }
+    /* Onda suave alrededor del botón mientras suena el shiur */
+    @keyframes sonando { 0% { box-shadow: 0 0 0 0 rgba(199,154,75,.55); } 100% { box-shadow: 0 0 0 12px rgba(199,154,75,0); } }
+    .sonando { animation: sonando 1.6s ease-out infinite; }
+    /* Barritas animadas (ecualizador) */
+    @keyframes barra { 0%,100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+    .eq span { display: inline-block; width: 3px; height: 14px; border-radius: 2px; background: currentColor; transform-origin: bottom; animation: barra 0.9s ease-in-out infinite; }
+    .eq span:nth-child(2) { animation-delay: .15s; } .eq span:nth-child(3) { animation-delay: .3s; }
+    /* Foto del hero: se funde con el azul del fondo */
+    .hero-foto { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 30%), linear-gradient(to bottom, #000 62%, transparent 100%); -webkit-mask-composite: source-in; mask-image: linear-gradient(to right, transparent 0, #000 30%), linear-gradient(to bottom, #000 62%, transparent 100%); mask-composite: intersect; }
+    @media (min-width: 768px) {
+      .hero-foto { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 30%), linear-gradient(to left, transparent 0, #000 14%), linear-gradient(to bottom, #000 62%, transparent 100%); mask-image: linear-gradient(to right, transparent 0, #000 30%), linear-gradient(to left, transparent 0, #000 14%), linear-gradient(to bottom, #000 62%, transparent 100%); }
+    }
+    /* Respeta a quienes piden menos movimiento */
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .reveal { opacity: 1; transform: none; transition: none; }
+      .sonando, .eq span { animation: none; }
+      * { transition-duration: .01ms !important; }
+    }
   </style>
 </head>
 <body class="bg-stone-50">
@@ -270,6 +317,11 @@
       </Icon>
     );
 
+    const IconChevron = ({ dir = "right", ...p }) => (
+      <Icon {...p}>
+        <polyline points={dir === "right" ? "9 6 15 12 9 18" : "15 6 9 12 15 18"} />
+      </Icon>
+    );
     const IconInstagram = (p) => (
       <Icon {...p}>
         <rect x="3" y="3" width="18" height="18" rx="5" />
@@ -784,7 +836,97 @@
     }
 
     // ---------------------------------------------------------------------
-    // Tarjeta de Shiur
+    // Piezas de interfaz compartidas (aparición al scroll, etiquetas, botones)
+    // ---------------------------------------------------------------------
+
+    // Aparece con fade-in + slide-up cuando entra en pantalla (una sola vez).
+    function Reveal({ children, delay = 0, className = "", as: Tag = "div", ...props }) {
+      const ref = useRef(null);
+      const [visible, setVisible] = useState(false);
+      useEffect(() => {
+        const el = ref.current;
+        if (!el || typeof IntersectionObserver === "undefined") { setVisible(true); return; }
+        const io = new IntersectionObserver(
+          (entradas) => {
+            if (entradas.some((e) => e.isIntersecting)) { setVisible(true); io.disconnect(); }
+          },
+          { threshold: 0.08, rootMargin: "0px 0px -30px 0px" }
+        );
+        io.observe(el);
+        return () => io.disconnect();
+      }, []);
+      return (
+        <Tag ref={ref} className={`reveal ${visible ? "is-visible" : ""} ${className}`} style={{ "--d": `${delay}ms` }} {...props}>
+          {children}
+        </Tag>
+      );
+    }
+
+    function EtiquetaCategoria({ categoria, className = "" }) {
+      const c = colorDeCategoria(categoria);
+      return (
+        <span
+          className={`inline-block text-[11px] font-medium tracking-wider uppercase px-2.5 py-1 rounded-full ${className}`}
+          style={{ color: c.texto, backgroundColor: c.fondo }}
+        >
+          {categoria}
+        </span>
+      );
+    }
+
+    function BotonesAdmin({ shiur, onEdit, onDelete }) {
+      return (
+        <div className="absolute top-2 right-2 z-10 flex gap-1">
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(shiur); }}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/95 text-stone-600 hover:text-blue-900 shadow-sm"
+            aria-label="Editar"
+          >
+            <IconPencil size={14} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(shiur.id); }}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/95 text-stone-600 hover:text-red-600 shadow-sm"
+            aria-label="Eliminar"
+          >
+            <IconTrash size={14} />
+          </button>
+        </div>
+      );
+    }
+
+    // Reproducir / Pausar con feedback: se achica al tocar y, mientras suena,
+    // muestra un ecualizador animado y una onda dorada.
+    function BotonReproducir({ shiur, isActive, isPlaying, onPlay, variante = "navy", textoPlay = "Reproducir", className = "" }) {
+      const sonando = isActive && isPlaying;
+      return (
+        <button
+          onClick={(e) => { e.stopPropagation(); onPlay(shiur); }}
+          className={`${variante === "gold" ? "btn-gold" : "btn-navy"} ${sonando ? "sonando" : ""} inline-flex items-center justify-center gap-2 min-h-[44px] sm:min-h-[40px] text-[13px] sm:text-sm font-medium rounded-full px-4 sm:px-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 ${className}`}
+        >
+          {sonando ? <span className="eq flex items-end gap-[2px] h-3.5" aria-hidden="true"><span /><span /><span /></span> : <IconPlay size={14} />}
+          {sonando ? "Pausar" : textoPlay}
+        </button>
+      );
+    }
+
+    function BotonCompartir({ shiur, titulo, onShare, claro = false, className = "" }) {
+      return (
+        <button
+          onClick={(e) => { e.stopPropagation(); onShare(shiur); }}
+          className={`shrink-0 w-11 h-11 sm:w-10 sm:h-10 inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-75 active:rotate-12 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 ${
+            claro ? "text-white/70 hover:text-white hover:bg-white/10" : "text-stone-500 hover:text-blue-900 hover:bg-blue-50"
+          } ${className}`}
+          aria-label={`Compartir: ${titulo}`}
+          title="Compartir"
+        >
+          <IconShare size={16} />
+        </button>
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Tarjeta de Shiur (grilla de resultados y de cada tema)
     // ---------------------------------------------------------------------
     function ShiurCard({ shiur, isActive, isPlaying, onOpenDetail, onPlay, onShare, isAdmin, onEdit, onDelete, compacta }) {
       const titulo = tituloPrincipalDe(shiur);
@@ -792,145 +934,73 @@
       return (
         <div
           onClick={() => onOpenDetail(shiur)}
-          className={`group border rounded-lg overflow-hidden flex flex-col justify-between bg-white cursor-pointer relative transition-all duration-200 ${
-            isActive ? "border-blue-900 shadow-md" : "border-stone-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-stone-300"
+          className={`group bg-white rounded-2xl overflow-hidden flex flex-col justify-between cursor-pointer relative transition-all duration-300 ${
+            isActive ? "ring-2 ring-gold-500 shadow-lift" : "border border-stone-200/70 shadow-card hover:shadow-lift hover:-translate-y-1"
           }`}
         >
-          {isAdmin && (
-            <div className="absolute top-2 right-2 z-10 flex gap-1">
-              <button
-                onClick={(e) => { e.stopPropagation(); onEdit(shiur); }}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/90 text-stone-600 hover:text-blue-900 shadow-sm"
-                aria-label="Editar"
-              >
-                <IconPencil size={14} />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); onDelete(shiur.id); }}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/90 text-stone-600 hover:text-red-600 shadow-sm"
-                aria-label="Eliminar"
-              >
-                <IconTrash size={14} />
-              </button>
-            </div>
-          )}
-
+          {isAdmin && <BotonesAdmin shiur={shiur} onEdit={onEdit} onDelete={onDelete} />}
           <div className="w-full aspect-square bg-stone-100 overflow-hidden">
             {shiur.portadaUrl && (
               <img
                 src={shiur.portadaUrl}
                 alt={titulo}
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 loading="lazy"
                 decoding="async"
               />
             )}
           </div>
-          <div className="p-3 sm:p-4 md:p-5 flex flex-col justify-between flex-1">
+          <div className="p-3.5 sm:p-5 flex flex-col justify-between flex-1">
             <div>
-              <span
-                className="inline-block text-[11px] sm:text-xs tracking-wide uppercase px-2 py-1 rounded mb-2 sm:mb-3"
-                style={{ color: colorDeCategoria(shiur.categoria).texto, backgroundColor: colorDeCategoria(shiur.categoria).fondo }}
-              >
-                {shiur.categoria}
-              </span>
-              <h3 className="text-stone-900 font-serif text-base sm:text-lg leading-snug mb-0.5 line-clamp-2">{titulo}</h3>
+              <EtiquetaCategoria categoria={shiur.categoria} className="mb-2.5" />
+              <h3 className="text-blue-900 font-serif font-semibold text-base sm:text-lg leading-snug mb-0.5 line-clamp-2">{titulo}</h3>
               {subtitulo && <h4 className="text-stone-500 text-sm italic font-normal mb-1 line-clamp-1">{subtitulo}</h4>}
               <div className="flex items-center justify-between gap-2 mb-2 sm:mb-3">
                 <p className="text-stone-500 text-[13px]">{formatFecha(shiur.fecha)}</p>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onShare(shiur); }}
-                  className="shrink-0 -my-3 w-11 h-11 inline-flex items-center justify-center rounded-full text-stone-400 active:scale-95 hover:text-blue-900 hover:bg-blue-50 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-900"
-                  aria-label={`Compartir: ${titulo}`}
-                  title="Compartir"
-                >
-                  <IconShare size={15} />
-                </button>
+                <BotonCompartir shiur={shiur} titulo={titulo} onShare={onShare} className="-my-3" />
               </div>
               <p className={`${compacta ? "hidden" : "hidden sm:block"} text-stone-600 text-sm leading-relaxed line-clamp-3`}>{descripcion}</p>
             </div>
-            <button
-              onClick={(e) => { e.stopPropagation(); onPlay(shiur); }}
-              className="mt-3 sm:mt-4 inline-flex items-center gap-1.5 sm:gap-2 self-start min-h-[44px] sm:min-h-[36px] text-[13px] sm:text-sm font-medium text-stone-800 border border-stone-300 rounded-full px-3.5 sm:px-4 py-2 sm:py-1.5 active:scale-95 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-colors duration-200"
-            >
-              {isActive && isPlaying ? <IconPause size={14} /> : <IconPlay size={14} />}
-              {isActive && isPlaying ? "Pausar" : "Reproducir"}
-            </button>
+            <BotonReproducir shiur={shiur} isActive={isActive} isPlaying={isPlaying} onPlay={onPlay} className="mt-3 sm:mt-4 self-start" />
           </div>
         </div>
       );
     }
 
     // ---------------------------------------------------------------------
-    // Tarjeta horizontal (portada a la izquierda, texto a la derecha): se usa en
-    // "Últimos Shiurim" del inicio para aprovechar el ancho y ocupar poco alto.
+    // "Últimos Shiurim": tarjeta horizontal blanca (portada + texto), pensada
+    // para un carrusel.
     // ---------------------------------------------------------------------
     function ShiurFila({ shiur, isActive, isPlaying, onOpenDetail, onPlay, onShare, isAdmin, onEdit, onDelete }) {
       const titulo = tituloPrincipalDe(shiur);
-      const { subtitulo, descripcion } = separarDescripcion(shiur.descripcion);
+      const { subtitulo } = separarDescripcion(shiur.descripcion);
       return (
         <div
           onClick={() => onOpenDetail(shiur)}
-          className={`group relative flex gap-3 sm:gap-4 border rounded-lg bg-white p-3 sm:p-4 cursor-pointer transition-all duration-200 ${
-            isActive ? "border-blue-900 shadow-md" : "border-stone-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-stone-300"
+          className={`group relative h-full flex gap-3.5 sm:gap-4 bg-white rounded-2xl p-3.5 sm:p-4 cursor-pointer transition-all duration-300 ${
+            isActive ? "ring-2 ring-gold-500 shadow-lift" : "border border-stone-200/70 shadow-card hover:shadow-lift hover:-translate-y-1"
           }`}
         >
-          {isAdmin && (
-            <div className="absolute top-2 right-2 z-10 flex gap-1">
-              <button
-                onClick={(e) => { e.stopPropagation(); onEdit(shiur); }}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/90 text-stone-600 hover:text-blue-900 shadow-sm"
-                aria-label="Editar"
-              >
-                <IconPencil size={14} />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); onDelete(shiur.id); }}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/90 text-stone-600 hover:text-red-600 shadow-sm"
-                aria-label="Eliminar"
-              >
-                <IconTrash size={14} />
-              </button>
-            </div>
-          )}
-          <div className="shrink-0 w-24 h-24 sm:w-36 sm:h-36 rounded-md bg-stone-100 overflow-hidden">
+          {isAdmin && <BotonesAdmin shiur={shiur} onEdit={onEdit} onDelete={onDelete} />}
+          <div className="shrink-0 w-[104px] h-[104px] sm:w-32 sm:h-32 rounded-xl bg-stone-100 overflow-hidden">
             {shiur.portadaUrl && (
               <img
                 src={shiur.portadaUrl}
                 alt={titulo}
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 loading="lazy"
                 decoding="async"
               />
             )}
           </div>
           <div className="min-w-0 flex-1 flex flex-col">
-            <span
-              className="self-start text-[11px] sm:text-xs tracking-wide uppercase px-2 py-1 rounded mb-1.5"
-              style={{ color: colorDeCategoria(shiur.categoria).texto, backgroundColor: colorDeCategoria(shiur.categoria).fondo }}
-            >
-              {shiur.categoria}
-            </span>
-            <h3 className="text-stone-900 font-serif text-base sm:text-lg leading-snug line-clamp-2">{titulo}</h3>
-            {subtitulo && <h4 className="text-stone-500 text-sm italic font-normal line-clamp-1">{subtitulo}</h4>}
+            <EtiquetaCategoria categoria={shiur.categoria} className="self-start mb-1.5" />
+            <h3 className="text-blue-900 font-serif font-semibold text-[17px] sm:text-lg leading-snug line-clamp-2">{titulo}</h3>
+            {subtitulo && <h4 className="text-stone-500 text-sm font-normal line-clamp-1 mt-0.5">{subtitulo}</h4>}
             <p className="text-stone-500 text-[13px] mt-0.5">{formatFecha(shiur.fecha)}</p>
-            {descripcion && <p className="hidden sm:block text-stone-600 text-sm leading-relaxed line-clamp-2 mt-1">{descripcion}</p>}
-            <div className="mt-auto pt-2 flex items-center gap-1">
-              <button
-                onClick={(e) => { e.stopPropagation(); onPlay(shiur); }}
-                className="inline-flex items-center gap-1.5 sm:gap-2 min-h-[44px] sm:min-h-[36px] text-[13px] sm:text-sm font-medium text-stone-800 border border-stone-300 rounded-full px-3.5 sm:px-4 active:scale-95 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-colors duration-200"
-              >
-                {isActive && isPlaying ? <IconPause size={14} /> : <IconPlay size={14} />}
-                {isActive && isPlaying ? "Pausar" : "Reproducir"}
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); onShare(shiur); }}
-                className="shrink-0 w-11 h-11 sm:w-9 sm:h-9 inline-flex items-center justify-center rounded-full text-stone-500 active:scale-95 hover:text-blue-900 hover:bg-blue-50 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-900"
-                aria-label={`Compartir: ${titulo}`}
-                title="Compartir"
-              >
-                <IconShare size={16} />
-              </button>
+            <div className="mt-auto pt-2.5 flex items-center gap-1">
+              <BotonReproducir shiur={shiur} isActive={isActive} isPlaying={isPlaying} onPlay={onPlay} />
+              <BotonCompartir shiur={shiur} titulo={titulo} onShare={onShare} />
             </div>
           </div>
         </div>
@@ -938,10 +1008,93 @@
     }
 
     // ---------------------------------------------------------------------
-    // "Explorar por tema": todas las categorías a la vista en la pantalla de
-    // inicio, con su color y la cantidad real de shiurim. En el mismo orden que
-    // el menú lateral. Tania (una serie numerada, más de la mitad del
-    // contenido) ocupa dos lugares.
+    // "Destacados": tarjeta azul noche con botón dorado, también para carrusel.
+    // ---------------------------------------------------------------------
+    function ShiurDestacado({ shiur, isActive, isPlaying, onOpenDetail, onPlay, onShare, isAdmin, onEdit, onDelete }) {
+      const titulo = tituloPrincipalDe(shiur);
+      const { subtitulo } = separarDescripcion(shiur.descripcion);
+      return (
+        <div
+          onClick={() => onOpenDetail(shiur)}
+          className={`group relative h-full flex overflow-hidden rounded-2xl text-white cursor-pointer bg-gradient-to-br from-[#14203A] via-[#1A2A4A] to-[#22345A] transition-all duration-300 ${
+            isActive ? "ring-2 ring-gold-400 shadow-lift" : "shadow-card hover:shadow-lift hover:-translate-y-1"
+          }`}
+        >
+          {isAdmin && <BotonesAdmin shiur={shiur} onEdit={onEdit} onDelete={onDelete} />}
+          <div className="shrink-0 w-[132px] sm:w-[176px] self-stretch bg-[#0E1830] overflow-hidden">
+            {shiur.portadaUrl && (
+              <img
+                src={shiur.portadaUrl}
+                alt={titulo}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                loading="lazy"
+                decoding="async"
+              />
+            )}
+          </div>
+          <div className="min-w-0 flex-1 flex flex-col p-4 sm:p-5">
+            <span className="self-start text-[11px] font-medium tracking-wider uppercase text-gold-200 border border-gold-500/50 rounded-full px-2.5 py-0.5 mb-2">{shiur.categoria}</span>
+            <h3 className="font-serif font-semibold text-[17px] sm:text-xl leading-snug line-clamp-2">{titulo}</h3>
+            <p className="text-white/70 text-sm mt-1 line-clamp-2">{subtitulo || formatFecha(shiur.fecha)}</p>
+            <div className="mt-auto pt-3 flex items-center gap-1">
+              <BotonReproducir shiur={shiur} isActive={isActive} isPlaying={isPlaying} onPlay={onPlay} variante="gold" textoPlay="Escuchar" />
+              <BotonCompartir shiur={shiur} titulo={titulo} onShare={onShare} claro />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Carrusel horizontal: se desliza con el dedo; en pantallas grandes tiene
+    // flechas. Cada hijo va envuelto en una celda que se "engancha" al scroll.
+    // ---------------------------------------------------------------------
+    function Carrusel({ id, titulo, ancho = "w-[88%] sm:w-[440px]", children }) {
+      const ref = useRef(null);
+      const [pos, setPos] = useState({ inicio: true, fin: false });
+      const actualizar = () => {
+        const el = ref.current;
+        if (!el) return;
+        setPos({ inicio: el.scrollLeft < 4, fin: el.scrollLeft + el.clientWidth >= el.scrollWidth - 4 });
+      };
+      useEffect(() => {
+        actualizar();
+        window.addEventListener("resize", actualizar);
+        return () => window.removeEventListener("resize", actualizar);
+      }, [children]);
+      const mover = (dir) => {
+        const el = ref.current;
+        if (el) el.scrollBy({ left: dir * el.clientWidth * 0.85, behavior: "smooth" });
+      };
+      const sobra = !(pos.inicio && pos.fin);
+      const flecha = "w-10 h-10 rounded-full border border-stone-300 bg-white text-blue-900 inline-flex items-center justify-center transition-all duration-200 hover:bg-blue-900 hover:text-white hover:border-blue-900 active:scale-90 disabled:opacity-30 disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500";
+      return (
+        <section aria-labelledby={id}>
+          <div className="flex items-end justify-between gap-3 mb-3 sm:mb-4">
+            <h2 id={id} className="font-serif text-2xl sm:text-[28px] font-semibold text-blue-900 leading-none">{titulo}</h2>
+            {sobra && (
+              <div className="flex gap-2">
+                <button className={flecha} onClick={() => mover(-1)} disabled={pos.inicio} aria-label={`${titulo}: anteriores`}><IconChevron dir="left" size={18} /></button>
+                <button className={flecha} onClick={() => mover(1)} disabled={pos.fin} aria-label={`${titulo}: siguientes`}><IconChevron size={18} /></button>
+              </div>
+            )}
+          </div>
+          <div
+            ref={ref}
+            onScroll={actualizar}
+            className="flex gap-3.5 sm:gap-5 overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth -mx-4 px-4 sm:-mx-6 sm:px-6 scroll-pl-4 sm:scroll-pl-6 pt-1 pb-7 -mb-4"
+          >
+            {React.Children.map(children, (hijo) => (
+              <div className={`snap-start shrink-0 ${ancho}`}>{hijo}</div>
+            ))}
+          </div>
+        </section>
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // "Explorar por tema": píldoras con ícono, todas las categorías a la vista
+    // con la cantidad real de shiurim. En celular se deslizan en dos filas.
     // ---------------------------------------------------------------------
     function TemasDelInicio({ shiurim, onElegir }) {
       const cantidades = useMemo(() => {
@@ -951,89 +1104,134 @@
       }, [shiurim]);
       return (
         <section aria-labelledby="inicio-temas">
-          <h2 id="inicio-temas" className="font-serif text-lg text-stone-800 mb-4">Explorar por tema</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3">
-            {CATEGORIAS.filter((cat) => cantidades[cat]).map((cat) => {
-              const n = cantidades[cat];
-              return (
-                <button
-                  key={cat}
-                  onClick={() => onElegir(cat)}
-                  className={`text-left bg-white border border-stone-200 rounded-lg px-4 py-3 min-h-[64px] flex flex-col justify-center hover:shadow-md hover:-translate-y-0.5 hover:border-stone-300 active:scale-[0.99] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-900 ${
-                    cat === "Tania" ? "col-span-2 md:col-span-4 lg:col-span-2" : ""
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <IconoDeCategoria cat={cat} size={20} className="shrink-0" style={{ color: colorDeCategoria(cat).texto }} />
-                    <span className="font-serif text-base text-stone-900 leading-tight">{cat}</span>
-                  </span>
-                  <span className="text-[13px] text-stone-500 mt-1 pl-7">{n} {n === 1 ? "shiur" : "shiurim"}</span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-      );
-    }
-
-    // Presentación breve del Rabino, al final del inicio.
-    function SobreElRabino() {
-      return (
-        <section aria-labelledby="inicio-rabino" className="border-t border-stone-200 pt-10 sm:pt-12">
-          <div className="max-w-2xl mx-auto text-center">
-            <h2 id="inicio-rabino" className="font-serif text-lg text-stone-800 mb-3">Sobre el Rabino</h2>
-            <p className="text-stone-700 leading-relaxed">
-              El Rabino Yoel Migdal dirige ISEJ en Buenos Aires y forma parte de Jabad Argentina. Dedica su labor a acercar la Torá y el pensamiento jasídico a quienes quieren estudiar y profundizar en su judaísmo. Acá encontrás sus shiurim para escuchar cuando quieras.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3 mt-5">
-              <a
-                href={INSTAGRAM_DEL_RABINO}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 h-11 px-5 text-sm text-stone-700 border border-stone-300 rounded-full hover:bg-white hover:border-stone-500 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-900"
-              >
-                <IconInstagram size={16} />
-                Instagram
-              </a>
-              <a
-                href={X_DEL_RABINO}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="X (Twitter)"
-                className="inline-flex items-center justify-center w-11 h-11 text-stone-700 border border-stone-300 rounded-full hover:bg-white hover:border-stone-500 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-900"
-              >
-                <IconX_Red size={16} />
-              </a>
+          <h2 id="inicio-temas" className="font-serif text-2xl sm:text-[28px] font-semibold text-blue-900 leading-none mb-4">Explorar por tema</h2>
+          <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto sm:overflow-visible no-scrollbar pb-2 -mb-2">
+            <div className="grid grid-rows-2 grid-flow-col auto-cols-max gap-2.5 sm:flex sm:flex-wrap sm:gap-3 w-max sm:w-auto">
+              {CATEGORIAS.filter((cat) => cantidades[cat]).map((cat) => {
+                const n = cantidades[cat];
+                const color = colorDeCategoria(cat).texto;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => onElegir(cat)}
+                    className="group flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 min-h-[48px] rounded-full bg-white border border-gold-500/40 shadow-sm text-left transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card hover:border-gold-500 hover:bg-gradient-to-r hover:from-gold-100 hover:to-white active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+                  >
+                    <span className="shrink-0 w-9 h-9 rounded-full bg-stone-100 group-hover:bg-white flex items-center justify-center transition-colors duration-300" style={{ color }}>
+                      <IconoDeCategoria cat={cat} size={19} />
+                    </span>
+                    <span className="flex flex-col leading-tight">
+                      <span className="font-semibold text-[15px] text-blue-900 whitespace-nowrap">{cat}</span>
+                      <span className="text-xs text-stone-500">{n} {n === 1 ? "shiur" : "shiurim"}</span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </section>
       );
     }
 
-    // Buscador grande y siempre visible (antes solo estaba dentro del menú ☰).
+    // ---------------------------------------------------------------------
+    // Sobre el Rabino: panel blanco de bordes redondeados al final del inicio.
+    // ---------------------------------------------------------------------
+    function SobreElRabino() {
+      const red = "inline-flex items-center justify-center w-11 h-11 rounded-full text-blue-900 hover:bg-blue-900 hover:text-white transition-all duration-200 active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500";
+      return (
+        <section aria-labelledby="inicio-rabino" className="bg-white rounded-t-[2rem] shadow-[0_-18px_40px_-26px_rgba(28,43,74,0.35)] mt-4">
+          <Reveal className="max-w-6xl mx-auto px-5 sm:px-6 pt-9 sm:pt-12 pb-12 sm:pb-16">
+            <div className="max-w-3xl">
+              <div className="flex items-center justify-between gap-4 mb-3">
+                <h2 id="inicio-rabino" className="font-serif text-2xl sm:text-[28px] font-semibold text-blue-900 leading-none">Sobre el Rabino</h2>
+                <div className="flex items-center gap-0.5 rounded-full border border-gold-500/40 bg-stone-50 px-1">
+                  <a href={INSTAGRAM_DEL_RABINO} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className={red}><IconInstagram size={18} /></a>
+                  <a href={X_DEL_RABINO} target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" className={red}><IconX_Red size={16} /></a>
+                </div>
+              </div>
+              <div className="w-12 h-0.5 rounded-full bg-gold-500 mb-4" />
+              <p className="text-stone-700 leading-relaxed text-base sm:text-[17px]">
+                El Rabino Yoel Migdal dirige ISEJ en Buenos Aires y forma parte de Jabad Argentina. Dedica su labor a acercar la Torá y el pensamiento jasídico a quienes quieren estudiar y profundizar en su judaísmo. Acá encontrás sus shiurim para escuchar cuando quieras.
+              </p>
+            </div>
+          </Reveal>
+        </section>
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Buscador (pastilla). Sobre fondo oscuro del hero: más grande, con brillo
+    // dorado al enfocar.
+    // ---------------------------------------------------------------------
     function BarraBusqueda({ query, onChange }) {
       return (
-        <div className="relative">
-          <IconSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" size={20} />
+        <div className="group relative transition-transform duration-300 focus-within:scale-[1.015]">
+          <IconSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-500 group-focus-within:text-gold-600 transition-colors duration-300 pointer-events-none" size={21} />
           <input
             type="text"
             enterKeyHint="search"
             value={query}
             onChange={(e) => onChange(e.target.value)}
-            placeholder="Buscar un shiur o tema…"
+            placeholder={typeof window !== "undefined" && window.matchMedia && window.matchMedia("(max-width: 420px)").matches ? "Busca por tema o Parashá…" : "Busca por tema, Parashá o festividad…"}
             aria-label="Buscar shiurim"
-            className="w-full h-12 border border-stone-300 rounded-full pl-12 pr-12 text-base bg-white placeholder:text-stone-500 focus:outline-none focus:border-blue-900 transition-colors duration-200"
+            className={`w-full h-[54px] rounded-full pl-12 ${query ? "pr-12" : "pr-4"} text-[15px] sm:text-base text-stone-900 bg-white/95 border border-gold-500/50 shadow-lg placeholder:text-stone-500 focus:outline-none focus:border-gold-500 focus:ring-4 focus:ring-gold-500/30 focus:shadow-xl transition-all duration-300`}
           />
           {query && (
             <button
               onClick={() => onChange("")}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full text-stone-500 hover:text-stone-800 hover:bg-stone-100"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full text-stone-500 hover:text-stone-800 hover:bg-stone-100 active:scale-90 transition-all"
               aria-label="Borrar búsqueda"
             >
               <IconX size={18} />
             </button>
           )}
         </div>
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Hero: azul noche con la foto del Rabino, frase de presentación y el
+    // buscador. En los temas y en las búsquedas se pliega y queda solo el
+    // buscador (es el mismo campo, así no se pierde el foco al escribir).
+    // ---------------------------------------------------------------------
+    function Hero({ esInicio, query, onQuery, categoria, onVolver }) {
+      return (
+        <section className="relative overflow-hidden text-white bg-gradient-to-br from-[#0D172C] via-[#14223F] to-[#1C2B4A]">
+          <div className="pointer-events-none absolute -top-24 right-0 w-[520px] h-[520px] rounded-full opacity-30" style={{ background: "radial-gradient(closest-side, rgba(199,154,75,.55), transparent)" }} />
+          <div className="relative">
+            <div className={`grid transition-all duration-500 ease-out ${esInicio ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+              <div className="overflow-hidden min-h-0">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 md:grid md:grid-cols-[1.15fr_0.85fr] md:items-center">
+                  <div className="relative md:order-2 -mx-4 sm:-mx-6 md:mx-0 h-[215px] sm:h-[290px] md:h-[400px] flex justify-end">
+                    <img
+                      src="img/rabino-hero.jpg"
+                      alt="El Rabino Yoel Migdal"
+                      width="800"
+                      height="800"
+                      className="hero-foto h-full w-auto max-w-none object-cover"
+                    />
+                  </div>
+                  <Reveal className="md:order-1 -mt-12 md:mt-0 relative md:py-14">
+                    <p className="text-gold-200 text-xs sm:text-sm tracking-[0.2em] uppercase mb-3">Shiurim de Torá</p>
+                    <h2 className="font-serif font-semibold text-[26px] leading-[1.15] sm:text-4xl lg:text-5xl max-w-xl">{FRASE_DE_PRESENTACION}</h2>
+                  </Reveal>
+                </div>
+              </div>
+            </div>
+            <div className={`max-w-6xl mx-auto px-4 sm:px-6 transition-all duration-500 ${esInicio ? "pt-5 pb-8 sm:pb-12" : "py-5 sm:py-6"}`}>
+              {!esInicio && categoria !== "Todas" && (
+                <button
+                  onClick={onVolver}
+                  className="inline-flex items-center gap-1 min-h-[44px] -ml-1 px-1 mb-1 text-sm text-white/80 hover:text-gold-200 transition-colors"
+                >
+                  <IconChevron dir="left" size={16} /> Todos los temas
+                </button>
+              )}
+              <div className="max-w-2xl">
+                <BarraBusqueda query={query} onChange={onQuery} />
+              </div>
+            </div>
+          </div>
+        </section>
       );
     }
 
@@ -2385,9 +2583,12 @@
       const RECIENTES_LIMITE = 6;
       const POPULARES_LIMITE = 6;
       const filtrados = useMemo(() => {
+        const normalizar = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const q = normalizar(query);
         const coincideTexto = (s) =>
-          s.titulo.toLowerCase().includes(query.toLowerCase()) ||
-          (s.descripcion || "").toLowerCase().includes(query.toLowerCase());
+          normalizar(s.titulo).includes(q) ||
+          normalizar(s.descripcion).includes(q) ||
+          normalizar(s.categoria).includes(q);
 
         if (categoriaActiva === "Populares") {
           const base = shiurim.filter(coincideTexto);
@@ -2402,11 +2603,11 @@
         return categoriaActiva === "Todas" && !query.trim() ? ordenados.slice(0, RECIENTES_LIMITE) : ordenados;
       }, [shiurim, query, categoriaActiva]);
 
-      // Pantalla de inicio (categoría "Todas" y sin buscar): primero los 2
-      // shiurim más nuevos y después los 4 shiurim destacados, elegidos a mano.
+      // Pantalla de inicio (categoría "Todas" y sin buscar): primero los
+      // shiurim más nuevos (carrusel) y después los 4 shiurim destacados, elegidos a mano.
       // La lista es config.destacados en data.json (ids de shiurim, en el orden
       // en que se muestran). Si un id ya no existe, simplemente se saltea.
-      const INICIO_RECIENTES = 2;
+      const INICIO_RECIENTES = 5;
       const INICIO_DESTACADOS = 4;
       const esInicio = categoriaActiva === "Todas" && !query.trim();
       const inicioRecientes = useMemo(
@@ -2424,6 +2625,20 @@
       const claseGrilla = "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5";
       const filaDeShiur = (shiur) => (
         <ShiurFila
+          key={shiur.id}
+          shiur={shiur}
+          isActive={current && current.id === shiur.id}
+          isPlaying={isPlaying}
+          onOpenDetail={setSelectedShiur}
+          onPlay={handlePlay}
+          onShare={handleCompartir}
+          isAdmin={isAdmin}
+          onEdit={openEdit}
+          onDelete={handleDeleteShiur}
+        />
+      );
+      const destacadoDeShiur = (shiur) => (
+        <ShiurDestacado
           key={shiur.id}
           shiur={shiur}
           isActive={current && current.id === shiur.id}
@@ -2560,7 +2775,7 @@
       return (
         <div className={`min-h-screen bg-stone-50 flex flex-col ${current ? "pb-28" : ""}`}>
           {/* Encabezado */}
-          <header className="border-b border-stone-200 bg-white safe-top">
+          <header className="sticky top-0 z-40 border-b border-stone-200/70 bg-white/90 backdrop-blur-md safe-top">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-6">
               <div className="flex items-center justify-between gap-2 sm:gap-3">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -2594,7 +2809,7 @@
                   </button>
                   <button
                     onClick={() => setShowDonate(true)}
-                    className="flex items-center h-11 sm:h-10 px-4 sm:px-5 text-sm font-medium text-blue-50 bg-blue-900 border border-blue-900 rounded-full hover:bg-stone-900 hover:border-stone-900 transition-colors duration-200"
+                    className="btn-navy flex items-center h-11 sm:h-10 px-4 sm:px-5 text-sm font-medium rounded-full"
                   >
                     Donar
                   </button>
@@ -2616,53 +2831,46 @@
             onDonar={() => { setMenuAbierto(false); setShowDonate(true); }}
           />
 
-          {/* Grilla de shiurim */}
-          <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 pb-10 flex-1 w-full">
-            {/* Presentación y buscador: siempre a mano */}
-            <div className="mb-8 sm:mb-10">
-              {esInicio && (
-                <p className="font-serif text-lg sm:text-xl text-stone-700 leading-snug max-w-2xl mb-4">{FRASE_DE_PRESENTACION}</p>
-              )}
-              {categoriaActiva !== "Todas" && (
-                <button
-                  onClick={() => { setCategoriaActiva("Todas"); setQuery(""); }}
-                  className="inline-flex items-center gap-1 min-h-[44px] -ml-1 px-1 mb-1 text-sm text-stone-600 hover:text-blue-900 transition-colors"
-                >
-                  ‹ Todos los temas
-                </button>
-              )}
-              <div className="max-w-2xl">
-                <BarraBusqueda query={query} onChange={setQuery} />
-              </div>
-            </div>
+          {/* Hero: foto, frase y buscador (se pliega al buscar o elegir un tema) */}
+          <Hero
+            esInicio={esInicio}
+            query={query}
+            onQuery={setQuery}
+            categoria={categoriaActiva}
+            onVolver={() => { setCategoriaActiva("Todas"); setQuery(""); }}
+          />
 
+          <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-8 sm:pt-12 pb-10 flex-1 w-full">
             {cargando ? (
               <React.Fragment>
-                <h2 className="font-serif text-lg text-stone-800 mb-4">Últimos Shiurim</h2>
+                <h2 className="font-serif text-2xl font-semibold text-blue-900 mb-4">Últimos Shiurim</h2>
                 <p className="text-stone-500 text-sm py-16 text-center">Cargando shiurim...</p>
               </React.Fragment>
             ) : esInicio && shiurim.length > 0 ? (
-              <div className="space-y-10 sm:space-y-12">
-                <TemasDelInicio
-                  shiurim={shiurim}
-                  onElegir={(cat) => { setCategoriaActiva(cat); window.scrollTo({ top: 0 }); }}
-                />
-                <section aria-labelledby="inicio-recientes">
-                  <h2 id="inicio-recientes" className="font-serif text-lg text-stone-800 mb-4">Últimos Shiurim</h2>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">{inicioRecientes.map(filaDeShiur)}</div>
-                </section>
+              <div className="space-y-12 sm:space-y-16">
+                <Reveal>
+                  <TemasDelInicio
+                    shiurim={shiurim}
+                    onElegir={(cat) => { setCategoriaActiva(cat); window.scrollTo({ top: 0 }); }}
+                  />
+                </Reveal>
+                <Reveal>
+                  <Carrusel id="inicio-recientes" titulo="Últimos Shiurim">
+                    {inicioRecientes.map(filaDeShiur)}
+                  </Carrusel>
+                </Reveal>
                 {inicioDestacados.length > 0 && (
-                  <section aria-labelledby="inicio-destacados">
-                    <h2 id="inicio-destacados" className="font-serif text-lg text-stone-800 mb-4">Destacados</h2>
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">{inicioDestacados.map((s) => tarjetaDeShiur(s, true))}</div>
-                  </section>
+                  <Reveal>
+                    <Carrusel id="inicio-destacados" titulo="Destacados">
+                      {inicioDestacados.map(destacadoDeShiur)}
+                    </Carrusel>
+                  </Reveal>
                 )}
-                <SobreElRabino />
               </div>
             ) : (
               <React.Fragment>
-                <div className="flex items-baseline justify-between gap-3 mb-4">
-                  <h2 className="font-serif text-lg text-stone-800">
+                <div className="flex items-baseline justify-between gap-3 mb-5">
+                  <h2 className="font-serif text-2xl sm:text-[28px] font-semibold text-blue-900 leading-none">
                     {categoriaActiva === "Todas" ? (query.trim() ? "Resultados" : "Últimos Shiurim") : categoriaActiva === "Populares" ? "Más Escuchados" : categoriaActiva}
                   </h2>
                   <span className="text-[13px] text-stone-500 shrink-0">
@@ -2678,17 +2886,7 @@
             )}
           </main>
 
-          {/* Foto del Rabino: franja de punta a punta al final del inicio */}
-          {esInicio && !cargando && shiurim.length > 0 && (
-            <img
-              src="img/rabino-banner.jpg"
-              alt="El Rabino Yoel Migdal hablando en un evento en Buenos Aires"
-              width="2000"
-              height="625"
-              loading="lazy"
-              className="block w-full h-[128px] sm:h-[200px] lg:h-[22vw] lg:max-h-[340px] object-cover object-[88%_20%]"
-            />
-          )}
+          {esInicio && !cargando && shiurim.length > 0 && <SobreElRabino />}
 
           {/* Elemento de audio único, compartido por toda la app */}
           <audio
