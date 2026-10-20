@@ -3,11 +3,21 @@
 //   POST /reproduccion  { "id": "<id del shiur>" }  -> suma 1 reproducción
 //   GET  /conteos                                    -> reproducciones de cada shiur
 //
-// Lo usa el Panel Admin para mostrar la popularidad real de cada shiur.
+//   POST /visita        { pagina }                       -> suma una visita (y un único si es la 1ª del día)
+//   POST /escucha       { id, segundos }                 -> suma segundos escuchados de un shiur
+//   POST /evento        { tipo, origen, contexto }       -> clics de donación
+//   GET  /estadisticas?dias=30   (con clave secreta)     -> todo lo anterior resumido, para el Panel Admin
 //
-// Privacidad: no se guarda ninguna IP. Para no contar dos veces a la misma
-// persona se guarda, por 6 horas, una huella (hash con clave secreta) de
-// IP + shiur, y después se borra sola.
+// Lo usa el Panel Admin para mostrar la popularidad real de cada shiur y el
+// tráfico de la web.
+//
+// Privacidad: no se guarda ninguna IP ni se usan cookies. Para no contar dos
+// veces a la misma persona se guarda una huella (hash con clave secreta) de
+// IP + navegador + día (se borra a los 2 días) y, para las reproducciones, de
+// IP + shiur durante 6 horas. Todo lo demás son contadores por día.
+//
+// Las estadísticas solo se leen con la clave secreta ADMIN_TOKEN (un "secret"
+// del Worker, que no está en ningún archivo del sitio).
 
 const ORIGENES_PERMITIDOS = [
   "https://yoelmigdal.com",
@@ -20,6 +30,34 @@ const ORIGENES_PERMITIDOS = [
 // para comprobar que el id existe y que nadie inventa ids para llenar la base.
 const PAGINAS_DE_SHIURIM = "https://yoelmigdal.com/s/";
 
+const TIPOS_EVENTO = ["donar_abrir", "donar_click"];
+const ORIGENES_EVENTO = ["encabezado", "menu", "modal"];
+const MAX_SEGUNDOS_POR_ENVIO = 900;
+const ZONA_HORARIA_MS = -3 * 60 * 60 * 1000; // Argentina (UTC-3)
+
+// Día de hoy (AAAA-MM-DD) en hora de Argentina, o el de hace n días
+function hoy(restarDias = 0) {
+  return new Date(Date.now() + ZONA_HORARIA_MS - restarDias * 86400000).toISOString().slice(0, 10);
+}
+
+// Páginas válidas: inicio, busqueda, tema:<nombre> o shiur:<id>
+function paginaValida(p) {
+  return typeof p === "string" && (p === "inicio" || p === "busqueda" || /^shiur:\d{1,20}$/.test(p) || /^tema:[\p{L} ]{1,40}$/u.test(p));
+}
+
+function esMobile(request) {
+  return /Mobi|Android|iPhone|iPad|iPod/i.test(request.headers.get("User-Agent") || "");
+}
+
+function claveCorrecta(request, env) {
+  const esperado = env.ADMIN_TOKEN || "";
+  const recibido = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!esperado || recibido.length !== esperado.length) return false;
+  let diferencia = 0; // comparación en tiempo constante
+  for (let i = 0; i < esperado.length; i++) diferencia |= esperado.charCodeAt(i) ^ recibido.charCodeAt(i);
+  return diferencia === 0;
+}
+
 const VENTANA_MS = 6 * 60 * 60 * 1000; // una misma persona cuenta 1 vez cada 6 h por shiur
 const MAX_SHIURIM_EN_RESPUESTA = 1000;
 
@@ -28,7 +66,7 @@ function cabecerasCors(request) {
   return {
     "Access-Control-Allow-Origin": ORIGENES_PERMITIDOS.includes(origen) ? origen : ORIGENES_PERMITIDOS[0],
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin",
   };
@@ -39,6 +77,14 @@ function json(datos, estado, cabeceras) {
     status: estado,
     headers: { "Content-Type": "application/json; charset=utf-8", ...cabeceras },
   });
+}
+
+async function leerCuerpo(request) {
+  try {
+    return await request.json();
+  } catch (e) {
+    return null;
+  }
 }
 
 async function huella(texto) {
@@ -113,8 +159,82 @@ export default {
           "INSERT INTO reproducciones (shiur_id, total) VALUES (?, 1) ON CONFLICT(shiur_id) DO UPDATE SET total = total + 1"
         ).bind(id),
         env.DB.prepare("DELETE FROM oyentes WHERE ts < ?").bind(ahora - VENTANA_MS),
+        env.DB.prepare(
+          `INSERT INTO escucha_dia (dia, shiur_id, reproducciones, segundos) VALUES (?, ?, 1, 0)
+           ON CONFLICT(dia, shiur_id) DO UPDATE SET reproducciones = reproducciones + 1`
+        ).bind(hoy(), id),
       ]);
       return json({ contado: true }, 200, cors);
+    }
+
+    // ---- Estadísticas ----------------------------------------------------
+    const permitidoPost = ORIGENES_PERMITIDOS.includes(request.headers.get("Origin"));
+
+    if (url.pathname === "/visita" && request.method === "POST") {
+      if (!permitidoPost) return json({ error: "origen no permitido" }, 403, cors);
+      const cuerpo = await leerCuerpo(request);
+      if (!cuerpo || !paginaValida(cuerpo.pagina)) return json({ error: "página inválida" }, 400, cors);
+      const dia = hoy();
+      const ip = request.headers.get("CF-Connecting-IP") || "";
+      const ua = request.headers.get("User-Agent") || "";
+      const clave = await huella(`${ip}|${ua}|${dia}|${env.SAL || "sin-sal"}`);
+      const nuevo = await env.DB.prepare("INSERT OR IGNORE INTO visitantes (dia, huella) VALUES (?, ?)").bind(dia, clave).run();
+      const esUnico = nuevo.meta && nuevo.meta.changes > 0 ? 1 : 0;
+      const movil = esMobile(request) ? 1 : 0;
+      await env.DB.batch([
+        env.DB.prepare(
+          `INSERT INTO dias (dia, visitas, unicos, mobile, desktop) VALUES (?, 1, ?, ?, ?)
+           ON CONFLICT(dia) DO UPDATE SET visitas = visitas + 1, unicos = unicos + ?, mobile = mobile + ?, desktop = desktop + ?`
+        ).bind(dia, esUnico, movil, 1 - movil, esUnico, movil, 1 - movil),
+        env.DB.prepare(
+          "INSERT INTO paginas (dia, pagina, total) VALUES (?, ?, 1) ON CONFLICT(dia, pagina) DO UPDATE SET total = total + 1"
+        ).bind(dia, cuerpo.pagina),
+        env.DB.prepare("DELETE FROM visitantes WHERE dia < ?").bind(hoy(2)),
+      ]);
+      return json({ ok: true }, 200, cors);
+    }
+
+    if (url.pathname === "/escucha" && request.method === "POST") {
+      if (!permitidoPost) return json({ error: "origen no permitido" }, 403, cors);
+      const cuerpo = await leerCuerpo(request);
+      const id = String(cuerpo && cuerpo.id !== undefined ? cuerpo.id : "");
+      const segundos = Math.round(Number(cuerpo && cuerpo.segundos));
+      if (!/^\d{1,20}$/.test(id) || !(segundos >= 1 && segundos <= MAX_SEGUNDOS_POR_ENVIO)) return json({ error: "datos inválidos" }, 400, cors);
+      if ((await existeElShiur(id, env)) === false) return json({ error: "shiur desconocido" }, 404, cors);
+      await env.DB.prepare(
+        `INSERT INTO escucha_dia (dia, shiur_id, reproducciones, segundos) VALUES (?, ?, 0, ?)
+         ON CONFLICT(dia, shiur_id) DO UPDATE SET segundos = segundos + ?`
+      ).bind(hoy(), id, segundos, segundos).run();
+      return json({ ok: true }, 200, cors);
+    }
+
+    if (url.pathname === "/evento" && request.method === "POST") {
+      if (!permitidoPost) return json({ error: "origen no permitido" }, 403, cors);
+      const cuerpo = await leerCuerpo(request);
+      if (!cuerpo || !TIPOS_EVENTO.includes(cuerpo.tipo) || !ORIGENES_EVENTO.includes(cuerpo.origen) || !paginaValida(cuerpo.contexto)) {
+        return json({ error: "evento inválido" }, 400, cors);
+      }
+      await env.DB.prepare(
+        `INSERT INTO eventos (dia, tipo, origen, contexto, total) VALUES (?, ?, ?, ?, 1)
+         ON CONFLICT(dia, tipo, origen, contexto) DO UPDATE SET total = total + 1`
+      ).bind(hoy(), cuerpo.tipo, cuerpo.origen, cuerpo.contexto).run();
+      return json({ ok: true }, 200, cors);
+    }
+
+    if (url.pathname === "/estadisticas" && request.method === "GET") {
+      if (!env.ADMIN_TOKEN) return json({ error: "estadísticas sin configurar" }, 503, cors);
+      if (!claveCorrecta(request, env)) return json({ error: "clave incorrecta" }, 401, cors);
+      const dias = Math.min(365, Math.max(1, parseInt(url.searchParams.get("dias"), 10) || 30));
+      const desde = hoy(dias - 1);
+      const [porDia, paginas, shiurim, donaciones] = await Promise.all([
+        env.DB.prepare("SELECT dia, visitas, unicos, mobile, desktop FROM dias WHERE dia >= ? ORDER BY dia").bind(desde).all(),
+        env.DB.prepare("SELECT pagina, SUM(total) AS total FROM paginas WHERE dia >= ? GROUP BY pagina ORDER BY total DESC LIMIT 25").bind(desde).all(),
+        env.DB.prepare(
+          "SELECT shiur_id AS id, SUM(reproducciones) AS reproducciones, SUM(segundos) AS segundos FROM escucha_dia WHERE dia >= ? GROUP BY shiur_id ORDER BY reproducciones DESC, segundos DESC LIMIT 30"
+        ).bind(desde).all(),
+        env.DB.prepare("SELECT tipo, origen, contexto, SUM(total) AS total FROM eventos WHERE dia >= ? GROUP BY tipo, origen, contexto ORDER BY total DESC LIMIT 60").bind(desde).all(),
+      ]);
+      return json({ desde, hasta: hoy(), dias: porDia.results, paginas: paginas.results, shiurim: shiurim.results, donaciones: donaciones.results }, 200, { ...cors, "Cache-Control": "no-store" });
     }
 
     return json({ error: "no encontrado" }, 404, cors);

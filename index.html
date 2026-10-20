@@ -1862,7 +1862,7 @@
     // ---------------------------------------------------------------------
     // Modal de Donación (Mercado Pago)
     // ---------------------------------------------------------------------
-    function DonateModal({ onClose, mercadoPagoLink }) {
+    function DonateModal({ onClose, mercadoPagoLink, onDonar }) {
       return (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-lg p-6 relative shadow-xl text-center">
@@ -1876,6 +1876,7 @@
             {mercadoPagoLink ? (
               <a
                 href={mercadoPagoLink}
+                onClick={onDonar}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-block w-full bg-stone-900 text-white text-sm font-medium py-3 rounded hover:bg-stone-800 transition-colors"
@@ -2038,6 +2039,334 @@
     }
 
     // ---------------------------------------------------------------------
+    // Panel de Estadísticas (solo administrador). Los datos los junta el
+    // contador propio (Cloudflare Worker, ver carpeta contador/) sin cookies y
+    // sin guardar IPs, y solo se leen con una clave secreta del servicio: aunque
+    // alguien conozca la contraseña del Panel Admin, no puede ver estas cifras.
+    // ---------------------------------------------------------------------
+    function formatearTiempo(segundos) {
+      const s = Math.round(Number(segundos) || 0);
+      const h = Math.floor(s / 3600);
+      const m = Math.round((s % 3600) / 60);
+      if (h >= 1) return `${h} h ${m} min`;
+      return `${m} min`;
+    }
+    const nf = (n) => new Intl.NumberFormat("es-AR").format(Math.round(Number(n) || 0));
+
+    function TarjetaDato({ titulo, valor, detalle }) {
+      return (
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-card ring-1 ring-blue-900/[0.06]">
+          <p className="text-[12px] uppercase tracking-wider text-stone-500">{titulo}</p>
+          <p className="font-serif text-3xl sm:text-4xl font-bold text-blue-900 mt-1 leading-none">{valor}</p>
+          {detalle && <p className="text-xs text-stone-500 mt-2">{detalle}</p>}
+        </div>
+      );
+    }
+
+    // Gráfico de barras por día (visitas) con los visitantes únicos encima
+    function GraficoVisitas({ dias, desde, hasta }) {
+      const mapa = {};
+      dias.forEach((d) => { mapa[d.dia] = d; });
+      const lista = [];
+      const fin = new Date(hasta + "T12:00:00");
+      for (let d = new Date(desde + "T12:00:00"); d <= fin; d.setDate(d.getDate() + 1)) {
+        const clave = d.toISOString().slice(0, 10);
+        lista.push(mapa[clave] || { dia: clave, visitas: 0, unicos: 0 });
+      }
+      const max = Math.max(5, ...lista.map((d) => d.visitas));
+      const W = 640, H = 190, base = 160, ancho = W / lista.length;
+      const etiqueta = (iso) => iso.slice(8, 10) + "/" + iso.slice(5, 7);
+      return (
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Visitas por día">
+          {[0, 0.5, 1].map((f) => (
+            <g key={f}>
+              <line x1="0" x2={W} y1={base - f * 140} y2={base - f * 140} stroke="#E3DAC3" strokeWidth="1" />
+              <text x="2" y={base - f * 140 - 3} fontSize="10" fill="#746850">{Math.round(max * f)}</text>
+            </g>
+          ))}
+          {lista.map((d, i) => {
+            const h = (d.visitas / max) * 140;
+            const hu = (d.unicos / max) * 140;
+            const x = i * ancho + ancho * 0.15;
+            return (
+              <g key={d.dia}>
+                <rect x={x} y={base - h} width={ancho * 0.7} height={Math.max(h, 0)} rx="2" fill="#1C2B4A" opacity="0.85">
+                  <title>{`${etiqueta(d.dia)}: ${d.visitas} visitas, ${d.unicos} únicos`}</title>
+                </rect>
+                <rect x={x} y={base - hu} width={ancho * 0.7} height={Math.max(hu, 0)} rx="2" fill="#C79A4B" />
+              </g>
+            );
+          })}
+          <text x="0" y={H - 6} fontSize="11" fill="#746850">{etiqueta(lista[0].dia)}</text>
+          <text x={W / 2} y={H - 6} fontSize="11" fill="#746850" textAnchor="middle">{etiqueta(lista[Math.floor(lista.length / 2)].dia)}</text>
+          <text x={W} y={H - 6} fontSize="11" fill="#746850" textAnchor="end">{etiqueta(lista[lista.length - 1].dia)}</text>
+        </svg>
+      );
+    }
+
+    // Lista con barra proporcional
+    function ListaConBarras({ filas, vacio }) {
+      if (!filas.length) return <p className="text-sm text-stone-500">{vacio}</p>;
+      const max = Math.max(...filas.map((f) => f.valor), 1);
+      return (
+        <ul className="space-y-2.5">
+          {filas.map((f, i) => (
+            <li key={i}>
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="text-stone-800 line-clamp-1">{f.nombre}</span>
+                <span className="text-stone-600 shrink-0 tabular-nums">{f.texto || nf(f.valor)}</span>
+              </div>
+              <div className="h-1.5 rounded-full bg-stone-100 mt-1 overflow-hidden">
+                <div className="h-full rounded-full bg-gradient-to-r from-gold-400 to-gold-600" style={{ width: `${Math.max(3, (f.valor / max) * 100)}%` }} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+
+    function PanelEstadisticas({ shiurim, onClose }) {
+      const CLAVE_SESION = "ry_stats_token";
+      const [token, setToken] = useState(() => { try { return sessionStorage.getItem(CLAVE_SESION) || ""; } catch (e) { return ""; } });
+      const [entrada, setEntrada] = useState("");
+      const [dias, setDias] = useState(30);
+      const [datos, setDatos] = useState(null);
+      const [estado, setEstado] = useState(token ? "cargando" : "pedir"); // pedir | cargando | ok | clave | error | sin-configurar
+
+      useEffect(() => {
+        if (!CONTADOR_URL || !token) return;
+        let cancelado = false;
+        setEstado("cargando");
+        fetch(`${CONTADOR_URL}/estadisticas?dias=${dias}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" })
+          .then(async (r) => {
+            if (cancelado) return;
+            if (r.status === 401) {
+              try { sessionStorage.removeItem(CLAVE_SESION); } catch (e) {}
+              setToken(""); setEstado("clave"); return;
+            }
+            if (r.status === 503) { setEstado("sin-configurar"); return; }
+            if (!r.ok) throw new Error("http " + r.status);
+            setDatos(await r.json());
+            setEstado("ok");
+          })
+          .catch(() => { if (!cancelado) setEstado("error"); });
+        return () => { cancelado = true; };
+      }, [token, dias]);
+
+      const entrar = (e) => {
+        e.preventDefault();
+        const t = entrada.trim();
+        if (!t) return;
+        try { sessionStorage.setItem(CLAVE_SESION, t); } catch (err) {}
+        setEntrada("");
+        setToken(t);
+      };
+
+      const tituloDe = (id) => {
+        const s = shiurim.find((x) => String(x.id) === String(id));
+        return s ? tituloPrincipalDe(s) : `Shiur ${id}`;
+      };
+      const nombrePagina = (p) => {
+        if (p === "inicio") return "Inicio";
+        if (p === "busqueda") return "Búsquedas";
+        if (p.startsWith("tema:")) return "Tema: " + p.slice(5);
+        if (p.startsWith("shiur:")) return "Shiur: " + tituloDe(p.slice(6));
+        return p;
+      };
+      const nombreOrigen = { encabezado: "Botón Donar (arriba)", menu: "Menú ☰", modal: "Aviso de donación" };
+
+      let resumen = null;
+      if (datos) {
+        const suma = (k) => datos.dias.reduce((a, d) => a + (Number(d[k]) || 0), 0);
+        const visitas = suma("visitas"), mobile = suma("mobile"), desktop = suma("desktop");
+        const total = (tipo) => datos.donaciones.filter((d) => d.tipo === tipo).reduce((a, d) => a + d.total, 0);
+        const abrir = total("donar_abrir"), clics = total("donar_click");
+        const reproducciones = datos.shiurim.reduce((a, s) => a + s.reproducciones, 0);
+        const segundos = datos.shiurim.reduce((a, s) => a + s.segundos, 0);
+        resumen = { visitas, unicos: suma("unicos"), mobile, desktop, abrir, clics, reproducciones, segundos };
+      }
+
+      const caja = "bg-white rounded-2xl p-5 shadow-card ring-1 ring-blue-900/[0.06]";
+      return (
+        <div className="fixed inset-0 z-[60] bg-stone-50 overflow-y-auto">
+          <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-md border-b border-stone-200/70">
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+              <h2 className="font-serif text-xl sm:text-2xl font-semibold text-blue-900">Estadísticas</h2>
+              <div className="flex items-center gap-2">
+                {estado === "ok" && (
+                  <div className="flex rounded-full border border-stone-300 overflow-hidden text-sm">
+                    {[7, 30, 90].map((n) => (
+                      <button key={n} onClick={() => setDias(n)} className={`px-2.5 sm:px-3 py-1.5 whitespace-nowrap ${dias === n ? "bg-blue-900 text-white" : "bg-white text-stone-600 hover:bg-stone-100"}`}>
+                        {n} días
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-full text-stone-500 hover:text-stone-900 hover:bg-stone-100" aria-label="Cerrar estadísticas">
+                  <IconX size={20} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+            {!CONTADOR_URL && (
+              <div className={caja}>
+                <h3 className="font-serif text-xl text-blue-900 mb-2">Las estadísticas todavía no están activadas</h3>
+                <p className="text-sm text-stone-600 leading-relaxed mb-3">
+                  Para registrar visitas, escuchas y clics de donación hace falta publicar el contador propio (gratis, en Cloudflare), que no usa cookies ni guarda IPs. Los pasos están en <code>contador/README.md</code>. Cuando esté publicado, se pega su dirección en <code>CONTADOR_URL</code> de <code>index.html</code> y esta pantalla empieza a mostrar los datos.
+                </p>
+              </div>
+            )}
+
+            {CONTADOR_URL && (estado === "pedir" || estado === "clave") && (
+              <form onSubmit={entrar} className={`${caja} max-w-md mx-auto`}>
+                <div className="w-11 h-11 rounded-full bg-blue-900 text-white flex items-center justify-center mb-4"><IconLock size={18} /></div>
+                <h3 className="font-serif text-xl text-blue-900 mb-1">Clave de estadísticas</h3>
+                <p className="text-sm text-stone-600 mb-4">Es la clave secreta del contador (no la contraseña del Panel Admin). Se recuerda solo mientras tengas esta pestaña abierta.</p>
+                <input
+                  type="password"
+                  value={entrada}
+                  onChange={(e) => setEntrada(e.target.value)}
+                  autoFocus
+                  autoComplete="off"
+                  placeholder="Clave"
+                  className="w-full h-12 rounded-xl border border-stone-300 px-4 text-base focus:outline-none focus:border-blue-900 focus:ring-4 focus:ring-gold-500/20"
+                />
+                {estado === "clave" && <p className="text-sm text-red-600 mt-2">La clave no es correcta.</p>}
+                <button type="submit" className="btn-navy w-full h-12 rounded-xl font-medium mt-4">Ver estadísticas</button>
+              </form>
+            )}
+
+            {CONTADOR_URL && estado === "cargando" && <p className="text-stone-500 text-sm py-20 text-center">Cargando estadísticas…</p>}
+            {CONTADOR_URL && estado === "error" && (
+              <div className={caja}>
+                <p className="text-sm text-red-700">No se pudo conectar con el contador. Revisá tu conexión o que el servicio esté publicado.</p>
+              </div>
+            )}
+            {CONTADOR_URL && estado === "sin-configurar" && (
+              <div className={caja}>
+                <p className="text-sm text-stone-700">El contador está publicado pero le falta la clave de estadísticas (<code>ADMIN_TOKEN</code>). Ver <code>contador/README.md</code>.</p>
+              </div>
+            )}
+
+            {estado === "ok" && resumen && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                  <TarjetaDato titulo="Visitas" valor={nf(resumen.visitas)} detalle={`últimos ${dias} días`} />
+                  <TarjetaDato titulo="Visitantes únicos" valor={nf(resumen.unicos)} detalle="suma de los únicos de cada día" />
+                  <TarjetaDato titulo="Reproducciones" valor={nf(resumen.reproducciones)} detalle="escuchas de más de 30 s" />
+                  <TarjetaDato titulo="Tiempo escuchado" valor={formatearTiempo(resumen.segundos)} detalle="entre todos los shiurim" />
+                </div>
+
+                <div className={caja}>
+                  <div className="flex items-baseline justify-between gap-3 mb-3">
+                    <h3 className="font-serif text-lg text-blue-900">Visitas por día</h3>
+                    <p className="text-xs text-stone-500 flex items-center gap-3">
+                      <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-blue-900 inline-block" /> visitas</span>
+                      <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-gold-500 inline-block" /> únicos</span>
+                    </p>
+                  </div>
+                  <GraficoVisitas dias={datos.dias} desde={datos.desde} hasta={datos.hasta} />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
+                  <div className={caja}>
+                    <h3 className="font-serif text-lg text-blue-900 mb-4">Dispositivos</h3>
+                    {resumen.mobile + resumen.desktop === 0 ? (
+                      <p className="text-sm text-stone-500">Todavía no hay visitas en este período.</p>
+                    ) : (
+                      <>
+                        <div className="flex h-4 rounded-full overflow-hidden mb-3">
+                          <div className="bg-blue-900" style={{ width: `${(resumen.mobile / (resumen.mobile + resumen.desktop)) * 100}%` }} />
+                          <div className="bg-gold-500 flex-1" />
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-stone-800"><i className="inline-block w-2.5 h-2.5 rounded-sm bg-blue-900 mr-1.5" />Celular · <b>{Math.round((resumen.mobile / (resumen.mobile + resumen.desktop)) * 100)}%</b> ({nf(resumen.mobile)})</span>
+                          <span className="text-stone-800"><i className="inline-block w-2.5 h-2.5 rounded-sm bg-gold-500 mr-1.5" />Computadora · <b>{Math.round((resumen.desktop / (resumen.mobile + resumen.desktop)) * 100)}%</b> ({nf(resumen.desktop)})</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 mt-6 pt-5 border-t border-stone-200 text-center">
+                          <div>
+                            <p className="font-serif text-2xl font-bold text-blue-900">{nf(resumen.visitas / dias)}</p>
+                            <p className="text-xs text-stone-500">visitas por día en promedio</p>
+                          </div>
+                          <div>
+                            {(() => {
+                              const mejor = datos.dias.reduce((m, d) => (d.visitas > (m ? m.visitas : -1) ? d : m), null);
+                              return (
+                                <>
+                                  <p className="font-serif text-2xl font-bold text-blue-900">{mejor ? nf(mejor.visitas) : 0}</p>
+                                  <p className="text-xs text-stone-500">mejor día{mejor ? ` (${mejor.dia.slice(8, 10)}/${mejor.dia.slice(5, 7)})` : ""}</p>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div className={caja}>
+                    <h3 className="font-serif text-lg text-blue-900 mb-4">Donaciones</h3>
+                    <div className="grid grid-cols-3 gap-3 mb-4 text-center">
+                      <div><p className="font-serif text-2xl font-bold text-blue-900">{nf(resumen.abrir)}</p><p className="text-xs text-stone-500">abrieron el aviso</p></div>
+                      <div><p className="font-serif text-2xl font-bold text-blue-900">{nf(resumen.clics)}</p><p className="text-xs text-stone-500">fueron a Mercado Pago</p></div>
+                      <div><p className="font-serif text-2xl font-bold text-gold-600">{resumen.abrir ? Math.round((resumen.clics / resumen.abrir) * 100) : 0}%</p><p className="text-xs text-stone-500">de conversión</p></div>
+                    </div>
+                    <ListaConBarras
+                      vacio="Todavía no hubo clics de donación."
+                      filas={["encabezado", "menu", "modal"].map((o) => ({
+                        nombre: nombreOrigen[o],
+                        valor: datos.donaciones.filter((d) => d.origen === o && d.tipo === "donar_click").reduce((a, d) => a + d.total, 0) || datos.donaciones.filter((d) => d.origen === o && d.tipo === "donar_abrir").reduce((a, d) => a + d.total, 0),
+                        texto: `${datos.donaciones.filter((d) => d.origen === o && d.tipo === "donar_abrir").reduce((a, d) => a + d.total, 0)} abrieron · ${datos.donaciones.filter((d) => d.origen === o && d.tipo === "donar_click").reduce((a, d) => a + d.total, 0)} clics`,
+                      })).filter((f) => f.valor > 0)}
+                    />
+                    {datos.donaciones.some((d) => d.tipo === "donar_click") && (
+                      <>
+                        <p className="text-xs uppercase tracking-wider text-stone-500 mt-5 mb-2">Clics por lugar de la web</p>
+                        <ListaConBarras
+                          vacio=""
+                          filas={Object.values(datos.donaciones.filter((d) => d.tipo === "donar_click").reduce((m, d) => {
+                            m[d.contexto] = m[d.contexto] || { nombre: nombrePagina(d.contexto), valor: 0 };
+                            m[d.contexto].valor += d.total;
+                            return m;
+                          }, {})).sort((a, b) => b.valor - a.valor).slice(0, 6)}
+                        />
+                      </>
+                    )}
+                    <p className="text-[11px] text-stone-400 mt-4 leading-relaxed">El monto lo elige cada persona dentro de Mercado Pago, por eso acá se cuentan clics y desde dónde llegaron, no importes.</p>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
+                  <div className={caja}>
+                    <h3 className="font-serif text-lg text-blue-900 mb-4">Páginas más vistas</h3>
+                    <ListaConBarras vacio="Todavía no hay visitas." filas={datos.paginas.slice(0, 10).map((p) => ({ nombre: nombrePagina(p.pagina), valor: p.total }))} />
+                  </div>
+                  <div className={caja}>
+                    <h3 className="font-serif text-lg text-blue-900 mb-4">Shiurim más escuchados</h3>
+                    <ListaConBarras
+                      vacio="Todavía no hay escuchas."
+                      filas={datos.shiurim.filter((s) => s.reproducciones > 0 || s.segundos > 0).slice(0, 10).map((s) => ({
+                        nombre: tituloDe(s.id),
+                        valor: s.reproducciones || 0.01,
+                        texto: `${nf(s.reproducciones)} repr. · ${formatearTiempo(s.segundos)}`,
+                      }))}
+                    />
+                  </div>
+                </div>
+
+                <p className="text-xs text-stone-400 text-center pb-6">
+                  Del {datos.desde} al {datos.hasta} (hora de Argentina). Sin cookies y sin guardar IPs. No cuentan las visitas ni escuchas hechas como administrador.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ---------------------------------------------------------------------
     // Login del Panel Admin (contraseña simple, sin servicios externos)
     // ---------------------------------------------------------------------
     function AdminLogin({ onSuccess, onCancel }) {
@@ -2098,7 +2427,7 @@
       reproducciones: 0,
     };
 
-    function AdminPanel({ shiurim, editingShiur, onSave, onEdit, onDelete, onClose, onLogout, onCancelEdit, config, onConfigChange, onExportBackup, onImportBackup, onSyncRss, errorCargaDatos, conteos }) {
+    function AdminPanel({ shiurim, editingShiur, onSave, onEdit, onDelete, onClose, onLogout, onCancelEdit, config, onConfigChange, onExportBackup, onImportBackup, onSyncRss, errorCargaDatos, conteos, onAbrirEstadisticas }) {
       // Con el contador automático activo, las reproducciones son las contadas en
       // la web; si no, el número cargado a mano en cada shiur.
       const reproduccionesDe = (s) => (conteos ? Number(conteos[s.id]) || 0 : Number(s.reproducciones) || 0);
@@ -2187,7 +2516,14 @@
                 Cerrar sesión
               </button>
             </div>
-            <p className="text-sm text-stone-500 mb-4">{editingShiur ? "Editando shiur existente." : "Cargar un nuevo shiur."}</p>
+            <p className="text-sm text-stone-500 mb-3">{editingShiur ? "Editando shiur existente." : "Cargar un nuevo shiur."}</p>
+            <button
+              onClick={onAbrirEstadisticas}
+              className="btn-navy w-full sm:w-auto inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm font-medium mb-4"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="6" y1="20" x2="6" y2="11" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="18" y1="20" x2="18" y2="14" /></svg>
+              Ver estadísticas
+            </button>
 
             {errorCargaDatos && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-sm text-red-700 flex items-start gap-2">
@@ -2665,6 +3001,7 @@
       });
       const [showLogin, setShowLogin] = useState(false);
       const [adminOpen, setAdminOpen] = useState(false);
+      const [statsOpen, setStatsOpen] = useState(false);
       const [editingShiur, setEditingShiur] = useState(null);
 
       // Audio global (compartido entre barra inferior y vista detalle)
@@ -2675,6 +3012,35 @@
       const [progreso, setProgreso] = useState(0);
       const [actual, setActual] = useState(0);
       const [duracion, setDuracion] = useState(0);
+
+      // Estadísticas de uso (visitas, escuchas, clics de donación): se envían al
+      // contador propio, sin cookies y sin IPs. No se registra nada si el contador
+      // no está activado, si se entró como administrador o si el navegador pide
+      // "No rastrear".
+      const rastrear = (ruta, cuerpo) => {
+        if (!CONTADOR_URL || isAdmin) return;
+        try { if (navigator.doNotTrack === "1" || window.doNotTrack === "1") return; } catch (e) {}
+        try {
+          fetch(`${CONTADOR_URL}/${ruta}`, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(cuerpo), keepalive: true }).catch(() => {});
+        } catch (e) {}
+      };
+      const escuchaAcumRef = useRef({ id: null, ultimo: 0, seg: 0 });
+      const enviarEscucha = () => {
+        const a = escuchaAcumRef.current;
+        if (a.id && a.seg >= 3) rastrear("escucha", { id: String(a.id), segundos: Math.round(a.seg) });
+        a.seg = 0;
+      };
+      const acumularEscucha = (t) => {
+        if (!CONTADOR_URL || isAdmin || !current) return;
+        const a = escuchaAcumRef.current;
+        if (a.id !== current.id) { enviarEscucha(); escuchaAcumRef.current = { id: current.id, ultimo: t, seg: 0 }; return; }
+        const avance = t - a.ultimo;
+        a.ultimo = t;
+        if (avance > 0 && avance < 3) a.seg += avance; // solo el avance normal (adelantar no suma)
+        if (a.seg >= 60) enviarEscucha();
+      };
+      const enviarEscuchaRef = useRef(enviarEscucha);
+      enviarEscuchaRef.current = enviarEscucha;
 
       // Guardados y progreso de escucha (solo en este dispositivo)
       const [favoritos, setFavoritos] = useState(() => leerJSON(CLAVE_FAVORITOS, []).map(String));
@@ -2716,7 +3082,7 @@
       const guardarProgresoRef = useRef(guardarProgreso);
       guardarProgresoRef.current = guardarProgreso;
       useEffect(() => {
-        const alSalir = () => guardarProgresoRef.current(true);
+        const alSalir = () => { guardarProgresoRef.current(true); enviarEscuchaRef.current(); };
         const alOcultar = () => { if (document.visibilityState === "hidden") alSalir(); };
         window.addEventListener("pagehide", alSalir);
         document.addEventListener("visibilitychange", alOcultar);
@@ -2725,7 +3091,7 @@
           document.removeEventListener("visibilitychange", alOcultar);
         };
       }, []);
-      useEffect(() => { if (!isPlaying) guardarProgresoRef.current(true); }, [isPlaying]);
+      useEffect(() => { if (!isPlaying) { guardarProgresoRef.current(true); enviarEscuchaRef.current(); } }, [isPlaying]);
 
       // Acceso admin por URL: ?admin=true
       useEffect(() => {
@@ -2917,6 +3283,7 @@
         setActual(audio.currentTime);
         setProgreso((audio.currentTime / audio.duration) * 100);
         registrarEscucha(audio.currentTime);
+        acumularEscucha(audio.currentTime);
         guardarProgreso();
       };
       const handleLoadedMetadata = () => {
@@ -2982,6 +3349,16 @@
       const INICIO_RECIENTES = 5;
       const INICIO_DESTACADOS = 4;
       const esInicio = categoriaActiva === "Todas" && !query.trim();
+      const vistaActual = selectedShiur
+        ? `shiur:${selectedShiur.id}`
+        : categoriaActiva !== "Todas" ? `tema:${categoriaActiva}` : query.trim() ? "busqueda" : "inicio";
+      const rastrearRef = useRef(rastrear);
+      rastrearRef.current = rastrear;
+      useEffect(() => {
+        if (cargando || !enlaceResuelto) return;
+        const t = setTimeout(() => rastrearRef.current("visita", { pagina: vistaActual }), 600);
+        return () => clearTimeout(t);
+      }, [vistaActual, cargando, enlaceResuelto]);
       const inicioRecientes = useMemo(
         () => [...shiurim].sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, INICIO_RECIENTES),
         [shiurim]
@@ -3191,7 +3568,7 @@
                     <span className="hidden sm:inline">Contacto</span>
                   </button>
                   <button
-                    onClick={() => setShowDonate(true)}
+                    onClick={() => { rastrear("evento", { tipo: "donar_abrir", origen: "encabezado", contexto: vistaActual }); setShowDonate(true); }}
                     className="btn-navy flex items-center h-11 sm:h-10 px-4 sm:px-5 text-sm font-medium rounded-full"
                   >
                     Donar
@@ -3211,7 +3588,7 @@
             mostrarInstalar={!!mostrarBotonInstalar}
             onInstalar={() => { setMenuAbierto(false); handleInstalarApp(); }}
             onContacto={() => { setMenuAbierto(false); setShowContact(true); }}
-            onDonar={() => { setMenuAbierto(false); setShowDonate(true); }}
+            onDonar={() => { rastrear("evento", { tipo: "donar_abrir", origen: "menu", contexto: vistaActual }); setMenuAbierto(false); setShowDonate(true); }}
           />
 
           {/* Hero: foto, frase y buscador (se pliega al buscar o elegir un tema) */}
@@ -3355,7 +3732,13 @@
 
           {/* Contacto y Donación */}
           {showContact && <ContactModal onClose={() => setShowContact(false)} />}
-          {showDonate && <DonateModal onClose={() => setShowDonate(false)} mercadoPagoLink={config.mercadoPagoLink} />}
+          {showDonate && (
+            <DonateModal
+              onClose={() => setShowDonate(false)}
+              mercadoPagoLink={config.mercadoPagoLink}
+              onDonar={() => rastrear("evento", { tipo: "donar_click", origen: "modal", contexto: vistaActual })}
+            />
+          )}
 
           {/* Ayuda de instalación manual para iOS */}
           {showInstallHelp && <InstallHelpModal plataforma={esIOS ? "ios" : "android"} onClose={() => setShowInstallHelp(false)} />}
@@ -3374,6 +3757,19 @@
               <IconSettings size={16} />
             </button>
           )}
+          {isAdmin && !adminOpen && (
+            <button
+              onClick={() => setStatsOpen(true)}
+              className="fixed top-4 right-14 z-40 w-9 h-9 rounded-full bg-white/90 border border-stone-200 shadow-sm flex items-center justify-center text-stone-500 hover:text-stone-900"
+              aria-label="Abrir estadísticas"
+              title="Estadísticas"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="6" y1="20" x2="6" y2="11" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="18" y1="20" x2="18" y2="14" /></svg>
+            </button>
+          )}
+
+          {/* Panel de Estadísticas (solo admin, necesita además la clave del contador) */}
+          {isAdmin && statsOpen && <PanelEstadisticas shiurim={shiurim} onClose={() => setStatsOpen(false)} />}
 
           {/* Panel Admin */}
           {isAdmin && adminOpen && (
@@ -3385,6 +3781,7 @@
               onDelete={handleDeleteShiur}
               onClose={() => { setAdminOpen(false); setEditingShiur(null); }}
               onLogout={handleLogout}
+              onAbrirEstadisticas={() => setStatsOpen(true)}
               onCancelEdit={() => setEditingShiur(null)}
               conteos={conteos}
               config={config}
