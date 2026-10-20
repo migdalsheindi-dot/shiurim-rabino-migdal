@@ -1105,7 +1105,7 @@
       );
     }
 
-    function BotonFavorito({ shiur, titulo, claro = false, vidrio = false, className = "" }) {
+    function BotonFavorito({ shiur, titulo, claro = false, vidrio = false, compacto = false, className = "" }) {
       const { favoritos, toggleFavorito } = useUsuario();
       const activo = favoritos.includes(String(shiur.id));
       return (
@@ -1114,7 +1114,7 @@
           aria-pressed={activo}
           aria-label={activo ? `Quitar de guardados: ${titulo}` : `Guardar: ${titulo}`}
           title={activo ? "Quitar de guardados" : "Guardar"}
-          className={`${activo ? "es-favorito" : ""} shrink-0 w-11 h-11 sm:w-10 sm:h-10 inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-75 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 ${
+          className={`${activo ? "es-favorito" : ""} shrink-0 ${compacto ? "w-9 h-9 sm:w-10 sm:h-10" : "w-11 h-11 sm:w-10 sm:h-10"} inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-75 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 ${
             vidrio ? "glass-dark text-white hover:bg-white/20" : claro ? "text-white/70 hover:text-white hover:bg-white/10" : "text-stone-500 hover:text-blue-900 hover:bg-blue-50"
           } ${activo ? (vidrio || claro ? "!text-gold-400" : "!text-gold-600") : ""} ${className}`}
         >
@@ -1135,11 +1135,11 @@
       );
     }
 
-    function BotonCompartir({ shiur, titulo, onShare, claro = false, className = "" }) {
+    function BotonCompartir({ shiur, titulo, onShare, claro = false, compacto = false, className = "" }) {
       return (
         <button
           onClick={(e) => { e.stopPropagation(); onShare(shiur); }}
-          className={`shrink-0 w-11 h-11 sm:w-10 sm:h-10 inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-75 active:rotate-12 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 ${
+          className={`shrink-0 ${compacto ? "w-9 h-9 sm:w-10 sm:h-10" : "w-11 h-11 sm:w-10 sm:h-10"} inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-75 active:rotate-12 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 ${
             claro ? "text-white/70 hover:text-white hover:bg-white/10" : "text-stone-500 hover:text-blue-900 hover:bg-blue-50"
           } ${className}`}
           aria-label={`Compartir: ${titulo}`}
@@ -1174,7 +1174,6 @@
                 decoding="async"
               />
             )}
-            <BotonFavorito shiur={shiur} titulo={titulo} vidrio className="absolute top-2 left-2 !w-10 !h-10" />
             <BarraAvance shiur={shiur} />
           </div>
           <div className="p-3.5 sm:p-5 flex flex-col justify-between flex-1">
@@ -1184,11 +1183,21 @@
               {subtitulo && <h4 className="text-stone-500 text-sm italic font-normal mb-1 line-clamp-1">{subtitulo}</h4>}
               <div className="flex items-center justify-between gap-2 mb-2 sm:mb-3">
                 <p className="text-stone-500 text-[13px]">{formatFecha(shiur.fecha)}</p>
-                <BotonCompartir shiur={shiur} titulo={titulo} onShare={onShare} className="-my-3" />
+                <div className="hidden sm:block -my-3"><BotonCompartir shiur={shiur} titulo={titulo} onShare={onShare} /></div>
               </div>
               <p className={`${compacta ? "hidden" : "hidden sm:block"} text-stone-600 text-sm leading-relaxed line-clamp-3`}>{descripcion}</p>
             </div>
-            <BotonReproducir shiur={shiur} isActive={isActive} isPlaying={isPlaying} onPlay={onPlay} className="mt-3 sm:mt-4 self-start" />
+            <div className="mt-3 sm:mt-4">
+              {/* Celular (tarjetas angostas): corazón a la izquierda y compartir a la derecha, sobre el botón */}
+              <div className="flex items-center justify-between -mt-1 mb-1 sm:hidden">
+                <BotonFavorito shiur={shiur} titulo={titulo} compacto className="-ml-2" />
+                <BotonCompartir shiur={shiur} titulo={titulo} onShare={onShare} compacto className="-mr-2" />
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="hidden sm:block -ml-3"><BotonFavorito shiur={shiur} titulo={titulo} /></div>
+                <BotonReproducir shiur={shiur} isActive={isActive} isPlaying={isPlaying} onPlay={onPlay} />
+              </div>
+            </div>
           </div>
         </div>
       );
@@ -1206,12 +1215,12 @@
       return (
         <div
           onClick={() => onOpenDetail(shiur)}
-          className={`group relative h-full flex gap-3.5 sm:gap-4 bg-white rounded-2xl p-3.5 sm:p-4 cursor-pointer transition-all duration-300 ${
+          className={`group relative h-full flex gap-3 sm:gap-4 bg-white rounded-2xl p-3 sm:p-4 cursor-pointer transition-all duration-300 ${
             isActive ? "ring-2 ring-gold-500 shadow-lift" : "ring-1 ring-blue-900/[0.07] shadow-card hover:shadow-lift hover:-translate-y-1"
           }`}
         >
           {isAdmin && <BotonesAdmin shiur={shiur} onEdit={onEdit} onDelete={onDelete} />}
-          <div className="relative shrink-0 w-[104px] h-[104px] sm:w-32 sm:h-32 rounded-xl bg-stone-100 overflow-hidden">
+          <div className="relative shrink-0 w-[84px] h-[84px] sm:w-32 sm:h-32 rounded-xl bg-stone-100 overflow-hidden">
             {shiur.portadaUrl && (
               <img
                 src={shiur.portadaUrl}
@@ -1221,7 +1230,6 @@
                 decoding="async"
               />
             )}
-            <BotonFavorito shiur={shiur} titulo={titulo} vidrio className="absolute top-1.5 left-1.5 !w-8 !h-8" />
             <BarraAvance shiur={shiur} />
           </div>
           <div className="min-w-0 flex-1 flex flex-col">
@@ -1231,9 +1239,10 @@
             <p className="text-stone-500 text-[13px] mt-0.5">
               {avance ? <span className="text-gold-600 font-medium">Quedan {avance.quedanMin} min</span> : formatFecha(shiur.fecha)}
             </p>
-            <div className="mt-auto pt-2.5 flex items-center gap-0.5">
-              <BotonReproducir shiur={shiur} isActive={isActive} isPlaying={isPlaying} onPlay={onPlay} textoPlay={avance ? "Continuar" : "Reproducir"} />
-              <BotonCompartir shiur={shiur} titulo={titulo} onShare={onShare} />
+            <div className="mt-auto pt-2.5 flex items-center">
+              <BotonFavorito shiur={shiur} titulo={titulo} compacto className="-ml-2" />
+              <BotonReproducir shiur={shiur} isActive={isActive} isPlaying={isPlaying} onPlay={onPlay} textoPlay={avance ? "Continuar" : "Reproducir"} className="!px-3.5 sm:!px-5" />
+              <BotonCompartir shiur={shiur} titulo={titulo} onShare={onShare} compacto />
             </div>
           </div>
         </div>
@@ -1254,7 +1263,7 @@
           }`}
         >
           {isAdmin && <BotonesAdmin shiur={shiur} onEdit={onEdit} onDelete={onDelete} />}
-          <div className="relative shrink-0 w-[132px] sm:w-[176px] self-stretch bg-[#0E1830] overflow-hidden">
+          <div className="relative shrink-0 w-[104px] sm:w-[176px] self-stretch bg-[#0E1830] overflow-hidden">
             {shiur.portadaUrl && (
               <img
                 src={shiur.portadaUrl}
@@ -1264,16 +1273,16 @@
                 decoding="async"
               />
             )}
-            <BotonFavorito shiur={shiur} titulo={titulo} vidrio className="absolute top-2 left-2 !w-8 !h-8" />
             <BarraAvance shiur={shiur} />
           </div>
-          <div className="min-w-0 flex-1 flex flex-col p-4 sm:p-5">
+          <div className="min-w-0 flex-1 flex flex-col p-3.5 sm:p-5">
             <span className="self-start text-[11px] font-medium tracking-wider uppercase text-gold-200 border border-gold-500/50 rounded-full px-2.5 py-0.5 mb-2">{shiur.categoria}</span>
             <h3 className="font-serif font-semibold text-[17px] sm:text-xl leading-snug line-clamp-2">{titulo}</h3>
             <p className="text-white/70 text-sm mt-1 line-clamp-2">{subtitulo || formatFecha(shiur.fecha)}</p>
-            <div className="mt-auto pt-3 flex items-center gap-1">
-              <BotonReproducir shiur={shiur} isActive={isActive} isPlaying={isPlaying} onPlay={onPlay} variante="gold" textoPlay="Escuchar" />
-              <BotonCompartir shiur={shiur} titulo={titulo} onShare={onShare} claro />
+            <div className="mt-auto pt-3 flex items-center">
+              <BotonFavorito shiur={shiur} titulo={titulo} claro compacto className="-ml-2" />
+              <BotonReproducir shiur={shiur} isActive={isActive} isPlaying={isPlaying} onPlay={onPlay} variante="gold" textoPlay="Escuchar" className="!px-3.5 sm:!px-5" />
+              <BotonCompartir shiur={shiur} titulo={titulo} onShare={onShare} claro compacto />
             </div>
           </div>
         </div>
@@ -1284,7 +1293,7 @@
     // Carrusel horizontal: se desliza con el dedo; en pantallas grandes tiene
     // flechas. Cada hijo va envuelto en una celda que se "engancha" al scroll.
     // ---------------------------------------------------------------------
-    function Carrusel({ id, titulo, ancho = "w-[88%] sm:w-[440px]", children }) {
+    function Carrusel({ id, titulo, ancho = "w-[92%] sm:w-[440px]", children }) {
       const ref = useRef(null);
       const [pos, setPos] = useState({ inicio: true, fin: false });
       const actualizar = () => {
