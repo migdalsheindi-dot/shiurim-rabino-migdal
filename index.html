@@ -2987,7 +2987,7 @@
 
       return (
         <UsuarioContext.Provider value={{ favoritos, toggleFavorito, progresos }}>
-        <div className={`min-h-screen bg-stone-50 flex flex-col ${current ? "pb-32" : ""}`}>
+        <div className="min-h-screen bg-stone-50 flex flex-col">
           {/* Encabezado */}
           <header className="sticky top-0 z-40 border-b border-stone-200/70 bg-white/90 backdrop-blur-md safe-top">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-6">
@@ -3117,6 +3117,16 @@
           </main>
 
           {esInicio && !cargando && shiurim.length > 0 && <SobreElRabino />}
+
+          {/* Dedicatoria permanente: va en todas las pantallas (inicio, temas, búsquedas) */}
+          <footer
+            className={`bg-[#0B1428] border-t border-white/10 text-center px-5 pt-8 ${current ? "pb-32" : "pb-[max(2.25rem,env(safe-area-inset-bottom))]"}`}
+          >
+            <div className="mx-auto mb-5 h-px w-16 bg-gradient-to-r from-transparent via-gold-500 to-transparent" aria-hidden="true" />
+            <p className="font-serif italic text-gold-100/90 text-[15px] sm:text-base leading-relaxed tracking-wide">
+              Leilui Nishmat Shaia ben Hersh wolf Z”L
+            </p>
+          </footer>
 
           {/* Elemento de audio único, compartido por toda la app */}
           <audio
