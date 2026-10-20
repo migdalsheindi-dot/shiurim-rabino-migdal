@@ -26,7 +26,9 @@ jobs:
       - name: Configurar Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          # Versión fija: con "3.x" GitHub a veces usa una Python recién salida donde
+          # faster-whisper (ctranslate2) todavía no tiene instalador y la sincronización falla.
+          python-version: "3.12"
           cache: "pip"
           cache-dependency-path: scripts/requirements.txt
 
