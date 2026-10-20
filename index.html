@@ -3,7 +3,76 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Rabino Yoel Migdal - Shiurim</title>
+  <title>Rabino Yoel Migdal — Shiurim y clases de Torá y judaísmo</title>
+  <meta name="description" content="Shiurim y clases de Torá del Rabino Yoel Migdal, director de ISEJ: Tania, Parashá de la semana, jasidut, historias jasídicas e historia judía. Escuchalos gratis, cuando quieras." />
+  <meta name="keywords" content="shiurim, clases de Torá, judaísmo, Tania, Parashá de la semana, jasidut, Jabad, Rabino Yoel Migdal, ISEJ, Pirkei Avot, historias jasídicas" />
+  <meta name="author" content="Rabino Yoel Migdal" />
+  <meta name="robots" content="index,follow,max-image-preview:large" />
+  <link rel="canonical" href="https://yoelmigdal.com/" />
+  <link rel="alternate" type="application/rss+xml" title="Rabino Yoel Migdal — Shiurim" href="https://anchor.fm/s/2fd6a950/podcast/rss" />
+
+  <!-- Al compartir el enlace (WhatsApp, redes, mensajes): título, descripción e imagen -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Rabino Yoel Migdal — Shiurim" />
+  <meta property="og:locale" content="es_ES" />
+  <meta property="og:title" content="Rabino Yoel Migdal — Shiurim y clases de Torá y judaísmo" />
+  <meta property="og:description" content="Shiurim y clases de Torá del Rabino Yoel Migdal, director de ISEJ: Tania, Parashá de la semana, jasidut, historias jasídicas e historia judía. Escuchalos gratis, cuando quieras." />
+  <meta property="og:url" content="https://yoelmigdal.com/" />
+  <meta property="og:image" content="https://yoelmigdal.com/img/og-home.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:alt" content="El Rabino Yoel Migdal — Aprendé judaísmo de forma clara y profunda" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Rabino Yoel Migdal — Shiurim y clases de Torá y judaísmo" />
+  <meta name="twitter:description" content="Shiurim y clases de Torá del Rabino Yoel Migdal, director de ISEJ: Tania, Parashá de la semana, jasidut, historias jasídicas e historia judía. Escuchalos gratis, cuando quieras." />
+  <meta name="twitter:image" content="https://yoelmigdal.com/img/og-home.jpg" />
+
+  <!-- Datos estructurados (Schema.org) para que Google entienda qué es esta web -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://yoelmigdal.com/#sitio",
+        "url": "https://yoelmigdal.com/",
+        "name": "Rabino Yoel Migdal — Shiurim",
+        "inLanguage": "es",
+        "publisher": { "@id": "https://yoelmigdal.com/#rabino" },
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": { "@type": "EntryPoint", "urlTemplate": "https://yoelmigdal.com/?q={search_term_string}" },
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@type": "Person",
+        "@id": "https://yoelmigdal.com/#rabino",
+        "name": "Rabino Yoel Migdal",
+        "jobTitle": "Director de ISEJ",
+        "url": "https://yoelmigdal.com/",
+        "image": "https://yoelmigdal.com/img/rabino-hero.jpg",
+        "sameAs": ["https://www.instagram.com/yoelmigdal/", "https://x.com/yoelmigdal"],
+        "potentialAction": {
+          "@type": "DonateAction",
+          "name": "Aportar al proyecto",
+          "target": { "@type": "EntryPoint", "urlTemplate": "https://link.mercadopago.com.ar/isej770" }
+        }
+      },
+      {
+        "@type": "PodcastSeries",
+        "@id": "https://yoelmigdal.com/#serie",
+        "name": "Rabino Yoel Migdal — Shiurim",
+        "url": "https://yoelmigdal.com/",
+        "inLanguage": "es",
+        "webFeed": "https://anchor.fm/s/2fd6a950/podcast/rss",
+        "sameAs": ["https://open.spotify.com/show/0ynx2JbmZm1HmqJ7lzKY7Q"],
+        "author": { "@id": "https://yoelmigdal.com/#rabino" }
+      }
+    ]
+  }
+  </script>
 
   <!-- PWA: instalable en pantalla de inicio del celular / computadora -->
   <link rel="manifest" href="manifest.json" />
@@ -34,6 +103,13 @@
     });
   </script>
 
+  <!-- Conexiones anticipadas a los servidores que usa la página -->
+  <link rel="preconnect" href="https://unpkg.com" crossorigin />
+  <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin />
+  <link rel="preconnect" href="https://d3t3ozftmdmh3i.cloudfront.net" crossorigin />
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+  <link rel="preload" as="image" href="img/rabino-hero.jpg?v=2" fetchpriority="high" />
+
   <!-- Tipografía: Playfair Display (títulos) + Plus Jakarta Sans (interfaz y texto) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -45,15 +121,15 @@
   <!-- Tailwind CSS (via CDN, no requiere instalación) -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- React + ReactDOM -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- React + ReactDOM (versiones de producción: mucho más livianas y rápidas que las de desarrollo) -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
 
   <!-- Babel (transforma JSX directamente en el navegador, sin build) -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
 
-  <!-- EmailJS: envía el formulario de contacto sin exponer el email del rabino -->
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <!-- EmailJS: envía el formulario de contacto sin exponer el email del rabino (se carga sin frenar la página) -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
 
   <!-- Paleta: "stone" pasa de gris neutro a un lino cálido; "blue" (el acento
        de siempre: badges, foco, bordes activos) pasa a azul noche. Solo se
@@ -154,6 +230,23 @@
 </head>
 <body class="bg-stone-50">
   <div id="root"></div>
+  <noscript>
+    <main style="max-width:720px;margin:0 auto;padding:32px 20px;font-family:Georgia,serif;color:#211B13">
+      <h1>Rabino Yoel Migdal — Shiurim</h1>
+      <p>Aprendé judaísmo de forma clara y profunda con el Rabino Yoel Migdal. Esta página necesita JavaScript para mostrar el reproductor; mientras tanto podés entrar a cada tema:</p>
+      <ul>
+        <li><a href="t/tania.html">Tania</a></li>
+        <li><a href="t/parasha-de-la-semana.html">Parashá de la semana</a></li>
+        <li><a href="t/conferencias.html">Conferencias</a></li>
+        <li><a href="t/pensamientos.html">Pensamientos</a></li>
+        <li><a href="t/historias-jasidicas.html">Historias Jasídicas</a></li>
+        <li><a href="t/pirkei-avot.html">Pirkei Avot</a></li>
+        <li><a href="t/fechas-especiales.html">Fechas especiales</a></li>
+        <li><a href="t/discursos-jasidicos.html">Discursos Jasídicos</a></li>
+        <li><a href="t/historia-judia.html">Historia judía</a></li>
+      </ul>
+    </main>
+  </noscript>
 
   <!-- Todo el componente va inline aquí abajo (evita problemas de carga de archivos separados) -->
   <script type="text/babel">
@@ -878,6 +971,56 @@
     function guardarJSON(clave, valor) {
       try { localStorage.setItem(clave, JSON.stringify(valor)); } catch (e) {}
     }
+    // ---------------------------------------------------------------------
+    // SEO en la web: enlaces por tema (?tema=tania), por búsqueda (?q=...) y
+    // título / descripción / enlace canónico que cambian según lo que se mira.
+    // (Los buscadores y WhatsApp leen además las páginas estáticas s/ y t/.)
+    // ---------------------------------------------------------------------
+    function slugDe(texto) {
+      return String(texto || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    }
+    const DESCRIPCION_TEMAS = {
+      "Tania": "Clases sobre el Tania (Likutei Amarim), obra fundamental del pensamiento jasídico de Jabad, explicadas capítulo por capítulo por el Rabino Yoel Migdal.",
+      "Parashá de la semana": "Shiurim sobre la Parashá semanal de la Torá, con enseñanzas de la Torá y la jasidut.",
+      "Conferencias": "Conferencias y charlas del Rabino Yoel Migdal sobre judaísmo, la Torá y la vida cotidiana.",
+      "Pensamientos": "Pensamientos breves del Rabino Yoel Migdal para reflexionar sobre la Torá.",
+      "Historias Jasídicas": "Historias jasídicas y las enseñanzas que dejan, contadas por el Rabino Yoel Migdal.",
+      "Pirkei Avot": "Clases sobre Pirkei Avot (Ética de los Padres), con sus enseñanzas explicadas por el Rabino Yoel Migdal.",
+      "Fechas especiales": "Shiurim sobre las fiestas y fechas especiales del calendario judío.",
+      "Discursos Jasídicos": "Discursos jasídicos explicados por el Rabino Yoel Migdal.",
+      "Historia judía": "Clases de historia del pueblo judío del Rabino Yoel Migdal.",
+    };
+    const CABECERA_INICIAL = (() => {
+      const g = (sel, attr) => { const e = document.querySelector(sel); return e ? e.getAttribute(attr) : ""; };
+      return {
+        title: document.title,
+        description: g('meta[name="description"]', "content"),
+        canonical: g('link[rel="canonical"]', "href"),
+      };
+    })();
+    function actualizarCabecera({ titulo, descripcion, canonical }) {
+      try {
+        document.title = titulo;
+        const poner = (sel, attr, valor) => { const e = document.querySelector(sel); if (e) e.setAttribute(attr, valor); };
+        poner('meta[name="description"]', "content", descripcion);
+        poner('link[rel="canonical"]', "href", canonical);
+        poner('meta[property="og:title"]', "content", titulo);
+        poner('meta[property="og:description"]', "content", descripcion);
+        poner('meta[property="og:url"]', "content", canonical);
+        poner('meta[name="twitter:title"]', "content", titulo);
+        poner('meta[name="twitter:description"]', "content", descripcion);
+      } catch (e) {}
+    }
+    function categoriaDesdeUrl() {
+      try {
+        const t = new URLSearchParams(window.location.search).get("tema");
+        return t ? CATEGORIAS.find((c) => slugDe(c) === slugDe(t)) || null : null;
+      } catch (e) { return null; }
+    }
+    function busquedaDesdeUrl() {
+      try { return (new URLSearchParams(window.location.search).get("q") || "").slice(0, 80); } catch (e) { return ""; }
+    }
+
     const UsuarioContext = React.createContext({ favoritos: [], toggleFavorito: () => {}, progresos: {} });
     const useUsuario = () => React.useContext(UsuarioContext);
     // Avance de un shiur empezado: { porcentaje, quedanMin } o null si no lo empezó / ya lo terminó.
@@ -1317,6 +1460,8 @@
                       alt="El Rabino Yoel Migdal"
                       width="800"
                       height="800"
+                      fetchPriority="high"
+                      decoding="async"
                       className="hero-foto h-full w-auto max-w-none object-cover translate-x-[20%] sm:translate-x-[8%] md:translate-x-0"
                     />
                   </div>
@@ -2507,8 +2652,8 @@
 
       const mostrarBotonInstalar = !appInstalada && (promptInstalacion || esIOS || esAndroid);
 
-      const [query, setQuery] = useState("");
-      const [categoriaActiva, setCategoriaActiva] = useState("Todas");
+      const [query, setQuery] = useState(busquedaDesdeUrl);
+      const [categoriaActiva, setCategoriaActiva] = useState(() => categoriaDesdeUrl() || "Todas");
       const [menuAbierto, setMenuAbierto] = useState(false);
       const [selectedShiur, setSelectedShiur] = useState(null);
       const [shiurACompartir, setShiurACompartir] = useState(null);
@@ -2629,6 +2774,30 @@
           window.history.replaceState(null, "", url);
         } catch (e) {}
       }, [selectedShiur, enlaceResuelto]);
+
+      // Título, descripción y enlace canónico según lo que se está mirando
+      useEffect(() => {
+        const base = (CABECERA_INICIAL.canonical || "").replace(/[^/]*$/, "");
+        const sufijo = " | Rabino Yoel Migdal";
+        if (selectedShiur) {
+          const { subtitulo, descripcion } = separarDescripcion(selectedShiur.descripcion);
+          actualizarCabecera({
+            titulo: tituloPrincipalDe(selectedShiur) + sufijo,
+            descripcion: (subtitulo || descripcion || CABECERA_INICIAL.description).replace(/\s+/g, " ").slice(0, 158),
+            canonical: `${base}s/${selectedShiur.id}.html`,
+          });
+        } else if (categoriaActiva !== "Todas" && DESCRIPCION_TEMAS[categoriaActiva]) {
+          actualizarCabecera({
+            titulo: `${categoriaActiva}: shiurim y clases${sufijo}`,
+            descripcion: DESCRIPCION_TEMAS[categoriaActiva],
+            canonical: `${base}t/${slugDe(categoriaActiva)}.html`,
+          });
+        } else if (query.trim()) {
+          actualizarCabecera({ titulo: `Buscar “${query.trim().slice(0, 40)}”${sufijo}`, descripcion: CABECERA_INICIAL.description, canonical: CABECERA_INICIAL.canonical });
+        } else {
+          actualizarCabecera({ titulo: CABECERA_INICIAL.title, descripcion: CABECERA_INICIAL.description, canonical: CABECERA_INICIAL.canonical });
+        }
+      }, [selectedShiur, categoriaActiva, query]);
 
       // Atajo de teclado: Ctrl+Shift+A
       useEffect(() => {
