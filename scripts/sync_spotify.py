@@ -26,6 +26,7 @@ import json
 import os
 import re
 import sys
+import time
 import unicodedata
 import urllib.request
 from email.utils import parsedate_to_datetime
@@ -99,9 +100,34 @@ def texto_de(nodo, tag, ns=None):
 
 
 def fetch_feed(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; ShiurimSync/1.0)"})
+    # El CDN de Spotify/Anchor guarda el feed en caché y cada servidor lo renueva
+    # a destiempo: pedirlo "sin caché" y con un parámetro distinto cada vez ayuda
+    # a recibir la versión más nueva (y abajo se descarta igual cualquier copia
+    # más vieja que la ya aplicada).
+    sep = "&" if "?" in url else "?"
+    url = f"{url}{sep}cb={int(time.time() // 60)}"
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0 (compatible; ShiurimSync/1.0)",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+        },
+    )
     with urllib.request.urlopen(req, timeout=30) as resp:
         return resp.read()
+
+
+def fecha_del_feed(xml_bytes):
+    # <lastBuildDate> del feed (cuándo se regeneró por última vez) como texto ISO UTC, o "".
+    try:
+        canal = ElementTree.fromstring(xml_bytes).find("channel")
+        crudo = texto_de(canal, "lastBuildDate")
+        dt = parsedate_to_datetime(crudo)
+        from datetime import timezone
+        return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    except Exception:
+        return ""
 
 
 def parsear_feed_rss(xml_bytes):
@@ -267,7 +293,18 @@ def main():
         print("El feed se leyó bien pero no se encontraron episodios con audio.")
         sys.exit(0)
 
-    agregados, actualizados, nuevos_shiurim = sincronizar(data, episodios)
+    # Si el servidor entregó una copia del feed MÁS VIEJA que la última que ya se
+    # aplicó (pasa con las cachés del CDN), se ignora para no deshacer cambios
+    # recientes, como portadas nuevas. La próxima corrida lo vuelve a intentar.
+    fecha_feed = fecha_del_feed(xml_bytes)
+    ultima_aplicada = data.get("feedLastBuildDate", "")
+    if fecha_feed and ultima_aplicada and fecha_feed < ultima_aplicada:
+        print(f"Aviso: el feed recibido ({fecha_feed}) es más viejo que el último aplicado ({ultima_aplicada}); se ignora.")
+        agregados, actualizados, nuevos_shiurim = 0, 0, []
+    else:
+        agregados, actualizados, nuevos_shiurim = sincronizar(data, episodios)
+        if fecha_feed:
+            data["feedLastBuildDate"] = fecha_feed
 
     transcritas = 0
     if os.environ.get("SKIP_TRANSCRIPCION") != "1":
