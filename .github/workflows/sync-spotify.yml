@@ -2,7 +2,8 @@ name: Sincronizar episodios de Spotify
 
 on:
   schedule:
-    - cron: "0 */2 * * *" # cada 2 horas
+    - cron: "*/10 * * * *" # cada 10 minutos: chequeo rápido, solo trabaja si hay novedades
+    - cron: "17 6 * * *" # una vez por día: corrida completa (transcripciones atrasadas)
   workflow_dispatch: {} # botón "Run workflow" manual en la pestaña Actions
   # Si se sube a mano un data.json nuevo (por ejemplo exportado del Panel Admin), se
   # regenera data-lite.json (la versión liviana que cargan los visitantes) y las páginas.
@@ -28,7 +29,54 @@ jobs:
       - name: Descargar el repositorio
         uses: actions/checkout@v4
 
-      - name: Configurar Python
+      # Paso 0 (2 segundos): ¿hay un episodio nuevo o cambios en el feed? Si no, termina acá.
+      - name: Chequear novedades en el feed
+        id: chequeo
+        run: python3 scripts/hay_novedades.py
+
+      - name: Decidir si hay que trabajar
+        id: decidir
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ] || [ "${{ github.event.schedule }}" = "17 6 * * *" ] || [ "${{ steps.chequeo.outputs.novedad }}" = "true" ]; then
+            echo "hacer=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "hacer=false" >> "$GITHUB_OUTPUT"
+            echo "Nada nuevo en el feed: no hay nada que hacer."
+          fi
+
+      # FASE 1 (rápida): el episodio nuevo (o las portadas/títulos cambiados) se publica ya,
+      # sin esperar a la transcripción, que tarda varios minutos.
+      - name: Fase 1 - leer el feed y actualizar data.json (sin transcribir)
+        if: steps.decidir.outputs.hacer == 'true'
+        env:
+          SKIP_TRANSCRIPCION: "1"
+        run: python3 scripts/sync_spotify.py
+
+      - name: Fase 1 - generar páginas del sitio (shiurim, temas, sitemap y vista previa al compartir)
+        if: steps.decidir.outputs.hacer == 'true'
+        continue-on-error: true
+        run: |
+          pip install --quiet Pillow
+          python3 scripts/generar_paginas_shiur.py
+
+      - name: Fase 1 - publicar
+        if: steps.decidir.outputs.hacer == 'true'
+        run: scripts/publicar.sh "Sincronizar episodios de Spotify"
+
+      - name: ¿Quedan transcripciones pendientes?
+        id: pendientes
+        if: steps.decidir.outputs.hacer == 'true'
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          d = json.load(open("data.json", encoding="utf-8"))
+          n = sum(1 for s in d["shiurim"] if not (s.get("transcripcion") or "").strip())
+          print(f"cantidad={n}")
+          PY
+
+      # FASE 2 (lenta): transcribir con Whisper (gratis, local) y volver a publicar.
+      - name: Fase 2 - configurar Python
+        if: steps.decidir.outputs.hacer == 'true' && steps.pendientes.outputs.cantidad != '0'
         uses: actions/setup-python@v5
         with:
           # Versión fija: con "3.x" GitHub a veces usa una Python recién salida donde
@@ -37,35 +85,26 @@ jobs:
           cache: "pip"
           cache-dependency-path: scripts/requirements.txt
 
-      - name: Instalar dependencias (transcripción con Whisper local, gratis)
+      - name: Fase 2 - instalar dependencias (transcripción con Whisper local, gratis)
+        if: steps.decidir.outputs.hacer == 'true' && steps.pendientes.outputs.cantidad != '0'
         run: pip install -r scripts/requirements.txt
 
-      - name: Cachear el modelo Whisper entre corridas
+      - name: Fase 2 - cachear el modelo Whisper entre corridas
+        if: steps.decidir.outputs.hacer == 'true' && steps.pendientes.outputs.cantidad != '0'
         uses: actions/cache@v4
         with:
           path: ~/.cache/huggingface
           key: whisper-model-${{ env.WHISPER_MODEL }}
 
-      - name: Leer el feed RSS, transcribir episodios pendientes y actualizar data.json
+      - name: Fase 2 - transcribir episodios pendientes
+        if: steps.decidir.outputs.hacer == 'true' && steps.pendientes.outputs.cantidad != '0'
         run: python3 scripts/sync_spotify.py
 
-      # Una página s/<id>.html por shiur (indexable, con audio y transcripción),
-      # una t/<tema>.html por tema, sitemap.xml, robots.txt y una miniatura
-      # og/<id>-<hash>.jpg por shiur para la vista previa en WhatsApp. Si
-      # falla, igual se publica data.json.
-      - name: Generar páginas del sitio (shiurim, temas, sitemap y vista previa al compartir)
+      - name: Fase 2 - regenerar páginas con las transcripciones
+        if: steps.decidir.outputs.hacer == 'true' && steps.pendientes.outputs.cantidad != '0'
         continue-on-error: true
         run: python3 scripts/generar_paginas_shiur.py
 
-      - name: Publicar cambios (si hay episodios nuevos, actualizados o transcripciones)
-        run: |
-          mkdir -p transcripts s t og
-          git add data.json data-lite.json transcripts/ s/ t/ og/ sitemap.xml robots.txt
-          if git diff --cached --quiet; then
-            echo "Sin cambios: ya estaba todo al día."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "Sincronizar episodios de Spotify [skip ci]"
-          git push
+      - name: Fase 2 - publicar
+        if: steps.decidir.outputs.hacer == 'true' && steps.pendientes.outputs.cantidad != '0'
+        run: scripts/publicar.sh "Transcripciones de Spotify"
