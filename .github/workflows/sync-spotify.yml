@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "0 */2 * * *" # cada 2 horas
   workflow_dispatch: {} # botón "Run workflow" manual en la pestaña Actions
+  # Si se sube a mano un data.json nuevo (por ejemplo exportado del Panel Admin), se
+  # regenera data-lite.json (la versión liviana que cargan los visitantes) y las páginas.
+  push:
+    paths:
+      - data.json
 
 concurrency:
   group: sync-spotify
@@ -55,7 +60,7 @@ jobs:
       - name: Publicar cambios (si hay episodios nuevos, actualizados o transcripciones)
         run: |
           mkdir -p transcripts s t og
-          git add data.json transcripts/ s/ t/ og/ sitemap.xml robots.txt
+          git add data.json data-lite.json transcripts/ s/ t/ og/ sitemap.xml robots.txt
           if git diff --cached --quiet; then
             echo "Sin cambios: ya estaba todo al día."
             exit 0

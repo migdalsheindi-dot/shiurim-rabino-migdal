@@ -280,6 +280,7 @@ def persona_ld():
         "@id": SITE_URL + "#rabino",
         "name": "Rabino Yoel Migdal",
         "jobTitle": "Director de ISEJ",
+        "worksFor": {"@type": "Organization", "name": "ISEJ", "url": "https://www.isej.com/"},
         "url": SITE_URL,
         "sameAs": [URL_INSTAGRAM, URL_X],
     }
@@ -394,7 +395,7 @@ def renderizar_tema(tema, items, rss=""):
         '<nav class="migas"><a href="../">Inicio</a></nav>',
         f"<h1>{esc(tema)}</h1>",
         f'<p class="sub">{esc(descripcion)}</p>',
-        f'<p class="meta">{len(items)} {"shiur" if len(items) == 1 else "shiurim"}</p>',
+        f'<p class="meta">{len(items)} {"shiur" if len(items) == 1 else "shiurim"} · el más reciente, del {esc(formatear_fecha(items[0]["fecha"]))}</p>',
         f'<div class="acciones"><a class="boton" href="../?tema={esc(s_)}">Abrir en la web completa</a></div>',
         '<ul class="lista" style="margin-top:22px">',
     ]
@@ -464,6 +465,35 @@ def main():
         archivo = PAGES_DIR / f"{s['id']}.html"
         paginas_esperadas.add(archivo.name)
         escritas += escribir_si_cambio(archivo, contenido)
+
+    # 2b) Cada shiur recuerda su miniatura liviana en data.json (campo "miniatura"): la
+    # web la usa en las tarjetas en lugar de la portada original de ~2 MB.
+    cambio_data = False
+    for s_ in shiurim:
+        miniatura = nombre_miniatura(s_) if s_.get("portadaUrl") else None
+        ruta = f"og/{miniatura}" if miniatura and (THUMBS_DIR / miniatura).exists() else None
+        if ruta and s_.get("miniatura") != ruta:
+            s_["miniatura"] = ruta
+            cambio_data = True
+        elif not ruta and "miniatura" in s_:
+            del s_["miniatura"]
+            cambio_data = True
+    if cambio_data:
+        DATA_JSON.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    # 2c) data-lite.json: la misma lista que data.json pero SIN el texto completo de las
+    # transcripciones (suman ~5 MB). Es lo que descargan los visitantes; data.json
+    # completo queda para el Panel Admin y la exportación. El texto solo se conserva
+    # en los shiurim que no tienen archivo de tiempos (transcripts/<id>.json), que es
+    # de donde la web lo lee para mostrar la transcripción.
+    lite = {k: v for k, v in data.items() if k != "feedLastBuildDate"}
+    lite["shiurim"] = []
+    for s_ in data.get("shiurim", []):
+        copia = dict(s_)
+        if (REPO_ROOT / "transcripts" / f"{s_.get('id')}.json").exists():
+            copia.pop("transcripcion", None)
+        lite["shiurim"].append(copia)
+    escritas += escribir_si_cambio(REPO_ROOT / "data-lite.json", json.dumps(lite, ensure_ascii=False, separators=(",", ":")))
 
     # 3) Una página por tema
     temas_esperados = set()
