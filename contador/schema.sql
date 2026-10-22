@@ -57,3 +57,9 @@ CREATE TABLE IF NOT EXISTS eventos (
   total INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (dia, tipo, origen, contexto)
 );
+
+-- Estado interno del aviso automático a GitHub (última versión del feed vista)
+CREATE TABLE IF NOT EXISTS estado (
+  clave TEXT PRIMARY KEY,
+  valor TEXT NOT NULL
+);

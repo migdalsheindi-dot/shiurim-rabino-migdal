@@ -8,3 +8,10 @@ database_name = "shiurim-contador"
 # Se completa al crear la base (wrangler d1 create shiurim-contador). Es un
 # identificador, no una clave secreta.
 database_id = "5f75e7fe-540d-42c2-a248-3caccb311daf"
+
+# Revisa el feed de Spotify cada minuto y avisa a GitHub cuando hay novedades
+[triggers]
+crons = ["* * * * *"]
+
+[vars]
+GITHUB_REPO = "migdalsheindi-dot/shiurim-rabino-migdal"

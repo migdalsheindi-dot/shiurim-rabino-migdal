@@ -109,7 +109,62 @@ async function existeElShiur(id, env) {
   }
 }
 
+// ---- Aviso automático a GitHub cuando hay novedades en el feed de Spotify ----------
+// GitHub ejecuta sus tareas programadas "cuando puede" (a veces con horas de demora).
+// Este Worker mira el feed cada minuto y, apenas cambia (episodio nuevo, título o
+// portada editados en Spotify Creators), le pide a GitHub que sincronice YA.
+// Necesita el secret GITHUB_TOKEN (una clave de GitHub con permiso solo para lanzar
+// el workflow de este repositorio); sin ella no hace nada.
+const FEED_URL = "https://anchor.fm/s/2fd6a950/podcast/rss";
+const MIN_ENTRE_AVISOS_MS = 3 * 60 * 1000;
+
+async function revisarFeed(env) {
+  if (!env.GITHUB_TOKEN) return { ok: false, motivo: "falta GITHUB_TOKEN" };
+  const repo = env.GITHUB_REPO || "migdalsheindi-dot/shiurim-rabino-migdal";
+  const r = await fetch(`${FEED_URL}?cb=${Math.floor(Date.now() / 60000)}`, {
+    headers: { "Cache-Control": "no-cache", Pragma: "no-cache", "User-Agent": "Mozilla/5.0 (compatible; ShiurimAviso/1.0)" },
+    cf: { cacheTtl: 0, cacheEverything: false },
+  });
+  if (!r.ok) return { ok: false, motivo: `feed HTTP ${r.status}` };
+  const xml = await r.text();
+  const fecha = (xml.match(/<lastBuildDate>([^<]*)<\/lastBuildDate>/) || [])[1] || "";
+  const episodios = (xml.match(/<item>/g) || []).length;
+  if (!fecha) return { ok: false, motivo: "el feed no trae lastBuildDate" };
+  const huella = `${fecha}|${episodios}`;
+
+  const previo = await env.DB.prepare("SELECT valor FROM estado WHERE clave = 'feed'").first();
+  const aviso = await env.DB.prepare("SELECT valor FROM estado WHERE clave = 'ultimo_aviso'").first();
+  if (previo && previo.valor === huella) return { ok: true, motivo: "sin cambios" };
+  if (aviso && Date.now() - Number(aviso.valor) < MIN_ENTRE_AVISOS_MS) return { ok: true, motivo: "aviso reciente, se espera" };
+
+  const g = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/sync-spotify.yml/dispatches`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "shiurim-aviso",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ ref: "main" }),
+  });
+  if (g.status !== 204) return { ok: false, motivo: `GitHub respondió ${g.status}` };
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO estado (clave, valor) VALUES ('feed', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor").bind(huella),
+    env.DB.prepare("INSERT INTO estado (clave, valor) VALUES ('ultimo_aviso', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor").bind(String(Date.now())),
+  ]);
+  return { ok: true, motivo: `GitHub avisado (${huella})` };
+}
+
 export default {
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      revisarFeed(env)
+        .then((r) => { if (!r.ok || r.motivo !== "sin cambios") console.log("revisión del feed:", JSON.stringify(r)); })
+        .catch((e) => console.log("error revisando el feed:", String(e)))
+    );
+  },
+
   async fetch(request, env) {
     const url = new URL(request.url);
     const cors = cabecerasCors(request);
