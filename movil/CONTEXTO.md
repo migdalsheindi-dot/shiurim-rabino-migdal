@@ -36,7 +36,7 @@ Xcode 27.1 (simulador iOS 27.1: solo existe "iPhone Duo", id `0F76F88C-968E-45BD
 
 ## Pendiente (en este orden, de a un tema por vez, sin saturar)
 1. ~~Prueba del audio en segundo plano con un iPhone real~~ (hecho y funcionando, 2026-10-26).
-2. Ícono y pantalla de inicio propios (hoy son los genéricos de Capacitor).
+2. ~~Ícono y pantalla de inicio propios~~ (hecho 2026-10-26: el logo de la web, libro con "YM" sobre fondo #211B13). Se regeneran con `npm run iconos` (`generar-iconos.mjs` crea `assets/` desde `../icons/logo-ym.svg` y `@capacitor/assets` hace todos los tamaños; el paso `despues` arregla el fondo del ícono adaptativo de Android). En Android 12+ el fondo oscuro de arranque sale de `windowSplashScreenBackground` en `styles.xml`.
 3. Funciones nativas para no ser rechazados por Apple (guía 4.2, "web envuelta"): notificaciones push de shiurim nuevos (conectadas a la suscripción), descargas para escuchar sin internet.
 4. Botón "Donar" (Mercado Pago): tiene reglas específicas de Apple para donaciones; analizar y decidir (puede ir por Safari o ocultarse en iOS).
 5. Punto 2 del plan: cuentas de desarrollador a nombre del Rabino (Apple Developer ~US$99/año, Google Play ~US$25 único; requisitos fiscales, verificación de identidad, y las pruebas cerradas obligatorias de Google para cuentas personales nuevas) y documentos legales (política de privacidad, términos, manejo de datos de suscripción y estadísticas). **Verificar siempre contra la documentación oficial vigente**, las políticas cambian.

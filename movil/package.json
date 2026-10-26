@@ -5,12 +5,16 @@
   "description": "App móvil (iOS y Android) del Rabino Yoel Migdal: envuelve la misma web con Capacitor",
   "scripts": {
     "web": "node preparar-www.mjs",
-    "sync": "npm run web && cap sync"
+    "sync": "npm run web && cap sync",
+    "iconos": "node generar-iconos.mjs && capacitor-assets generate --ios --android --iconBackgroundColor '#211B13' --iconBackgroundColorDark '#211B13' --splashBackgroundColor '#211B13' --splashBackgroundColorDark '#211B13' && node generar-iconos.mjs despues"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",
     "@capacitor/cli": "^8.5.3",
     "@capacitor/core": "^8.5.3",
     "@capacitor/ios": "^8.5.3"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5"
   }
 }
