@@ -2122,13 +2122,13 @@
                     <span className="text-[10px] text-stone-400 w-8 shrink-0">{formatTiempo(isActive ? duracion : 0)}</span>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[11px] text-stone-500 mr-1">Velocidad:</span>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <span className="shrink-0 max-[359px]:hidden text-[10px] sm:text-[11px] text-stone-500 mr-0.5">Velocidad:</span>
                   {SPEEDS.map((s) => (
                     <button
                       key={s}
                       onClick={() => onSpeedChange(s)}
-                      className={`text-xs px-2.5 py-1.5 rounded border transition-colors ${
+                      className={`flex-1 sm:flex-none min-w-0 text-center text-[11px] sm:text-xs px-0 sm:px-2.5 py-1.5 rounded border transition-colors ${
                         speed === s ? "bg-stone-900 text-white border-stone-900" : "border-stone-300 text-stone-600 hover:border-stone-500"
                       }`}
                     >
