@@ -11,7 +11,7 @@ Quien habla es hispanohablante y NO es desarrollador: explicar paso a paso, en e
 
 ## Cómo está armado
 - Repo: `/Users/sheindimigdal/Desktop/app yoel migdal` (GitHub Pages con dominio propio). Rama `main`.
-- La web se edita en `fuente/index.html` y se compila con `cd tools && npm run build` (genera `index.html`, `app.js`, `styles.css` en la raíz; no editar esos a mano).
+- La web se edita en `fuente/index.html` y se compila con `cd tools && node build.mjs` (genera `index.html`, `app.js`, `styles.css` en la raíz; no editar esos a mano).
 - App: `movil/` (appId `com.yoelmigdal.shiurim`, nombre "Rabino Yoel Migdal"). Flujo: compilar la web → `cd movil && npm run sync` (copia a `www/` con `preparar-www.mjs` y hace `cap sync`).
 - En el código de la web, `ES_APP` y `rutaSitio()` detectan que corre dentro de la app y leen datos (data-lite.json, transcripts/, miniaturas, enlaces de compartir) de https://yoelmigdal.com; dentro de la app se desactivan el service worker y el botón "Instalar app".
 - Los datos los genera solo un workflow de GitHub (`.github/workflows/sync-spotify.yml`) desde el feed de Spotify; un Worker de Cloudflare (`contador/`) hace estadísticas y suscripciones (D1) y avisa a GitHub cuando hay episodios nuevos.
@@ -37,7 +37,9 @@ Xcode 27.1 (simulador iOS 27.1: solo existe "iPhone Duo", id `0F76F88C-968E-45BD
 ## Pendiente (en este orden, de a un tema por vez, sin saturar)
 1. ~~Prueba del audio en segundo plano con un iPhone real~~ (hecho y funcionando, 2026-10-26).
 2. ~~Ícono y pantalla de inicio propios~~ (hecho 2026-10-26: el logo de la web, libro con "YM" sobre fondo #211B13). Se regeneran con `npm run iconos` (`generar-iconos.mjs` crea `assets/` desde `../icons/logo-ym.svg` y `@capacitor/assets` hace todos los tamaños; el paso `despues` arregla el fondo del ícono adaptativo de Android). En Android 12+ el fondo oscuro de arranque sale de `windowSplashScreenBackground` en `styles.xml`.
-3. Funciones nativas para no ser rechazados por Apple (guía 4.2, "web envuelta"): notificaciones push de shiurim nuevos (conectadas a la suscripción), descargas para escuchar sin internet.
+3. Funciones nativas para no ser rechazados por Apple (guía 4.2, "web envuelta"):
+   - ~~Descargas para escuchar sin internet~~ (hecho 2026-10-26, en `fuente/index.html`, todo detrás de `ES_APP`: la web no cambia, verificado comparando estilos y texto contra la versión anterior). Usa `@capacitor/filesystem` y `@capacitor/file-transfer` llamados con `window.Capacitor.nativePromise` (la web no empaqueta el JS de Capacitor). Archivos en `LIBRARY_NO_CLOUD/descargas/<id>.<ext>` (sin copia a iCloud); en localStorage `ry_descargas` guarda solo el nombre del archivo (la ruta del contenedor de iOS cambia al actualizar). Botón en la ficha del shiur, sección "Descargas" (menú e inicio) y marca en la portada. Probado: en iPhone real (descarga y escucha en modo avión, OK); descarga con avance y reproducción en el simulador de iOS; en el emulador de Android descarga, reproducción y apertura de la app SIN internet, y borrar.
+   - Pendiente: notificaciones push de shiurim nuevos (conectadas a la suscripción); requieren la cuenta paga de Apple del Rabino para probarse en iPhone.
 4. Botón "Donar" (Mercado Pago): tiene reglas específicas de Apple para donaciones; analizar y decidir (puede ir por Safari o ocultarse en iOS).
 5. Punto 2 del plan: cuentas de desarrollador a nombre del Rabino (Apple Developer ~US$99/año, Google Play ~US$25 único; requisitos fiscales, verificación de identidad, y las pruebas cerradas obligatorias de Google para cuentas personales nuevas) y documentos legales (política de privacidad, términos, manejo de datos de suscripción y estadísticas). **Verificar siempre contra la documentación oficial vigente**, las políticas cambian.
 6. Punto 3 del plan: seguridad (HTTPS, tokens, datos de suscriptores, CORS del Worker: agregar `capacitor://localhost` y `https://localhost` solo cuando la app los necesite).

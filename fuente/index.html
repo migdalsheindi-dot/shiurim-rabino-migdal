@@ -936,7 +936,7 @@
 
               <p className="text-[11px] uppercase tracking-wide text-stone-400 mb-2">Categorías</p>
               <div className="flex flex-col gap-1.5">
-                {["Todas", "Populares", "Guardados", ...CATEGORIAS].map((cat) => {
+                {["Todas", "Populares", "Guardados", ...(ES_APP ? ["Descargas"] : []), ...CATEGORIAS].map((cat) => {
                   const activo = categoriaActiva === cat;
                   const colorCategoria = activo && CATEGORIA_COLOR[cat] ? colorDeCategoria(cat) : null;
                   return (
@@ -950,7 +950,7 @@
                       }`}
                       style={colorCategoria ? { backgroundColor: colorCategoria.texto, borderColor: colorCategoria.texto } : undefined}
                     >
-                      {cat === "Populares" ? "Más escuchados" : cat === "Guardados" ? "♡ Guardados" : cat}
+                      {cat === "Populares" ? "Más escuchados" : cat === "Guardados" ? "♡ Guardados" : cat === "Descargas" ? "↓ Descargas" : cat}
                     </button>
                   );
                 })}
@@ -1034,6 +1034,26 @@
     function guardarJSON(clave, valor) {
       try { localStorage.setItem(clave, JSON.stringify(valor)); } catch (e) {}
     }
+
+    // ---------------------------------------------------------------------
+    // Descargas para escuchar sin internet: SOLO dentro de la app del celular
+    // (en la web no aparece nada). Usa los complementos nativos Filesystem y
+    // FileTransfer de Capacitor. Los audios van a una carpeta que no se copia
+    // a iCloud (Apple lo pide para lo que se puede volver a bajar).
+    // ---------------------------------------------------------------------
+    const CLAVE_DESCARGAS = "ry_descargas";
+    const CARPETA_DESCARGAS = "descargas";
+    const DIRECTORIO_DESCARGAS = "LIBRARY_NO_CLOUD";
+    const nativo = (plugin, metodo, opciones = {}) => window.Capacitor.nativePromise(plugin, metodo, opciones);
+    // Misma terminación que el audio original (.m4a, .mp3…): el teléfono la usa para saber cómo reproducirlo.
+    const archivoDeDescarga = (id, url) => {
+      const ext = (/\.(m4a|mp3|aac|mp4|ogg|opus|wav)(?:[?#]|$)/i.exec(String(url || "")) || [, "mp3"])[1].toLowerCase();
+      return `${slugDe(String(id)) || "shiur"}.${ext}`;
+    };
+    function formatMB(bytes) {
+      const mb = (Number(bytes) || 0) / (1024 * 1024);
+      return mb >= 1000 ? `${(mb / 1024).toFixed(1).replace(".", ",")} GB` : `${Math.max(1, Math.round(mb))} MB`;
+    }
     // ---------------------------------------------------------------------
     // SEO en la web: enlaces por tema (?tema=tania), por búsqueda (?q=...) y
     // título / descripción / enlace canónico que cambian según lo que se mira.
@@ -1084,7 +1104,7 @@
       try { return (new URLSearchParams(window.location.search).get("q") || "").slice(0, 80); } catch (e) { return ""; }
     }
 
-    const UsuarioContext = React.createContext({ favoritos: [], toggleFavorito: () => {}, progresos: {}, escuchados: new Set(), toggleEscuchado: () => {} });
+    const UsuarioContext = React.createContext({ favoritos: [], toggleFavorito: () => {}, progresos: {}, escuchados: new Set(), toggleEscuchado: () => {}, descargas: {}, bajando: {}, descargar: () => {}, borrarDescarga: () => {} });
     const useUsuario = () => React.useContext(UsuarioContext);
     // Avance de un shiur empezado: { porcentaje, quedanMin } o null si no lo empezó / ya lo terminó.
     function avanceDe(progresos, shiur) {
@@ -1244,6 +1264,70 @@
       );
     }
 
+    // Ficha del shiur (solo en la app): descargar / avance de la descarga / descargado + borrar.
+    function BotonDescargar({ shiur }) {
+      const { descargas, bajando, descargar, borrarDescarga } = useUsuario();
+      if (!ES_APP) return null;
+      const clave = String(shiur.id);
+      const avance = bajando[clave];
+      const descargado = descargas[clave];
+      if (avance !== undefined) {
+        return (
+          <div className="mb-4 rounded-lg border border-stone-200 px-4 py-3" role="status">
+            <div className="flex items-center justify-between text-sm text-stone-700 mb-2">
+              <span className="inline-flex items-center gap-2"><IconDownload size={15} />Descargando…</span>
+              {avance > 0 && <span className="text-stone-500">{avance}%</span>}
+            </div>
+            <div className="h-1.5 rounded-full bg-stone-200 overflow-hidden">
+              <div className={`h-full bg-gold-500 rounded-full transition-all duration-300 ${avance > 0 ? "" : "animate-pulse w-1/4"}`} style={avance > 0 ? { width: `${avance}%` } : undefined} />
+            </div>
+          </div>
+        );
+      }
+      if (descargado) {
+        return (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-salvia-500/30 bg-salvia-100 px-4 py-3">
+            <span className="inline-flex items-center gap-2 text-sm text-salvia-600 font-medium">
+              <IconCheck size={14} strokeWidth={3} />
+              Descargado{descargado.bytes ? ` · ${formatMB(descargado.bytes)}` : ""}
+            </span>
+            <button
+              onClick={() => { if (window.confirm("¿Borrar la descarga de este shiur? Lo vas a poder volver a descargar cuando quieras.")) borrarDescarga(shiur.id); }}
+              className="inline-flex items-center gap-1.5 text-xs text-stone-600 border border-stone-300 bg-white rounded-full px-3 py-1.5 active:scale-95 hover:text-red-700 hover:border-red-300 transition-colors duration-200"
+            >
+              <IconTrash size={13} />
+              Borrar
+            </button>
+          </div>
+        );
+      }
+      return (
+        <button
+          onClick={() => descargar(shiur)}
+          className="mb-4 w-full inline-flex items-center justify-center gap-2 text-sm font-medium px-4 py-3 rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-50 active:scale-[0.98] transition-all duration-200"
+        >
+          <IconDownload size={16} />
+          Descargar para escuchar sin internet
+        </button>
+      );
+    }
+
+    // Marca chica en la portada de un shiur descargado (solo en la app).
+    function InsigniaDescargado({ shiur }) {
+      const { descargas } = useUsuario();
+      if (!ES_APP || !descargas[String(shiur.id)]) return null;
+      return (
+        <span
+          className="absolute top-2 left-2 w-6 h-6 rounded-full bg-blue-900/85 text-white flex items-center justify-center shadow-md ring-2 ring-white/80"
+          title="Descargado"
+          role="img"
+          aria-label="Descargado"
+        >
+          <IconDownload size={12} strokeWidth={2.5} />
+        </span>
+      );
+    }
+
     // ---------------------------------------------------------------------
     // Tarjeta de Shiur (grilla de resultados y de cada tema)
     // ---------------------------------------------------------------------
@@ -1270,6 +1354,7 @@
             )}
             <BarraAvance shiur={shiur} />
             <InsigniaEscuchado shiur={shiur} />
+            <InsigniaDescargado shiur={shiur} />
           </div>
           <div className="p-3.5 sm:p-5 flex flex-col justify-between flex-1">
             <div>
@@ -1327,6 +1412,7 @@
             )}
             <BarraAvance shiur={shiur} />
             <InsigniaEscuchado shiur={shiur} />
+            <InsigniaDescargado shiur={shiur} />
           </div>
           <div className="min-w-0 flex-1 flex flex-col">
             <EtiquetaCategoria categoria={shiur.categoria} className="self-start mb-1.5" />
@@ -1371,6 +1457,7 @@
             )}
             <BarraAvance shiur={shiur} />
             <InsigniaEscuchado shiur={shiur} />
+            <InsigniaDescargado shiur={shiur} />
           </div>
           <div className="min-w-0 flex-1 flex flex-col p-3.5 sm:p-5">
             <span className="self-start text-[11px] font-medium tracking-wider uppercase text-gold-200 border border-gold-500/50 rounded-full px-2.5 py-0.5 mb-2">{shiur.categoria}</span>
@@ -1437,7 +1524,7 @@
     // "Explorar por tema": píldoras con ícono, todas las categorías a la vista
     // con la cantidad real de shiurim. En celular se deslizan en dos filas.
     // ---------------------------------------------------------------------
-    function TemasDelInicio({ shiurim, onElegir, cantidadGuardados = 0 }) {
+    function TemasDelInicio({ shiurim, onElegir, cantidadGuardados = 0, cantidadDescargas = 0 }) {
       const cantidades = useMemo(() => {
         const m = {};
         shiurim.forEach((s) => { m[s.categoria] = (m[s.categoria] || 0) + 1; });
@@ -1460,6 +1547,20 @@
                   <span className="text-xs text-stone-500">{cantidadGuardados > 0 ? `${cantidadGuardados} ${cantidadGuardados === 1 ? "shiur" : "shiurim"}` : "Tu lista"}</span>
                 </span>
               </button>
+              {ES_APP && (
+                <button
+                  onClick={() => onElegir("Descargas")}
+                  className="group flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 min-h-[48px] rounded-full glass text-left transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-card active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+                >
+                  <span className="shrink-0 w-9 h-9 rounded-full bg-blue-50 group-hover:bg-white flex items-center justify-center transition-colors duration-300 text-blue-900">
+                    <IconDownload size={18} />
+                  </span>
+                  <span className="flex flex-col leading-tight">
+                    <span className="font-semibold text-[15px] text-blue-900 whitespace-nowrap">Descargas</span>
+                    <span className="text-xs text-stone-500">{cantidadDescargas > 0 ? `${cantidadDescargas} ${cantidadDescargas === 1 ? "shiur" : "shiurim"}` : "Sin internet"}</span>
+                  </span>
+                </button>
+              )}
               {CATEGORIAS.filter((cat) => cantidades[cat]).map((cat) => {
                 const n = cantidades[cat];
                 const color = colorDeCategoria(cat).texto;
@@ -2036,6 +2137,8 @@
                   ))}
                 </div>
               </div>
+
+              <BotonDescargar shiur={shiur} />
 
               {/* Transcripción sincronizada con el audio del shiur */}
               <div className="mb-6">
@@ -3655,6 +3758,63 @@
         if (visible) marcarEscuchado(shiur.id, false);
         else { marcarEscuchado(shiur.id, true); quitarProgreso(shiur.id); }
       };
+
+      // Descargas para escuchar sin internet (solo en la app). Se guarda solo el nombre del
+      // archivo: la ruta completa de la carpeta puede cambiar al actualizar la app.
+      const [descargas, setDescargas] = useState(() => (ES_APP ? leerJSON(CLAVE_DESCARGAS, {}) : {}));
+      const [bajando, setBajando] = useState({}); // id -> porcentaje mientras se descarga
+      const [carpetaDescargas, setCarpetaDescargas] = useState(null); // dirección de la carpeta en el teléfono
+      useEffect(() => {
+        if (!ES_APP) return;
+        nativo("Filesystem", "getUri", { path: CARPETA_DESCARGAS, directory: DIRECTORIO_DESCARGAS })
+          .then((r) => setCarpetaDescargas(String(r.uri).replace(/\/+$/, "")))
+          .catch((e) => console.error("Sin carpeta de descargas:", e));
+      }, []);
+      const actualizarDescargas = (cambio) =>
+        setDescargas((prev) => {
+          const nuevo = cambio({ ...prev });
+          guardarJSON(CLAVE_DESCARGAS, nuevo);
+          return nuevo;
+        });
+      const descargar = async (shiur) => {
+        const clave = String(shiur.id);
+        if (!ES_APP || bajando[clave] !== undefined || descargas[clave]) return;
+        setBajando((b) => ({ ...b, [clave]: 0 }));
+        let escucha = null;
+        try {
+          await nativo("Filesystem", "mkdir", { path: CARPETA_DESCARGAS, directory: DIRECTORIO_DESCARGAS, recursive: true }).catch(() => {});
+          const archivo = archivoDeDescarga(clave, shiur.audioUrl);
+          const { uri } = await nativo("Filesystem", "getUri", { path: `${CARPETA_DESCARGAS}/${archivo}`, directory: DIRECTORIO_DESCARGAS });
+          escucha = window.Capacitor.addListener("FileTransfer", "progress", (p) => {
+            if (!p || p.url !== shiur.audioUrl || !p.lengthComputable || !p.contentLength) return;
+            const pct = Math.min(99, Math.floor((p.bytes / p.contentLength) * 100));
+            setBajando((b) => (b[clave] !== undefined && b[clave] !== pct ? { ...b, [clave]: pct } : b));
+          });
+          await nativo("FileTransfer", "downloadFile", { url: shiur.audioUrl, path: uri, progress: true });
+          const info = await nativo("Filesystem", "stat", { path: uri }).catch(() => ({}));
+          actualizarDescargas((d) => ({ ...d, [clave]: { archivo, bytes: Number(info.size) || 0, fecha: Date.now() } }));
+        } catch (e) {
+          console.error("No se pudo descargar:", e);
+          window.alert("No se pudo descargar el shiur. Revisá tu conexión a internet y probá de nuevo.");
+        } finally {
+          if (escucha) escucha.remove();
+          setBajando((b) => { const n = { ...b }; delete n[clave]; return n; });
+        }
+      };
+      const borrarDescarga = async (id) => {
+        const clave = String(id);
+        const d = descargas[clave];
+        if (!d) return;
+        await nativo("Filesystem", "deleteFile", { path: `${CARPETA_DESCARGAS}/${d.archivo}`, directory: DIRECTORIO_DESCARGAS }).catch(() => {});
+        actualizarDescargas((todas) => { delete todas[clave]; return todas; });
+      };
+      // De dónde se reproduce un shiur: del teléfono si está descargado, si no de internet.
+      const fuenteDeAudio = (shiur) => {
+        const d = shiur && descargas[String(shiur.id)];
+        return d && carpetaDescargas ? window.Capacitor.convertFileSrc(`${carpetaDescargas}/${d.archivo}`) : shiur && shiur.audioUrl;
+      };
+      // Se decide al elegir el shiur: si termina de descargarse mientras suena, no se corta.
+      const srcAudio = useMemo(() => (current ? fuenteDeAudio(current) : undefined), [current && current.id, carpetaDescargas]);
       const ultimoGuardadoRef = useRef(0);
       const pendienteRef = useRef(0); // minuto al que hay que saltar cuando cargue el audio
 
@@ -3931,6 +4091,14 @@
             .filter((x) => x && coincideTexto(x));
         }
 
+        if (categoriaActiva === "Descargas") {
+          // La última descarga, primero
+          return Object.keys(descargas)
+            .sort((a, b) => (descargas[b].fecha || 0) - (descargas[a].fecha || 0))
+            .map((id) => shiurim.find((x) => String(x.id) === id))
+            .filter((x) => x && coincideTexto(x));
+        }
+
         if (categoriaActiva === "Populares") {
           const base = shiurim.filter(coincideTexto);
           return [...base].sort((a, b) => (Number(b.reproducciones) || 0) - (Number(a.reproducciones) || 0)).slice(0, POPULARES_LIMITE);
@@ -3943,7 +4111,7 @@
         if (categoriaActiva === "Tania") return [...base].sort(compararTania);
         const ordenados = [...base].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
         return categoriaActiva === "Todas" && !query.trim() ? ordenados.slice(0, RECIENTES_LIMITE) : ordenados;
-      }, [shiurim, query, categoriaActiva, favoritos]);
+      }, [shiurim, query, categoriaActiva, favoritos, descargas]);
 
       // Pantalla de inicio (categoría "Todas" y sin buscar): primero los
       // shiurim más nuevos (carrusel) y después los 4 shiurim destacados, elegidos a mano.
@@ -4140,7 +4308,7 @@
       };
 
       return (
-        <UsuarioContext.Provider value={{ favoritos, toggleFavorito, progresos, escuchados }}>
+        <UsuarioContext.Provider value={{ favoritos, toggleFavorito, progresos, escuchados, descargas, bajando, descargar, borrarDescarga }}>
         <div className="min-h-screen bg-stone-50 flex flex-col">
           {/* Encabezado */}
           <header className="sticky top-0 z-40 border-b border-stone-200/70 bg-white/90 backdrop-blur-md safe-top">
@@ -4243,6 +4411,7 @@
                   <TemasDelInicio
                     shiurim={shiurim}
                     cantidadGuardados={favoritos.filter((id) => shiurim.some((x) => String(x.id) === id)).length}
+                    cantidadDescargas={Object.keys(descargas).filter((id) => shiurim.some((x) => String(x.id) === id)).length}
                     onElegir={(cat) => { setCategoriaActiva(cat); window.scrollTo({ top: 0 }); }}
                   />
                 </Reveal>
@@ -4275,6 +4444,7 @@
                   </h2>
                   <span className="text-[13px] text-stone-500 shrink-0">
                     {filtrados.length} {filtrados.length === 1 ? "shiur" : "shiurim"}
+                    {categoriaActiva === "Descargas" && filtrados.length > 0 && ` · ${formatMB(Object.values(descargas).reduce((t, d) => t + (d.bytes || 0), 0))}`}
                   </span>
                 </div>
                 {filtrados.length === 0 ? (
@@ -4283,6 +4453,12 @@
                       <div className="mx-auto w-14 h-14 rounded-full bg-gold-100 text-gold-600 flex items-center justify-center mb-4"><IconHeart size={26} /></div>
                       <p className="font-serif text-xl text-blue-900 mb-2">Todavía no guardaste nada</p>
                       <p className="text-stone-600 text-sm leading-relaxed">Tocá el corazón de cualquier shiur para guardarlo acá y encontrarlo rápido cuando quieras.</p>
+                    </div>
+                  ) : categoriaActiva === "Descargas" && !query.trim() ? (
+                    <div className="py-16 text-center max-w-sm mx-auto">
+                      <div className="mx-auto w-14 h-14 rounded-full bg-blue-50 text-blue-900 flex items-center justify-center mb-4"><IconDownload size={26} /></div>
+                      <p className="font-serif text-xl text-blue-900 mb-2">Todavía no descargaste nada</p>
+                      <p className="text-stone-600 text-sm leading-relaxed">Abrí cualquier shiur y tocá "Descargar para escuchar sin internet". Va a quedar acá para escucharlo aunque no tengas conexión.</p>
                     </div>
                   ) : (
                     <p className="text-stone-600 text-sm py-16 text-center">No se encontraron shiurim con esos criterios.</p>
@@ -4309,7 +4485,15 @@
           {/* Elemento de audio único, compartido por toda la app */}
           <audio
             ref={audioRef}
-            src={current ? current.audioUrl : undefined}
+            src={srcAudio}
+            onError={() => {
+              // Descargado pero el archivo ya no está en el teléfono: se olvida la descarga y se escucha de internet
+              const audio = audioRef.current;
+              if (!ES_APP || !current || !audio || !srcAudio || srcAudio === current.audioUrl) return;
+              borrarDescarga(current.id);
+              audio.src = current.audioUrl;
+              if (isPlaying) audio.play().catch(() => {});
+            }}
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
             onEnded={() => {
