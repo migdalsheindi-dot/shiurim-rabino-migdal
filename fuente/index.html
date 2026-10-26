@@ -1484,6 +1484,7 @@
     // cargos como etiquetas de vidrio y redes como botones flotantes.
     // ---------------------------------------------------------------------
     function SobreElRabino() {
+      const [abierto, setAbierto] = useState(false);
       const boton = "group/red relative inline-flex items-center justify-center w-12 h-12 rounded-full glass-dark text-white hover:-translate-y-1 hover:bg-gold-500 hover:text-[#14203A] hover:border-gold-400 hover:shadow-[0_14px_30px_-8px_rgba(199,154,75,0.7)] active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-400";
       return (
         <section aria-labelledby="inicio-rabino" className="relative overflow-hidden mt-6 sm:mt-10 rounded-t-[2.25rem] sm:rounded-t-[3rem] text-white bg-gradient-to-br from-[#0B1428] via-[#14224A] to-[#223664]">
@@ -1491,19 +1492,33 @@
           <div className="pointer-events-none absolute -bottom-40 right-0 w-[560px] h-[560px] rounded-full opacity-30" style={{ background: "radial-gradient(closest-side, rgba(80,110,190,.55), transparent)" }} />
           <div className="relative max-w-6xl mx-auto px-5 sm:px-6 py-14 sm:py-20">
             <Reveal>
-              <p className="text-gold-200 text-xs sm:text-[13px] font-semibold tracking-[0.22em] uppercase mb-3">Sobre el Rabino</p>
               <h2 id="inicio-rabino" className="font-serif font-bold text-[34px] sm:text-5xl leading-[1.08] mb-2">Rabino Yoel Migdal</h2>
-              <div className="flex items-center gap-3 mt-8">
-                <a href={INSTAGRAM_DEL_RABINO} target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram" className={boton}><IconInstagram size={20} /></a>
-                <a href={X_DEL_RABINO} target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" title="X" className={boton}><IconX_Red size={18} /></a>
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-4 mt-8">
+                <div className="flex items-center gap-3">
+                  <a href={INSTAGRAM_DEL_RABINO} target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram" className={boton}><IconInstagram size={20} /></a>
+                  <a href={X_DEL_RABINO} target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" title="X" className={boton}><IconX_Red size={18} /></a>
+                </div>
+                <button
+                  onClick={() => setAbierto((v) => !v)}
+                  aria-expanded={abierto}
+                  aria-controls="mas-sobre-rabino"
+                  className="inline-flex items-center gap-1.5 min-h-[44px] text-gold-200 hover:text-white text-xs sm:text-[13px] font-semibold tracking-[0.22em] uppercase transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 rounded"
+                >
+                  Más sobre el Rabino
+                  <IconChevron dir="right" size={15} className={`transition-transform duration-300 ${abierto ? "rotate-90" : ""}`} />
+                </button>
               </div>
-              <div className="mt-10 pt-8 border-t border-white/15">
-                <p className="font-serif text-white text-xl sm:text-2xl leading-[1.5] max-w-2xl mb-5">
-                  Bienvenido a nuestro espacio con shiurim y clases de Torá del Rabino Yoel Migdal. Nos alegra que te sumes a esta comunidad virtual de personas en búsqueda de judaismo, y deseamos que estas clases te acompañen y te inspiren en tu camino.
-              </p>
-                <p className="text-white/80 text-base sm:text-[17px] leading-[1.85] max-w-2xl">
-                  El Rabino Migdal es conocido por su enseñanza de la Torá y el pensamiento jasídico, y por su capacidad de transmitir ideas profundas de manera clara y accesible. Dicta clases y shiurim en distintas comunidades y se desempeña como director del Instituto Superior de Estudios Judaicos - ISEJ, perteneciente a Jabad Lubavitch Argentina.
-              </p>
+              <div id="mas-sobre-rabino" className={`grid transition-all duration-500 ease-out ${abierto ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`} aria-hidden={!abierto}>
+                <div className="overflow-hidden">
+                  <div className="mt-8 pt-8 border-t border-white/15">
+                    <p className="font-serif text-white text-xl sm:text-2xl leading-[1.5] max-w-2xl mb-5">
+                      Bienvenido a nuestro espacio con shiurim y clases de Torá del Rabino Yoel Migdal. Nos alegra que te sumes a esta comunidad virtual de personas en búsqueda de judaismo, y deseamos que estas clases te acompañen y te inspiren en tu camino.
+                    </p>
+                    <p className="text-white/80 text-base sm:text-[17px] leading-[1.85] max-w-2xl">
+                      El Rabino Migdal es conocido por su enseñanza de la Torá y el pensamiento jasídico, y por su capacidad de transmitir ideas profundas de manera clara y accesible. Dicta clases y shiurim en distintas comunidades y se desempeña como director del Instituto Superior de Estudios Judaicos - ISEJ, perteneciente a Jabad Lubavitch Argentina.
+                    </p>
+                  </div>
+                </div>
               </div>
             </Reveal>
           </div>
@@ -1655,7 +1670,7 @@
         if (shiur) onAbrirShiur(shiur); else onVerTema();
       };
       return (
-        <div className="bg-white border-b border-stone-200/70 text-stone-600 text-[12px] sm:text-[13px] leading-snug" aria-label="Fecha y Parashá de la semana">
+        <div className="border-t border-stone-200/70 text-stone-600 text-[12px] sm:text-[13px] leading-snug" aria-label="Fecha y Parashá de la semana">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-1.5 sm:py-2 flex flex-wrap items-center gap-x-5 gap-y-0.5">
             <p className="min-w-0">
               <span className="font-medium text-stone-700">{cal.gregoriano}</span>
@@ -4171,14 +4186,14 @@
                 </div>
               </div>
             </div>
+            {/* Fecha hebrea / gregoriana y Parashá: quedan fijas arriba junto con el encabezado */}
+            <BarraFechaParasha
+              shiurim={shiurim}
+              config={config}
+              onAbrirShiur={(s) => setSelectedShiur(s)}
+              onVerTema={() => { setCategoriaActiva("Parashá de la semana"); window.scrollTo({ top: 0 }); }}
+            />
           </header>
-
-          <BarraFechaParasha
-            shiurim={shiurim}
-            config={config}
-            onAbrirShiur={(s) => setSelectedShiur(s)}
-            onVerTema={() => { setCategoriaActiva("Parashá de la semana"); window.scrollTo({ top: 0 }); }}
-          />
 
           <MenuLateral
             abierto={menuAbierto}
