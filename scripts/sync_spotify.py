@@ -220,6 +220,56 @@ def sincronizar(data, episodios):
     return agregados, actualizados, nuevos_shiurim
 
 
+# Un episodio de Spotify que desaparece del feed (porque en Creators se borró o se
+# reemplazó por otro) se retira de la web, pero solo con varias garantías:
+#   - solo los que usan el audio de Spotify/Anchor del feed (los cargados a mano desde el
+#     Panel Admin con otro enlace NO se tocan nunca),
+#   - solo si el feed vino completo (no si llegó cortado o vacío),
+#   - y solo si lleva ausente 24 horas seguidas (por si fue un error pasajero).
+HORAS_AUSENTE_PARA_RETIRAR = 24
+PROPORCION_MINIMA_FEED = 0.9
+
+
+def retirar_ausentes(data, episodios):
+    from datetime import datetime, timedelta, timezone
+
+    ahora = datetime.now(timezone.utc)
+    audios_feed = {e["audioUrl"] for e in episodios}
+    patron = re.compile(r"^https://anchor\.fm/s/[^/]+/podcast/play/")
+    ejemplo = next((e["audioUrl"] for e in episodios if patron.match(e["audioUrl"])), "")
+    if not ejemplo:
+        return []
+    prefijo_serie = "/".join(ejemplo.split("/")[:5]) + "/podcast/play/"  # https://anchor.fm/s/<serie>/podcast/play/
+    de_spotify = [s for s in data["shiurim"] if s.get("audioUrl", "").startswith(prefijo_serie)]
+    if len(episodios) < PROPORCION_MINIMA_FEED * len(de_spotify):
+        print("Aviso: el feed trae muchos menos episodios que la web; no se retira nada.")
+        return []
+
+    retirados = []
+    for s in list(de_spotify):
+        if s["audioUrl"] in audios_feed:
+            s.pop("ausenteDesde", None)
+            continue
+        desde = s.get("ausenteDesde")
+        if not desde:
+            s["ausenteDesde"] = ahora.strftime("%Y-%m-%dT%H:%M:%SZ")
+            print(f"Aviso: '{s['titulo'][:50]}' ya no está en el feed; se retira si sigue ausente {HORAS_AUSENTE_PARA_RETIRAR} h.")
+            continue
+        try:
+            desde_dt = datetime.strptime(desde, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        except ValueError:
+            s["ausenteDesde"] = ahora.strftime("%Y-%m-%dT%H:%M:%SZ")
+            continue
+        if ahora - desde_dt >= timedelta(hours=HORAS_AUSENTE_PARA_RETIRAR):
+            data["shiurim"].remove(s)
+            archivo = TRANSCRIPTS_DIR / f"{s['id']}.json"
+            if archivo.exists():
+                archivo.unlink()
+            retirados.append(s)
+            print(f"Retirado de la web (ya no está en Spotify): {s['titulo'][:60]}")
+    return retirados
+
+
 # Tope de seguridad: cuántos episodios se transcriben como máximo en una
 # sola corrida (protege contra corridas larguísimas). Se priorizan siempre
 # los episodios nuevos de esta corrida; el resto del cupo se usa para ir
@@ -303,6 +353,7 @@ def main():
         agregados, actualizados, nuevos_shiurim = 0, 0, []
     else:
         agregados, actualizados, nuevos_shiurim = sincronizar(data, episodios)
+        retirar_ausentes(data, episodios)
         if fecha_feed:
             data["feedLastBuildDate"] = fecha_feed
 

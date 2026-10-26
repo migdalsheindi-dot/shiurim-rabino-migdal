@@ -40,6 +40,10 @@ def main():
     if nuevos:
         salida("true", f"{len(nuevos)} episodio(s) nuevo(s): {nuevos[0]['titulo'][:50]}")
         return
+    audios_feed = {e["audioUrl"] for e in episodios}
+    if any(s.get("ausenteDesde") for s in data.get("shiurim", [])):
+        salida("true", "hay shiurim marcados como ausentes del feed (se revisa si hay que retirarlos)")
+        return
     fecha = fecha_del_feed(xml)
     aplicada = data.get("feedLastBuildDate", "")
     if fecha and fecha > aplicada:
