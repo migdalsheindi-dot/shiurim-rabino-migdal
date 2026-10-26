@@ -34,6 +34,8 @@ Xcode 27.1 (simulador iOS 27.1: solo existe "iPhone Duo", id `0F76F88C-968E-45BD
 - Compilar: `xcodebuild -project ios/App/App.xcodeproj -scheme App -destination "platform=iOS,id=00008160-000128EC2063400A" -derivedDataPath ios/DerivedData -allowProvisioningUpdates build`
 - Instalar y abrir: `xcrun devicectl device install app --device 00008160-000128EC2063400A ios/DerivedData/Build/Products/Debug-iphoneos/App.app` y `xcrun devicectl device process launch --device 00008160-000128EC2063400A com.yoelmigdal.shiurim`
 
+Lista completa para publicar (decisiones, tareas, datos de las tiendas, cuentas): ver `HOJA-DE-RUTA.md`.
+
 ## Pendiente (en este orden, de a un tema por vez, sin saturar)
 1. ~~Prueba del audio en segundo plano con un iPhone real~~ (hecho y funcionando, 2026-10-26).
 2. ~~Ícono y pantalla de inicio propios~~ (hecho 2026-10-26: el logo de la web, libro con "YM" sobre fondo #211B13). Se regeneran con `npm run iconos` (`generar-iconos.mjs` crea `assets/` desde `../icons/logo-ym.svg` y `@capacitor/assets` hace todos los tamaños; el paso `despues` arregla el fondo del ícono adaptativo de Android). En Android 12+ el fondo oscuro de arranque sale de `windowSplashScreenBackground` en `styles.xml`.
