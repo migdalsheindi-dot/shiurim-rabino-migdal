@@ -1612,12 +1612,10 @@
                 <>
                   <h3 className="relative font-serif font-bold text-3xl sm:text-4xl leading-tight">{sem.parasha.es}</h3>
                   <p dir="rtl" lang="he" className="relative text-gold-100 text-2xl mt-1 text-left">{sem.parasha.he}</p>
-                  <p className="relative text-white/75 text-sm mt-3">Se lee: <span className="text-white/95 font-medium">{sem.parasha.lec}</span></p>
                 </>
               ) : (
                 <h3 className="relative font-serif font-bold text-3xl leading-tight">{sem.fiesta}</h3>
               )}
-              <p className="relative text-white/50 text-[11px] mt-4">Según el calendario de la Diáspora (fuera de Israel).</p>
             </div>
             <div className="flex flex-col justify-center">
               {shiur ? (
@@ -3877,18 +3875,18 @@
                   </Reveal>
                 )}
                 <Reveal>
+                  <TemasDelInicio
+                    shiurim={shiurim}
+                    cantidadGuardados={favoritos.filter((id) => shiurim.some((x) => String(x.id) === id)).length}
+                    onElegir={(cat) => { setCategoriaActiva(cat); window.scrollTo({ top: 0 }); }}
+                  />
+                </Reveal>
+                <Reveal>
                   <SeccionParasha
                     shiurim={shiurim}
                     config={config}
                     filaDeShiur={filaDeShiur}
                     onVerTema={() => { setCategoriaActiva("Parashá de la semana"); window.scrollTo({ top: 0 }); }}
-                  />
-                </Reveal>
-                <Reveal>
-                  <TemasDelInicio
-                    shiurim={shiurim}
-                    cantidadGuardados={favoritos.filter((id) => shiurim.some((x) => String(x.id) === id)).length}
-                    onElegir={(cat) => { setCategoriaActiva(cat); window.scrollTo({ top: 0 }); }}
                   />
                 </Reveal>
                 <Reveal>
