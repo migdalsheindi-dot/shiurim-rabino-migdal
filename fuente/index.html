@@ -1701,14 +1701,14 @@
           </p>
           <p className="font-serif font-bold text-4xl leading-none mt-2 tabular-nums">{velas.hora}<span className="text-base font-normal text-white/70 ml-1">hs</span></p>
           <p className="text-white/70 text-[13px] mt-1.5 leading-snug">Buenos Aires · {velas.dia}</p>
-          <p className="text-white/80 text-[13px] mt-3 leading-snug">Fijate a qué hora se prende en tu ciudad:</p>
           <a
             href={URL_VELAS_JABAD}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-gold-200 hover:text-white text-[13px] font-medium underline underline-offset-4 decoration-gold-200/50 mt-1 min-h-[28px]"
+            className="mt-3 inline-flex items-start gap-1 text-gold-200 hover:text-white text-[13px] font-medium leading-snug underline underline-offset-4 decoration-gold-200/50 transition-colors"
           >
-            Calculador de Jabad <IconChevron size={13} />
+            <span>Fijate a qué hora se prende en tu ciudad</span>
+            <IconChevron size={14} className="shrink-0 mt-[2px]" />
           </a>
         </div>
       );
