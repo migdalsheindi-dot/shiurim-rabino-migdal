@@ -260,6 +260,12 @@
   <script type="text/babel">
     const { useState, useMemo, useRef, useEffect } = React;
 
+    // App móvil (Capacitor): la web va empaquetada dentro de la app, pero los datos (lista de shiurim,
+    // transcripciones, miniaturas) se leen siempre del sitio publicado, así los shiurim nuevos aparecen
+    // sin publicar una versión nueva en las tiendas. En el navegador todo sigue con rutas relativas.
+    const ES_APP = typeof window !== "undefined" && (location.protocol === "capacitor:" || !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()));
+    const rutaSitio = (ruta) => (!ES_APP || /^(https?:|data:)/.test(ruta) ? ruta : "https://yoelmigdal.com/" + String(ruta).replace(/^\.\//, ""));
+
     // ⚠️ Contraseña del Panel Admin. Cámbiala editando esta línea.
     const ADMIN_PASSWORD = "Migdal2026";
     const STORAGE_KEY_AUTH = "ry_migdal_admin_auth";
@@ -612,9 +618,9 @@
     // relativo a la URL actual, así no se filtra ?admin=true al compartir.
     function urlDeShiur(shiur) {
       try {
-        return new URL(`s/${shiur.id}.html`, window.location.href).toString();
+        return new URL(`s/${shiur.id}.html`, ES_APP ? "https://yoelmigdal.com/" : window.location.href).toString();
       } catch (e) {
-        return `${window.location.href.split(/[?#]/)[0]}?shiur=${shiur.id}`;
+        return `${ES_APP ? "https://yoelmigdal.com/" : window.location.href.split(/[?#]/)[0]}?shiur=${shiur.id}`;
       }
     }
 
@@ -1255,7 +1261,7 @@
           <div className="relative w-full aspect-square bg-stone-100 overflow-hidden">
             {shiur.portadaUrl && (
               <img
-                src={shiur.miniatura || shiur.portadaUrl}
+                src={rutaSitio(shiur.miniatura || shiur.portadaUrl)}
                 alt={titulo}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 loading="lazy"
@@ -1312,7 +1318,7 @@
           <div className="relative shrink-0 w-[84px] h-[84px] sm:w-32 sm:h-32 rounded-xl bg-stone-100 overflow-hidden">
             {shiur.portadaUrl && (
               <img
-                src={shiur.miniatura || shiur.portadaUrl}
+                src={rutaSitio(shiur.miniatura || shiur.portadaUrl)}
                 alt={titulo}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 loading="lazy"
@@ -1356,7 +1362,7 @@
           <div className="relative shrink-0 w-[104px] sm:w-[176px] self-stretch bg-[#0E1830] overflow-hidden">
             {shiur.portadaUrl && (
               <img
-                src={shiur.miniatura || shiur.portadaUrl}
+                src={rutaSitio(shiur.miniatura || shiur.portadaUrl)}
                 alt={titulo}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 loading="lazy"
@@ -1888,7 +1894,7 @@
         if (!mostrarTranscripcion) return;
         let cancelado = false;
         setTiempos(null);
-        fetch(`./transcripts/${shiur.id}.json`, { cache: "force-cache" })
+        fetch(rutaSitio(`./transcripts/${shiur.id}.json`), { cache: "force-cache" })
           .then((r) => (r.ok ? r.json() : null))
           .then((data) => {
             if (!cancelado) setTiempos(data && Array.isArray(data.palabras) ? data.palabras : []);
@@ -3379,7 +3385,7 @@
       // data.json completo, que es el que se exporta. Si data-lite.json no existe o
       // falla, se usa data.json.
       const cargarJSON = (ruta) =>
-        fetch(`${ruta}?v=${Date.now()}`, { cache: "no-store" }).then((r) => {
+        fetch(`${rutaSitio(ruta)}?v=${Date.now()}`, { cache: "no-store" }).then((r) => {
           if (!r.ok) throw new Error(ruta + " respondió HTTP " + r.status);
           return r.json();
         });
@@ -3454,7 +3460,7 @@
       // versión nueva publicada en el hosting, el navegador la detecta de
       // inmediato en la próxima visita en vez de tardar horas en notarlo.
       useEffect(() => {
-        if (!("serviceWorker" in navigator) || !navigator.serviceWorker) return;
+        if (ES_APP || !("serviceWorker" in navigator) || !navigator.serviceWorker) return;
 
         navigator.serviceWorker
           .register("./service-worker.js", { updateViaCache: "none" })
@@ -3540,7 +3546,7 @@
         }
       };
 
-      const mostrarBotonInstalar = !appInstalada && (promptInstalacion || esIOS || esAndroid);
+      const mostrarBotonInstalar = !ES_APP && !appInstalada && (promptInstalacion || esIOS || esAndroid);
 
       const [query, setQuery] = useState(busquedaDesdeUrl);
       const [categoriaActiva, setCategoriaActiva] = useState(() => categoriaDesdeUrl() || "Todas");

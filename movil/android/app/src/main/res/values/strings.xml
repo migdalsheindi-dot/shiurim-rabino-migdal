@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Rabino Yoel Migdal</string>
+    <string name="title_activity_main">Rabino Yoel Migdal</string>
+    <string name="package_name">com.yoelmigdal.shiurim</string>
+    <string name="custom_url_scheme">com.yoelmigdal.shiurim</string>
+</resources>
