@@ -19,13 +19,16 @@ No se registra nada de lo que hagas vos como administrador, ni de quienes tienen
 - `POST /escucha` `{ "id": "<id>", "segundos": 120 }` suma tiempo escuchado.
 - `POST /evento` `{ "tipo": "donar_abrir" | "donar_click", "origen": "encabezado" | "menu" | "modal", "contexto": "<página>" }`
 - `GET /conteos` reproducciones por shiur (público, lo usa la sección "Popularidad").
+- `POST /suscribir` `{ "nombre", "apellido", "email" }` formulario "Suscripción" de la web (guarda los datos en la tabla `suscriptores`).
+- `GET /suscriptores` **solo con la clave secreta**: lista de suscriptores (la usa el Panel Admin para mostrarla y descargarla en CSV).
 - `GET /estadisticas?dias=30` **solo con la clave secreta** (`Authorization: Bearer <ADMIN_TOKEN>`).
 - Solo se aceptan pedidos que vengan de yoelmigdal.com, y solo ids de shiurim que existen.
 
 ## Privacidad
 Solo se guarda una huella (hash con clave secreta) de IP + navegador + día, que se borra a los 2 días, y
 una de IP + shiur durante 6 horas para no contar dos veces la misma escucha. Todo lo demás son contadores
-por día. Las estadísticas se leen únicamente con `ADMIN_TOKEN`, una clave que existe solo dentro de
+por día; el país de cada visita lo informa Cloudflare y solo se suma 1 al contador de ese país. La única
+información personal son el nombre, apellido y email que alguien escribe a propósito al suscribirse. Las estadísticas y la lista de suscriptores se leen únicamente con `ADMIN_TOKEN`, una clave que existe solo dentro de
 Cloudflare y que escribís vos en el panel (no está en ningún archivo del sitio).
 
 ## Publicarlo (una sola vez)

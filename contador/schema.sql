@@ -58,6 +58,25 @@ CREATE TABLE IF NOT EXISTS eventos (
   PRIMARY KEY (dia, tipo, origen, contexto)
 );
 
+-- Visitas por país y por día (el país lo informa Cloudflare; no se guarda la IP).
+-- Código de 2 letras (AR, US, IL...) o XX si se desconoce.
+CREATE TABLE IF NOT EXISTS paises (
+  dia TEXT NOT NULL,
+  pais TEXT NOT NULL,
+  visitas INTEGER NOT NULL DEFAULT 0,
+  unicos INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (dia, pais)
+);
+
+-- Personas que se anotaron para recibir novedades (formulario "Suscripción").
+-- Es la única tabla con datos personales: solo se lee con la clave ADMIN_TOKEN.
+CREATE TABLE IF NOT EXISTS suscriptores (
+  email TEXT PRIMARY KEY,
+  nombre TEXT NOT NULL,
+  apellido TEXT NOT NULL,
+  fecha TEXT NOT NULL            -- ISO UTC
+);
+
 -- Estado interno del aviso automático a GitHub (última versión del feed vista)
 CREATE TABLE IF NOT EXISTS estado (
   clave TEXT PRIMARY KEY,

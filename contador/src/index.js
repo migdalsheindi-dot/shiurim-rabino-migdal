@@ -6,15 +6,22 @@
 //   POST /visita        { pagina }                       -> suma una visita (y un único si es la 1ª del día)
 //   POST /escucha       { id, segundos }                 -> suma segundos escuchados de un shiur
 //   POST /evento        { tipo, origen, contexto }       -> clics de donación
+//   POST /suscribir     { nombre, apellido, email }      -> anota a alguien para recibir novedades
+//   GET  /suscriptores  (con clave secreta)              -> lista de suscriptores, para el Panel Admin
 //   GET  /estadisticas?dias=30   (con clave secreta)     -> todo lo anterior resumido, para el Panel Admin
 //
 // Lo usa el Panel Admin para mostrar la popularidad real de cada shiur y el
 // tráfico de la web.
 //
+// País de los visitantes: lo informa Cloudflare en cada pedido (request.cf.country),
+// sin servicios externos y sin guardar la IP; solo se suma 1 al contador del país.
+//
 // Privacidad: no se guarda ninguna IP ni se usan cookies. Para no contar dos
 // veces a la misma persona se guarda una huella (hash con clave secreta) de
 // IP + navegador + día (se borra a los 2 días) y, para las reproducciones, de
-// IP + shiur durante 6 horas. Todo lo demás son contadores por día.
+// IP + shiur durante 6 horas. Todo lo demás son contadores por día
+// (incluido el país). La única excepción son los datos que una persona escribe a propósito
+// en el formulario de Suscripción (nombre, apellido y email).
 //
 // Las estadísticas solo se leen con la clave secreta ADMIN_TOKEN (un "secret"
 // del Worker, que no está en ningún archivo del sitio).
@@ -47,6 +54,19 @@ function paginaValida(p) {
 
 function esMobile(request) {
   return /Mobi|Android|iPhone|iPad|iPod/i.test(request.headers.get("User-Agent") || "");
+}
+
+function paisDe(request) {
+  const p = request.cf && request.cf.country;
+  return typeof p === "string" && /^[A-Z]{2}$/.test(p) ? p : "XX"; // XX = desconocido
+}
+
+const MAX_SUSCRIPTORES = 20000;
+const ESPERA_ENTRE_ALTAS_MS = 30 * 1000; // una misma persona puede anotarse 1 vez cada 30 s
+const RE_EMAIL = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@.]{2,}$/;
+
+function limpiarTexto(v, max) {
+  return typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "";
 }
 
 function claveCorrecta(request, env) {
@@ -244,7 +264,38 @@ export default {
         env.DB.prepare(
           "INSERT INTO paginas (dia, pagina, total) VALUES (?, ?, 1) ON CONFLICT(dia, pagina) DO UPDATE SET total = total + 1"
         ).bind(dia, cuerpo.pagina),
+        env.DB.prepare(
+          `INSERT INTO paises (dia, pais, visitas, unicos) VALUES (?, ?, 1, ?)
+           ON CONFLICT(dia, pais) DO UPDATE SET visitas = visitas + 1, unicos = unicos + ?`
+        ).bind(dia, paisDe(request), esUnico, esUnico),
         env.DB.prepare("DELETE FROM visitantes WHERE dia < ?").bind(hoy(2)),
+      ]);
+      return json({ ok: true }, 200, cors);
+    }
+
+    if (url.pathname === "/suscribir" && request.method === "POST") {
+      if (!permitidoPost) return json({ error: "origen no permitido" }, 403, cors);
+      const cuerpo = await leerCuerpo(request);
+      if (!cuerpo) return json({ error: "datos inválidos" }, 400, cors);
+      if (cuerpo.web) return json({ ok: true }, 200, cors); // campo trampa para robots: se ignora en silencio
+      const nombre = limpiarTexto(cuerpo.nombre, 60);
+      const apellido = limpiarTexto(cuerpo.apellido, 60);
+      const email = limpiarTexto(cuerpo.email, 150).toLowerCase();
+      if (!nombre || !apellido || !RE_EMAIL.test(email)) return json({ error: "datos inválidos" }, 400, cors);
+
+      const ip = request.headers.get("CF-Connecting-IP") || "";
+      const clave = await huella(`alta|${ip}|${env.SAL || "sin-sal"}`);
+      const ahora = Date.now();
+      const previo = await env.DB.prepare("SELECT ts FROM oyentes WHERE huella = ?").bind(clave).first();
+      if (previo && ahora - previo.ts < ESPERA_ENTRE_ALTAS_MS) return json({ error: "demasiados intentos" }, 429, cors);
+      const { total } = await env.DB.prepare("SELECT COUNT(*) AS total FROM suscriptores").first();
+      if (total >= MAX_SUSCRIPTORES) return json({ error: "lista completa" }, 503, cors);
+
+      await env.DB.batch([
+        env.DB.prepare("INSERT INTO oyentes (huella, ts) VALUES (?, ?) ON CONFLICT(huella) DO UPDATE SET ts = excluded.ts").bind(clave, ahora),
+        env.DB.prepare("DELETE FROM oyentes WHERE ts < ?").bind(ahora - VENTANA_MS),
+        // Si el email ya estaba, no se duplica (y no se avisa si existía o no)
+        env.DB.prepare("INSERT OR IGNORE INTO suscriptores (email, nombre, apellido, fecha) VALUES (?, ?, ?, ?)").bind(email, nombre, apellido, new Date().toISOString()),
       ]);
       return json({ ok: true }, 200, cors);
     }
@@ -281,15 +332,32 @@ export default {
       if (!claveCorrecta(request, env)) return json({ error: "clave incorrecta" }, 401, cors);
       const dias = Math.min(365, Math.max(1, parseInt(url.searchParams.get("dias"), 10) || 30));
       const desde = hoy(dias - 1);
-      const [porDia, paginas, shiurim, donaciones] = await Promise.all([
+      const [porDia, paginas, shiurim, donaciones, paises, subs, subsNuevos] = await Promise.all([
         env.DB.prepare("SELECT dia, visitas, unicos, mobile, desktop FROM dias WHERE dia >= ? ORDER BY dia").bind(desde).all(),
         env.DB.prepare("SELECT pagina, SUM(total) AS total FROM paginas WHERE dia >= ? GROUP BY pagina ORDER BY total DESC LIMIT 25").bind(desde).all(),
         env.DB.prepare(
           "SELECT shiur_id AS id, SUM(reproducciones) AS reproducciones, SUM(segundos) AS segundos FROM escucha_dia WHERE dia >= ? GROUP BY shiur_id ORDER BY reproducciones DESC, segundos DESC LIMIT 30"
         ).bind(desde).all(),
         env.DB.prepare("SELECT tipo, origen, contexto, SUM(total) AS total FROM eventos WHERE dia >= ? GROUP BY tipo, origen, contexto ORDER BY total DESC LIMIT 60").bind(desde).all(),
+        env.DB.prepare("SELECT pais, SUM(visitas) AS visitas, SUM(unicos) AS unicos FROM paises WHERE dia >= ? GROUP BY pais ORDER BY visitas DESC LIMIT 40").bind(desde).all(),
+        env.DB.prepare("SELECT COUNT(*) AS total FROM suscriptores").first(),
+        env.DB.prepare("SELECT COUNT(*) AS total FROM suscriptores WHERE fecha >= ?").bind(`${desde}T00:00:00`).first(),
       ]);
-      return json({ desde, hasta: hoy(), dias: porDia.results, paginas: paginas.results, shiurim: shiurim.results, donaciones: donaciones.results }, 200, { ...cors, "Cache-Control": "no-store" });
+      return json(
+        {
+          desde, hasta: hoy(), dias: porDia.results, paginas: paginas.results, shiurim: shiurim.results,
+          donaciones: donaciones.results, paises: paises.results, suscriptores: { total: subs.total, nuevos: subsNuevos.total },
+        },
+        200,
+        { ...cors, "Cache-Control": "no-store" }
+      );
+    }
+
+    if (url.pathname === "/suscriptores" && request.method === "GET") {
+      if (!env.ADMIN_TOKEN) return json({ error: "estadísticas sin configurar" }, 503, cors);
+      if (!claveCorrecta(request, env)) return json({ error: "clave incorrecta" }, 401, cors);
+      const { results } = await env.DB.prepare("SELECT nombre, apellido, email, fecha FROM suscriptores ORDER BY fecha DESC LIMIT ?").bind(MAX_SUSCRIPTORES).all();
+      return json({ suscriptores: results }, 200, { ...cors, "Cache-Control": "no-store" });
     }
 
     return json({ error: "no encontrado" }, 404, cors);
