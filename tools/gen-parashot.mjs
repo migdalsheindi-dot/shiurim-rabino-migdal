@@ -2,7 +2,7 @@
 // nombre en español y hebreo y el pasaje de la Torá. Usa Hebcal (el calendario hebreo de referencia).
 // Se corre a mano cuando haga falta ampliar el rango:  cd tools && node gen-parashot.mjs
 import { writeFileSync } from "node:fs";
-import { HDate, Sedra, HebrewCalendar, Locale, parshiot } from "@hebcal/core";
+import { HDate, Sedra, HebrewCalendar, Locale, Location, Zmanim, parshiot } from "@hebcal/core";
 import { getLeyningForParsha } from "@hebcal/leyning";
 
 const DESDE = new Date(2025, 0, 4); // primer sábado de 2025
@@ -88,14 +88,25 @@ const FIESTA = [
   [/^Pesach .*\(CH''M\)$/, "Shabat Jol HaMoed Pésaj"],
   [/^Shavuot/, "Shavuot"],
 ];
+// Encendido de velas en Buenos Aires: 18 minutos antes de la puesta de sol del viernes (criterio de
+// Hebcal y de Jabad), en minutos desde la medianoche, hora de Argentina (redondeado al minuto).
+const BA = new Location(-34.61315, -58.37723, false, "America/Argentina/Buenos_Aires", "Buenos Aires", "AR");
+const horaBA = new Intl.DateTimeFormat("en-GB", { timeZone: BA.getTzid(), hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const velasDe = (sabado) => {
+  const viernes = new Date(sabado.getFullYear(), sabado.getMonth(), sabado.getDate() - 1, 12);
+  const [h, m] = horaBA.format(new Zmanim(BA, viernes, false).sunsetOffset(-18, true)).split(":").map(Number);
+  return h * 60 + m;
+};
 const nombres = []; // parashot (y combinadas)
 const fiestas = [];
 const idxNombre = new Map();
 const idxFiesta = new Map();
 const semanas = [];
+const velas = [];
 
 for (let d = new Date(DESDE); d < HASTA; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7)) {
   const hd = new HDate(d);
+  velas.push(velasDe(d));
   const s = new Sedra(hd.getFullYear(), false).lookup(hd); // false = fuera de Israel (Diáspora)
   if (!s.chag) {
     const clave = s.parsha.join("-");
@@ -115,6 +126,6 @@ for (let d = new Date(DESDE); d < HASTA; d = new Date(d.getFullYear(), d.getMont
     semanas.push(-(idxFiesta.get(es) + 1));
   }
 }
-const salida = { desde: "2025-01-04", hasta: HASTA.getFullYear() - 1, nombres, fiestas, semanas };
+const salida = { desde: "2025-01-04", hasta: HASTA.getFullYear() - 1, nombres, fiestas, semanas, velas };
 writeFileSync(new URL("./parashot.json", import.meta.url), JSON.stringify(salida));
 console.log(`Listo: ${semanas.length} Shabatot (2025-${HASTA.getFullYear() - 1}), ${nombres.length} parashot/combinadas, ${fiestas.length} fiestas:`, fiestas.map((f) => f.es).join(", "));
