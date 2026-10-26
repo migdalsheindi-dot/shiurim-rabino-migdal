@@ -1422,6 +1422,220 @@
     }
 
     // ---------------------------------------------------------------------
+    // Fecha hebrea / gregoriana y Parashá de la semana (Diáspora)
+    // Los datos de las Parashot salen de tools/parashot.json (generado con Hebcal, el
+    // calendario hebreo de referencia, y verificado contra su API). Se calcula todo en el
+    // navegador, con hora de Argentina; no depende de ningún servicio externo.
+    // ---------------------------------------------------------------------
+    const ZONA_ARGENTINA = "America/Argentina/Buenos_Aires";
+    const BUENOS_AIRES = { lat: -34.6037, lon: -58.3816 };
+    const MESES_HEBREOS_ES = {
+      tishri: "Tishrei", tishrei: "Tishrei", heshvan: "Jeshván", cheshvan: "Jeshván", kislev: "Kislev",
+      tevet: "Tevet", shevat: "Shevat", "adar i": "Adar I", "adar ii": "Adar II", adar: "Adar",
+      nisan: "Nisán", iyar: "Iyar", sivan: "Siván", tamuz: "Tamuz", av: "Av", elul: "Elul",
+    };
+
+    // Hora (en ms UTC) de la puesta de sol en Buenos Aires: desde ahí empieza el día hebreo.
+    // Algoritmo astronómico estándar (error de ~1 minuto, igual criterio que Hebcal).
+    function puestaDeSol(anio, mes, dia) {
+      const rad = Math.PI / 180;
+      const mod = (a, b) => ((a % b) + b) % b;
+      const N1 = Math.floor((275 * mes) / 9);
+      const N2 = Math.floor((mes + 9) / 12);
+      const N3 = 1 + Math.floor((anio - 4 * Math.floor(anio / 4) + 2) / 3);
+      const N = N1 - N2 * N3 + dia - 30;
+      const lngHora = BUENOS_AIRES.lon / 15;
+      const t = N + (18 - lngHora) / 24;
+      const M = 0.9856 * t - 3.289;
+      const L = mod(M + 1.916 * Math.sin(M * rad) + 0.02 * Math.sin(2 * M * rad) + 282.634, 360);
+      let RA = mod(Math.atan(0.91764 * Math.tan(L * rad)) / rad, 360);
+      RA = (RA + (Math.floor(L / 90) * 90 - Math.floor(RA / 90) * 90)) / 15;
+      const sinDec = 0.39782 * Math.sin(L * rad);
+      const cosDec = Math.cos(Math.asin(sinDec));
+      const cosH = (Math.cos(90.8333 * rad) - sinDec * Math.sin(BUENOS_AIRES.lat * rad)) / (cosDec * Math.cos(BUENOS_AIRES.lat * rad));
+      const H = Math.acos(cosH) / rad / 15;
+      const T = H + RA - 0.06571 * t - 6.622;
+      return Date.UTC(anio, mes - 1, dia) + mod(T - lngHora, 24) * 3600000;
+    }
+
+    // Número en letras hebreas (guematria): 15 -> ט״ו, 20 -> כ׳, 787 -> תשפ״ז
+    function guematria(n) {
+      const U = ["", "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט"], D = ["", "י", "כ", "ל", "מ", "נ", "ס", "ע", "פ", "צ"], C = ["", "ק", "ר", "ש", "ת"];
+      let s = "";
+      while (n >= 400) { s += "ת"; n -= 400; }
+      if (n >= 100) { s += C[Math.floor(n / 100)]; n %= 100; }
+      if (n === 15) s += "טו"; else if (n === 16) s += "טז"; else s += D[Math.floor(n / 10)] + U[n % 10];
+      return s.length > 1 ? s.slice(0, -1) + "״" + s.slice(-1) : s + "׳";
+    }
+
+    // Todo lo que muestra la barra y la sección, para un instante dado
+    function calendarioDeAhora(ahoraMs) {
+      const datos = typeof PARASHOT !== "undefined" ? PARASHOT : null;
+      const [y, m, d] = new Intl.DateTimeFormat("en-CA", { timeZone: ZONA_ARGENTINA, year: "numeric", month: "2-digit", day: "2-digit" })
+        .format(ahoraMs).split("-").map(Number);
+      // Desde la puesta de sol ya cuenta el día hebreo siguiente
+      const pasoElOcaso = ahoraMs >= puestaDeSol(y, m, d);
+      const diaHebreo = new Date(Date.UTC(y, m - 1, d + (pasoElOcaso ? 1 : 0), 12));
+      const civil = new Date(Date.UTC(y, m - 1, d, 12));
+
+      const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+      const partesEs = {};
+      new Intl.DateTimeFormat("es-AR", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" })
+        .formatToParts(civil).forEach((p) => { partesEs[p.type] = p.value; });
+      const gregoriano = `${cap(partesEs.weekday)} ${partesEs.day} de ${partesEs.month} de ${partesEs.year}`;
+
+      let hebreoLetras = "", hebreoEs = "";
+      try {
+        const mesHe = new Intl.DateTimeFormat("he-u-ca-hebrew", { timeZone: "UTC", month: "long" }).formatToParts(diaHebreo).find((p) => p.type === "month");
+        const ph = {};
+        new Intl.DateTimeFormat("en-u-ca-hebrew", { timeZone: "UTC", day: "numeric", month: "long", year: "numeric" })
+          .formatToParts(diaHebreo).forEach((p) => { ph[p.type] = p.value; });
+        const mes = MESES_HEBREOS_ES[String(ph.month || "").toLowerCase()];
+        if (mes && ph.day && ph.year) hebreoEs = `${ph.day} de ${mes} de ${ph.year}`;
+        if (mesHe && ph.day && ph.year) hebreoLetras = `${guematria(Number(ph.day))} ${mesHe.value} ה׳${guematria(Number(ph.year) % 1000)}`;
+      } catch (e) {}
+
+      // Parashá del próximo Shabat (o la de hoy si es Shabat), según el día hebreo
+      let semana = null;
+      if (datos) {
+        const hastaShabat = (6 - diaHebreo.getUTCDay() + 7) % 7;
+        const shabat = new Date(diaHebreo.getTime() + hastaShabat * 86400000);
+        const idx = Math.round((Date.UTC(shabat.getUTCFullYear(), shabat.getUTCMonth(), shabat.getUTCDate()) - Date.UTC(2025, 0, 4)) / (7 * 86400000));
+        const codigo = datos.semanas[idx];
+        if (codigo !== undefined) {
+          const ps = {};
+          new Intl.DateTimeFormat("es-AR", { timeZone: "UTC", day: "numeric", month: "long" }).formatToParts(shabat).forEach((p) => { ps[p.type] = p.value; });
+          semana = { shabat: `${ps.day} de ${ps.month}`, parasha: codigo >= 0 ? datos.nombres[codigo] : null, fiesta: codigo < 0 ? datos.fiestas[-codigo - 1].es : null };
+        }
+      }
+      return { gregoriano, hebreoLetras, hebreoEs, semana };
+    }
+
+    // Shiur de esa Parashá. Prioridad: 1) config.parashaShiur en data.json ({ "Vayera": <id> }, a mano),
+    // 2) un shiur de la categoría "Parashá de la semana" cuyo título lleva el nombre de la Parashá
+    // (el más nuevo). Si no hay, devuelve null y el enlace lleva a la lista de Parashá.
+    function shiurDeParasha(parasha, shiurim, config) {
+      if (!parasha) return null;
+      const norm = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "");
+      const manual = config && config.parashaShiur && (config.parashaShiur[parasha.k] || config.parashaShiur[parasha.es]);
+      if (manual) {
+        const s = shiurim.find((x) => String(x.id) === String(manual));
+        if (s) return s;
+      }
+      const nombres = new Set(parasha.al.map(norm).concat(norm(parasha.es)));
+      // una combinada (Tazría-Metzorá) también acepta cualquiera de sus partes
+      parasha.es.split("-").forEach((p) => nombres.add(norm(p)));
+      parasha.k.split("-").forEach((p) => nombres.add(norm(p)));
+      const candidatos = shiurim.filter((s) => {
+        if (s.categoria !== "Parashá de la semana") return false;
+        const seg = String(s.titulo).match(/^\s*\d+\s*-\s*([^-–]+?)\s*[-–.]/); // "49 - Ki Tetzé - Parashá..."
+        return seg ? nombres.has(norm(seg[1])) : false;
+      });
+      candidatos.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+      return candidatos[0] || null;
+    }
+
+    // Instante actual que se refresca solo (cada minuto: cambia a medianoche y al atardecer)
+    function useAhora() {
+      const [ahora, setAhora] = useState(() => Date.now());
+      useEffect(() => {
+        const t = setInterval(() => setAhora(Date.now()), 60000);
+        return () => clearInterval(t);
+      }, []);
+      return ahora;
+    }
+
+    // Barra debajo del encabezado: fecha en español y en hebreo + Parashá (con enlace a su shiur)
+    function BarraFechaParasha({ shiurim, config, onAbrirShiur, onVerTema }) {
+      const ahora = useAhora();
+      const cal = useMemo(() => calendarioDeAhora(ahora), [Math.floor(ahora / 60000)]);
+      if (typeof PARASHOT === "undefined") return null;
+      const sem = cal.semana;
+      const shiur = sem ? shiurDeParasha(sem.parasha, shiurim, config) : null;
+      const enlace = shiur ? `?shiur=${shiur.id}` : "?tema=parasha-de-la-semana";
+      const alHacerClic = (e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+        e.preventDefault();
+        if (shiur) onAbrirShiur(shiur); else onVerTema();
+      };
+      return (
+        <div className="bg-white border-b border-stone-200/70 text-stone-600 text-[12px] sm:text-[13px] leading-snug" aria-label="Fecha y Parashá de la semana">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-1.5 sm:py-2 flex flex-wrap items-center gap-x-5 gap-y-0.5">
+            <p className="min-w-0">
+              <span className="font-medium text-stone-700">{cal.gregoriano}</span>
+              {cal.hebreoEs && <><span className="text-stone-400 mx-1.5">·</span><span>{cal.hebreoEs}</span></>}
+            </p>
+            {cal.hebreoLetras && (
+              <p className="min-w-0 text-stone-500">
+                <span dir="rtl" lang="he" style={{ unicodeBidi: "isolate" }}>{cal.hebreoLetras}</span>
+              </p>
+            )}
+            {sem && (
+              <a
+                href={enlace}
+                onClick={alHacerClic}
+                className="shrink-0 ml-auto inline-flex items-center gap-1.5 font-semibold text-blue-900 hover:text-gold-600 transition-colors"
+                title={shiur ? "Ir al shiur de esta Parashá" : "Ver los shiurim de Parashá"}
+              >
+                {sem.parasha ? (
+                  <>
+                    <span className="font-normal text-stone-500">Parashá</span>
+                    <span className="underline decoration-gold-500 decoration-2 underline-offset-2">{sem.parasha.es}</span>
+                    <span dir="rtl" lang="he" className="font-normal text-stone-500">{sem.parasha.he}</span>
+                  </>
+                ) : (
+                  <span className="underline decoration-gold-500 decoration-2 underline-offset-2">{sem.fiesta}</span>
+                )}
+                <IconChevron size={13} />
+              </a>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // Sección del inicio: la Parashá de esta semana (se actualiza sola cada semana)
+    function SeccionParasha({ shiurim, config, filaDeShiur, onVerTema }) {
+      const ahora = useAhora();
+      const cal = useMemo(() => calendarioDeAhora(ahora), [Math.floor(ahora / 60000)]);
+      if (typeof PARASHOT === "undefined" || !cal.semana) return null;
+      const sem = cal.semana;
+      const shiur = shiurDeParasha(sem.parasha, shiurim, config);
+      return (
+        <section aria-labelledby="inicio-parasha">
+          <h2 id="inicio-parasha" className="font-serif text-2xl sm:text-[28px] font-semibold text-blue-900 leading-none mb-4">Parashá de la semana</h2>
+          <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-3.5 sm:gap-5 items-stretch">
+            <div className="relative overflow-hidden rounded-2xl text-white bg-gradient-to-br from-[#14203A] via-[#1A2A4A] to-[#22345A] shadow-card p-5 sm:p-6 flex flex-col justify-center">
+              <div className="pointer-events-none absolute -top-16 -right-10 w-56 h-56 rounded-full opacity-25" style={{ background: "radial-gradient(closest-side, rgba(199,154,75,.7), transparent)" }} />
+              <p className="relative text-gold-200 text-[11px] sm:text-xs tracking-[0.2em] uppercase mb-2">Shabat {sem.shabat}</p>
+              {sem.parasha ? (
+                <>
+                  <h3 className="relative font-serif font-bold text-3xl sm:text-4xl leading-tight">{sem.parasha.es}</h3>
+                  <p dir="rtl" lang="he" className="relative text-gold-100 text-2xl mt-1 text-left">{sem.parasha.he}</p>
+                  <p className="relative text-white/75 text-sm mt-3">Se lee: <span className="text-white/95 font-medium">{sem.parasha.lec}</span></p>
+                </>
+              ) : (
+                <h3 className="relative font-serif font-bold text-3xl leading-tight">{sem.fiesta}</h3>
+              )}
+              <p className="relative text-white/50 text-[11px] mt-4">Según el calendario de la Diáspora (fuera de Israel).</p>
+            </div>
+            <div className="flex flex-col justify-center">
+              {shiur ? (
+                filaDeShiur(shiur)
+              ) : (
+                <div className="rounded-2xl bg-white ring-1 ring-blue-900/[0.07] shadow-card p-5 sm:p-6 text-center md:text-left">
+                  <p className="font-serif text-lg text-blue-900 mb-1">{sem.parasha ? "Todavía no hay un shiur de esta Parashá" : "Shabat de fiesta: esta semana no hay una Parashá regular"}</p>
+                  <p className="text-stone-600 text-sm leading-relaxed mb-4">Mientras tanto, podés escuchar los shiurim de las otras Parashot.</p>
+                  <button onClick={onVerTema} className="btn-navy inline-flex items-center h-11 px-5 rounded-full text-sm font-medium">Ver shiurim de Parashá</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    // ---------------------------------------------------------------------
     // Buscador (pastilla). Sobre fondo oscuro del hero: más grande, con brillo
     // dorado al enfocar.
     // ---------------------------------------------------------------------
@@ -3618,6 +3832,13 @@
             </div>
           </header>
 
+          <BarraFechaParasha
+            shiurim={shiurim}
+            config={config}
+            onAbrirShiur={(s) => setSelectedShiur(s)}
+            onVerTema={() => { setCategoriaActiva("Parashá de la semana"); window.scrollTo({ top: 0 }); }}
+          />
+
           <MenuLateral
             abierto={menuAbierto}
             onClose={() => setMenuAbierto(false)}
@@ -3655,6 +3876,14 @@
                     </Carrusel>
                   </Reveal>
                 )}
+                <Reveal>
+                  <SeccionParasha
+                    shiurim={shiurim}
+                    config={config}
+                    filaDeShiur={filaDeShiur}
+                    onVerTema={() => { setCategoriaActiva("Parashá de la semana"); window.scrollTo({ top: 0 }); }}
+                  />
+                </Reveal>
                 <Reveal>
                   <TemasDelInicio
                     shiurim={shiurim}

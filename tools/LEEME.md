@@ -13,3 +13,12 @@ estilos de Tailwind que se usan, y empaqueta React dentro de `app.js` (sin depen
 
 Los datos de los shiurim (`data.json`) y las páginas para buscadores (`s/`, `t/`, `sitemap.xml`) se siguen
 generando solos con la sincronización de Spotify, no hay que compilar nada para eso.
+
+## Parashá de la semana y fecha hebrea
+- La barra de fecha y la sección "Parashá de la semana" usan `tools/parashot.json`, generado con Hebcal
+  (`cd tools && node gen-parashot.mjs`). Cubre los Shabatot de 2025 a 2045 (Diáspora). Para ampliar el rango,
+  cambiar `HASTA` en `gen-parashot.mjs` y volver a correrlo y compilar.
+- El shiur de cada Parashá se busca solo: un shiur de la categoría "Parashá de la semana" cuyo título sea
+  "N - Nombre - Parashá…". Si hubiera más de uno, se usa el más nuevo.
+- Para forzar un shiur concreto, agregar en `data.json` → `config` un mapa `"parashaShiur": { "Vayera": 1786037186896 }`
+  (nombre de la Parashá en inglés de Hebcal, o en español, y el id del shiur).

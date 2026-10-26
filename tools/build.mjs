@@ -23,7 +23,7 @@ const mBabel = fuente.match(reBabel);
 if (!mBabel) throw new Error("No encontré el <script type=\"text/babel\"> en fuente/index.html");
 // React y ReactDOM se empaquetan dentro de app.js (sin pedirlos a otro servidor).
 const entrada0 = join(raiz, "tools", ".entrada.jsx");
-writeFileSync(entrada0, `import * as React from "react";\nimport * as ReactDOM from "react-dom/client";\n${mBabel[1]}`);
+writeFileSync(entrada0, `import * as React from "react";\nimport * as ReactDOM from "react-dom/client";\nimport PARASHOT from "./parashot.json";\n${mBabel[1]}`);
 const resultado = buildSync({
   entryPoints: [entrada0],
   bundle: true,
