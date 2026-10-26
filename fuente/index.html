@@ -157,6 +157,13 @@
               100: "#D2D9E8",
               900: "#1C2B4A",
             },
+            // Verde salvia (estilo "escuchado"): sutil y a tono con el azul noche y el dorado
+            salvia: {
+              100: "#DDF0E4",
+              400: "#6FCB9B",
+              500: "#3A9A6B",
+              600: "#2D7F57",
+            },
             // Dorado cálido: acentos, botones destacados y detalles
             gold: {
               100: "#F4E7C6",
@@ -1003,7 +1010,9 @@
     // ---------------------------------------------------------------------
     const CLAVE_FAVORITOS = "ry_favoritos";
     const CLAVE_PROGRESO = "ry_progreso";
+    const CLAVE_ESCUCHADOS = "ry_escuchados";
     const MAX_PROGRESOS = 40;
+    const MAX_ESCUCHADOS = 2000;
     function leerJSON(clave, defecto) {
       try {
         const v = JSON.parse(localStorage.getItem(clave));
@@ -1063,7 +1072,7 @@
       try { return (new URLSearchParams(window.location.search).get("q") || "").slice(0, 80); } catch (e) { return ""; }
     }
 
-    const UsuarioContext = React.createContext({ favoritos: [], toggleFavorito: () => {}, progresos: {} });
+    const UsuarioContext = React.createContext({ favoritos: [], toggleFavorito: () => {}, progresos: {}, escuchados: new Set(), toggleEscuchado: () => {} });
     const useUsuario = () => React.useContext(UsuarioContext);
     // Avance de un shiur empezado: { porcentaje, quedanMin } o null si no lo empezó / ya lo terminó.
     function avanceDe(progresos, shiur) {
@@ -1071,6 +1080,12 @@
       if (!p || !p.d || p.t < 5 || p.d - p.t < 20) return null;
       return { porcentaje: Math.min(100, (p.t / p.d) * 100), quedanMin: Math.max(1, Math.ceil((p.d - p.t) / 60)) };
     }
+
+    // Escuchado completo y sin una escucha nueva a medias (si lo retomó, vuelve a verse "en curso").
+    const useEscuchado = (shiur) => {
+      const { progresos, escuchados } = useUsuario();
+      return escuchados.has(String(shiur.id)) && !avanceDe(progresos, shiur);
+    };
 
     // ---------------------------------------------------------------------
     // Piezas de interfaz compartidas (aparición al scroll, etiquetas, botones)
@@ -1177,6 +1192,31 @@
       );
     }
 
+    // "✓ Escuchado" (verde) o, si no, la fecha del shiur.
+    function EtiquetaEscuchado({ shiur }) {
+      return useEscuchado(shiur)
+        ? <span className="inline-flex items-center gap-1 text-salvia-600 font-medium"><IconCheck size={13} strokeWidth={3} />Escuchado</span>
+        : formatFecha(shiur.fecha);
+    }
+    function FechaOEscuchado({ shiur }) {
+      return <p className="text-stone-500 text-[13px]"><EtiquetaEscuchado shiur={shiur} /></p>;
+    }
+
+    // Círculo verde con tilde en la esquina de la portada de un shiur escuchado.
+    function InsigniaEscuchado({ shiur }) {
+      if (!useEscuchado(shiur)) return null;
+      return (
+        <span
+          className="absolute bottom-2 right-2 w-6 h-6 rounded-full bg-salvia-500 text-white flex items-center justify-center shadow-md ring-2 ring-white/80"
+          title="Escuchado"
+          role="img"
+          aria-label="Escuchado"
+        >
+          <IconCheck size={13} strokeWidth={3} />
+        </span>
+      );
+    }
+
     function BotonCompartir({ shiur, titulo, onShare, claro = false, compacto = false, className = "" }) {
       return (
         <button
@@ -1217,6 +1257,7 @@
               />
             )}
             <BarraAvance shiur={shiur} />
+            <InsigniaEscuchado shiur={shiur} />
           </div>
           <div className="p-3.5 sm:p-5 flex flex-col justify-between flex-1">
             <div>
@@ -1224,7 +1265,7 @@
               <h3 className="text-blue-900 font-serif font-semibold text-base sm:text-lg leading-snug mb-0.5 line-clamp-2">{titulo}</h3>
               {subtitulo && <h4 className="text-stone-500 text-sm italic font-normal mb-1 line-clamp-1">{subtitulo}</h4>}
               <div className="flex items-center justify-between gap-2 mb-2 sm:mb-3">
-                <p className="text-stone-500 text-[13px]">{formatFecha(shiur.fecha)}</p>
+                <FechaOEscuchado shiur={shiur} />
                 <div className="hidden sm:block -my-3"><BotonCompartir shiur={shiur} titulo={titulo} onShare={onShare} /></div>
               </div>
               <p className={`${compacta ? "hidden" : "hidden sm:block"} text-stone-600 text-sm leading-relaxed line-clamp-3`}>{descripcion}</p>
@@ -1273,13 +1314,14 @@
               />
             )}
             <BarraAvance shiur={shiur} />
+            <InsigniaEscuchado shiur={shiur} />
           </div>
           <div className="min-w-0 flex-1 flex flex-col">
             <EtiquetaCategoria categoria={shiur.categoria} className="self-start mb-1.5" />
             <h3 className="text-blue-900 font-serif font-semibold text-[17px] sm:text-lg leading-snug line-clamp-2">{titulo}</h3>
             {subtitulo && <h4 className="text-stone-500 text-sm font-normal line-clamp-1 mt-0.5">{subtitulo}</h4>}
             <p className="text-stone-500 text-[13px] mt-0.5">
-              {avance ? <span className="text-gold-600 font-medium">Quedan {avance.quedanMin} min</span> : formatFecha(shiur.fecha)}
+              {avance ? <span className="text-gold-600 font-medium">Quedan {avance.quedanMin} min</span> : <EtiquetaEscuchado shiur={shiur} />}
             </p>
             <div className="mt-auto pt-2.5 flex items-center">
               <BotonFavorito shiur={shiur} titulo={titulo} compacto className="-ml-2" />
@@ -1316,6 +1358,7 @@
               />
             )}
             <BarraAvance shiur={shiur} />
+            <InsigniaEscuchado shiur={shiur} />
           </div>
           <div className="min-w-0 flex-1 flex flex-col p-3.5 sm:p-5">
             <span className="self-start text-[11px] font-medium tracking-wider uppercase text-gold-200 border border-gold-500/50 rounded-full px-2.5 py-0.5 mb-2">{shiur.categoria}</span>
@@ -1758,7 +1801,8 @@
     // sincronizada con el tiempo real de reproducción del audio (no usa
     // micrófono ni reconocimiento de voz).
     // ---------------------------------------------------------------------
-    function ShiurDetailModal({ shiur, onClose, isActive, isPlaying, speed, progreso, actual, duracion, onPlayToggle, onSeek, onSpeedChange, onShare }) {
+    function ShiurDetailModal({ shiur, onClose, isActive, isPlaying, speed, progreso, actual, duracion, onPlayToggle, onSeek, onSpeedChange, onShare, onToggleEscuchado }) {
+      const escuchado = useEscuchado(shiur);
       const [mostrarTranscripcion, setMostrarTranscripcion] = useState(false);
       // null = todavía no se intentó cargar; [] = se intentó y no hay tiempos
       // reales para este shiur (shiurim viejos aún no procesados); array con
@@ -1861,7 +1905,20 @@
               <h2 className="font-serif text-2xl text-stone-900 mb-1 pr-8 leading-snug">{titulo}</h2>
               {subtitulo && <h3 className="text-stone-500 text-base italic font-normal mb-1">{subtitulo}</h3>}
               <div className="flex items-center justify-between gap-3 mb-3">
-                <p className="text-stone-500 text-sm">{formatFecha(shiur.fecha)}</p>
+                <div className="min-w-0">
+                  <p className="text-stone-500 text-sm">{formatFecha(shiur.fecha)}</p>
+                  <button
+                    onClick={() => onToggleEscuchado(shiur)}
+                    className={`mt-1.5 inline-flex items-center gap-1 text-xs rounded-full px-2.5 py-1 border transition-colors duration-200 ${
+                      escuchado ? "text-salvia-600 bg-salvia-100 border-salvia-500/30 font-medium" : "text-stone-500 border-stone-300 hover:text-salvia-600 hover:border-salvia-500"
+                    }`}
+                    aria-pressed={escuchado}
+                    title={escuchado ? "Desmarcar como escuchado" : "Marcar como escuchado"}
+                  >
+                    <IconCheck size={12} strokeWidth={3} />
+                    {escuchado ? "Escuchado" : "Marcar como escuchado"}
+                  </button>
+                </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <BotonFavorito shiur={shiur} titulo={titulo} className="!w-9 !h-9 border border-stone-300" />
                   <button
@@ -3517,6 +3574,30 @@
         });
       const [progresos, setProgresos] = useState(() => leerJSON(CLAVE_PROGRESO, {}));
       const progresosRef = useRef(progresos);
+      // Shiurim escuchados completos (solo en este dispositivo)
+      const [escuchadosLista, setEscuchadosLista] = useState(() => leerJSON(CLAVE_ESCUCHADOS, []).map(String));
+      const escuchados = useMemo(() => new Set(escuchadosLista), [escuchadosLista]);
+      const marcarEscuchado = (id, valor = true) =>
+        setEscuchadosLista((prev) => {
+          const clave = String(id);
+          if (prev.includes(clave) === valor) return prev;
+          const nuevo = valor ? [clave, ...prev].slice(0, MAX_ESCUCHADOS) : prev.filter((x) => x !== clave);
+          guardarJSON(CLAVE_ESCUCHADOS, nuevo);
+          return nuevo;
+        });
+      const quitarProgreso = (id) => {
+        const mapa = { ...progresosRef.current };
+        delete mapa[String(id)];
+        progresosRef.current = mapa;
+        setProgresos(mapa);
+        guardarJSON(CLAVE_PROGRESO, mapa);
+      };
+      // Desde la ficha del shiur: marcar / desmarcar a mano (al marcar, deja de figurar "en curso")
+      const toggleEscuchado = (shiur) => {
+        const visible = escuchados.has(String(shiur.id)) && !avanceDe(progresos, shiur);
+        if (visible) marcarEscuchado(shiur.id, false);
+        else { marcarEscuchado(shiur.id, true); quitarProgreso(shiur.id); }
+      };
       const ultimoGuardadoRef = useRef(0);
       const pendienteRef = useRef(0); // minuto al que hay que saltar cuando cargue el audio
 
@@ -3529,7 +3610,7 @@
         const d = audio.duration;
         const mapa = { ...progresosRef.current };
         const clave = String(current.id);
-        if (d - t < 20) delete mapa[clave]; // lo terminó: ya no aparece como "empezado"
+        if (d - t < 20) { delete mapa[clave]; if (t >= d * 0.9) marcarEscuchado(clave); } // lo terminó: ya no aparece como "empezado"
         else if (t >= 5) mapa[clave] = { t: Math.floor(t), d: Math.floor(d), u: ahora };
         else return;
         // Máximo de shiurim recordados: se descartan los más viejos
@@ -3817,6 +3898,11 @@
       const vistaActual = selectedShiur
         ? `shiur:${selectedShiur.id}`
         : categoriaActiva !== "Todas" ? `tema:${categoriaActiva}` : query.trim() ? "busqueda" : "inicio";
+      // Cada vez que se cambia de página (tema, inicio, búsqueda) se vuelve arriba de todo.
+      // "instant" porque el CSS de la página tiene scroll suave, que se corta si el alto cambia.
+      useEffect(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      }, [categoriaActiva, esInicio]);
       const rastrearRef = useRef(rastrear);
       rastrearRef.current = rastrear;
       useEffect(() => {
@@ -3997,7 +4083,7 @@
       };
 
       return (
-        <UsuarioContext.Provider value={{ favoritos, toggleFavorito, progresos }}>
+        <UsuarioContext.Provider value={{ favoritos, toggleFavorito, progresos, escuchados }}>
         <div className="min-h-screen bg-stone-50 flex flex-col">
           {/* Encabezado */}
           <header className="sticky top-0 z-40 border-b border-stone-200/70 bg-white/90 backdrop-blur-md safe-top">
@@ -4171,13 +4257,7 @@
             onLoadedMetadata={handleLoadedMetadata}
             onEnded={() => {
               pendienteRef.current = 0;
-              if (current) {
-                const mapa = { ...progresosRef.current };
-                delete mapa[String(current.id)];
-                progresosRef.current = mapa;
-                setProgresos(mapa);
-                guardarJSON(CLAVE_PROGRESO, mapa);
-              }
+              if (current) { quitarProgreso(current.id); marcarEscuchado(current.id); }
               setIsPlaying(false);
             }}
             preload="metadata"
@@ -4213,6 +4293,7 @@
               onSeek={handleSeek}
               onSpeedChange={setSpeed}
               onShare={handleCompartir}
+              onToggleEscuchado={toggleEscuchado}
             />
           )}
 
