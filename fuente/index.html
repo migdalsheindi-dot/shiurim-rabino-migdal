@@ -1814,9 +1814,11 @@
       const titulo = tituloPrincipalDe(shiur);
       const { subtitulo, descripcion } = separarDescripcion(shiur.descripcion);
 
-      const tieneTranscripcion = !!(shiur.transcripcion && shiur.transcripcion.trim());
+      // La versión liviana de data.json (la que descargan los visitantes) no trae el texto
+      // de los shiurim que tienen archivo transcripts/<id>.json: de ahí se lee al abrir la transcripción.
+      const tieneTexto = !!(shiur.transcripcion && shiur.transcripcion.trim());
       const palabrasPlano = useMemo(
-        () => (tieneTranscripcion ? shiur.transcripcion.trim().split(/\s+/) : []),
+        () => (tieneTexto ? shiur.transcripcion.trim().split(/\s+/) : []),
         [shiur.transcripcion]
       );
 
@@ -1828,7 +1830,7 @@
       // todavía no les tocó transcribirse con tiempos), sigue funcionando
       // con la estimación proporcional de siempre como respaldo.
       useEffect(() => {
-        if (!mostrarTranscripcion || !tieneTranscripcion) return;
+        if (!mostrarTranscripcion) return;
         let cancelado = false;
         setTiempos(null);
         fetch(`./transcripts/${shiur.id}.json`, { cache: "force-cache" })
@@ -1838,9 +1840,11 @@
           })
           .catch(() => { if (!cancelado) setTiempos([]); });
         return () => { cancelado = true; };
-      }, [mostrarTranscripcion, tieneTranscripcion, shiur.id]);
+      }, [mostrarTranscripcion, shiur.id]);
 
       const tieneTiempos = Array.isArray(tiempos) && tiempos.length > 0;
+      const tieneTranscripcion = tieneTexto || tieneTiempos;
+      const cargandoTranscripcion = mostrarTranscripcion && !tieneTranscripcion && tiempos === null;
       // Cuando hay tiempos reales, el texto que se muestra sale de ahí mismo
       // (misma fuente que los tiempos), así el resaltado nunca se desalinea
       // por una tokenización distinta a la del texto plano.
@@ -1983,7 +1987,8 @@
                   Transcripción
                 </button>
 
-                {mostrarTranscripcion && !tieneTranscripcion && (
+                {cargandoTranscripcion && <p className="text-xs text-stone-400 mt-2 text-center">Cargando transcripción…</p>}
+                {mostrarTranscripcion && !tieneTranscripcion && !cargandoTranscripcion && (
                   <p className="text-xs text-stone-400 mt-2 text-center">Todavía no hay transcripción cargada para este shiur.</p>
                 )}
 
