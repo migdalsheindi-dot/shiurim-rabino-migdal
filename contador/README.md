@@ -22,7 +22,7 @@ No se registra nada de lo que hagas vos como administrador, ni de quienes tienen
 - `POST /suscribir` `{ "nombre", "apellido", "email" }` formulario "Suscripción" de la web (guarda los datos en la tabla `suscriptores`).
 - `GET /suscriptores` **solo con la clave secreta**: lista de suscriptores (la usa el Panel Admin para mostrarla y descargarla en CSV).
 - `GET /estadisticas?dias=30` **solo con la clave secreta** (`Authorization: Bearer <ADMIN_TOKEN>`).
-- Solo se aceptan pedidos que vengan de yoelmigdal.com, y solo ids de shiurim que existen.
+- Solo se aceptan pedidos que vengan de yoelmigdal.com o de la app del celular (`capacitor://localhost` en iPhone, `https://localhost` en Android), y solo ids de shiurim que existen.
 
 ## Privacidad
 Solo se guarda una huella (hash con clave secreta) de IP + navegador + día, que se borra a los 2 días, y

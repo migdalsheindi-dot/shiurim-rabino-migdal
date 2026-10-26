@@ -30,6 +30,8 @@ const ORIGENES_PERMITIDOS = [
   "https://yoelmigdal.com",
   "https://www.yoelmigdal.com",
   "https://migdalsheindi-dot.github.io",
+  "capacitor://localhost", // app de iPhone (Capacitor)
+  "https://localhost", // app de Android (Capacitor)
   "http://localhost:8123", // pruebas locales
 ];
 
