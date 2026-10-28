@@ -17,7 +17,13 @@ Quién hace cada cosa: **Vos** = quien maneja el proyecto · **Rabino** · **Cla
 - Ícono y pantalla de inicio con el logo de la web.
 - Descargas para escuchar sin internet. Probado en tu iPhone, en modo avión.
 - Suscripción y estadísticas funcionando desde la app. Probado en tu iPhone.
-- Borradores de la política de privacidad y de las respuestas de privacidad para las tiendas (carpeta `legal/`).
+- Política de privacidad revisada (falta la aprobación del Rabino), con enlace en el menú de la app. Respuestas de privacidad para las tiendas listas (carpeta `legal/`).
+- Correo público **consultas@yoelmigdal.com**: recibe y puede responder sin mostrar el Gmail del Rabino.
+- Textos de las fichas de las tiendas revisados (`tiendas/textos.md`) y todas las imágenes: capturas de iPhone, iPad y Android, gráfico e ícono de Google (`tiendas/imagenes/`).
+- "Donar" oculto en la app hasta que el enlace sea de la comunidad. App para iPhone y iPad.
+- Android: notificación con controles de reproducción (pausa, adelantar, atrasar, portada) y botón "atrás" que cierra ventanas y vuelve al inicio sin cerrar la app. Probado en el emulador.
+- Requisitos técnicos de Apple (manifiesto de privacidad) y firma de Android para Google Play, listos.
+- Las notas internas ya no se ven públicamente en yoelmigdal.com.
 
 ---
 
@@ -28,7 +34,7 @@ Quién hace cada cosa: **Vos** = quien maneja el proyecto · **Rabino** · **Cla
 | D1 | **Botón "Donar" en la app** | ✅ **Decidido (28/10/2026):** no se muestra en la app hasta que el enlace de Mercado Pago sea de la cuenta de la comunidad. En la web sigue igual | Cuando cambie el enlace, se vuelve a mostrar abriendo la página de pago afuera de la app (lo hace Claude) |
 | D2 | **Correo público** para privacidad y para las tiendas | ✅ **Decidido y creado (28/10/2026):** **consultas@yoelmigdal.com**. Reenvío gratis en Namecheap al Gmail del Rabino; las respuestas salen como consultas@ a través de Resend (gratis, 100 correos/día) | Falta configurar "Enviar como" en el Gmail del Rabino |
 | D3 | **¿La app también para iPad?** | ✅ **Decidido (28/10/2026):** sí, iPhone y iPad | Apple pide capturas de iPad (de 13"). El diseño se probó con tamaños de iPad en la computadora |
-| D4 | **Nombre en las tiendas** | Por ejemplo "Rabino Yoel Migdal" o "Shiurim – Rabino Yoel Migdal" | Algo corto: en el iPhone se ve "Rabino Yoel Migdal" debajo del ícono |
+| D4 | **Nombre en las tiendas** | ✅ **Decidido (28/10/2026):** "Rabino Yoel Migdal – Shiurim" | Debajo del ícono se ve "Rabino Yoel Migdal" |
 | D5 | **Países donde se publica** | Todos, o elegir | Todos. Ver el aviso de la Unión Europea en la sección 5 |
 
 ---
@@ -37,7 +43,7 @@ Quién hace cada cosa: **Vos** = quien maneja el proyecto · **Rabino** · **Cla
 
 ### Etapa A — Preparación (se puede hacer ya, sin pagar nada)
 
-1. **Vos:** leer el borrador `legal/politica-de-privacidad.md` y avisarme qué cambiar.
+1. ~~**Vos:** revisar el borrador de la política.~~ Hecho el 28/10/2026; PDF enviado al Rabino (`legal/Politica-de-privacidad-Rabino-Yoel-Migdal.pdf`).
 2. **Rabino:** leer la política y aprobarla. Puntos ya confirmados (28/10/2026): domicilio solo "CABA", formularios para mayores de 13, la suscripción sirve para novedades del Rabino y de sus actividades (sin nombrar a ISEJ), la baja se pide a consultas@. Pendiente: que la lea alguien con conocimiento legal del entorno del Rabino o de ISEJ.
 3. ~~**Vos:** crear el correo público (D2).~~ Hecho el 28/10/2026: consultas@yoelmigdal.com.
 4. ~~**Claude:** armar la página de privacidad y el enlace en el menú de la app.~~ Hecho el 28/10/2026: el enlace "Política de privacidad" ya está en el menú de la app (solo en la app). La página se genera con `node movil/legal/generar-privacidad.mjs` (crea `privacidad.html` en la raíz) **recién cuando el Rabino apruebe la política**, y se publica con la web.
@@ -105,23 +111,23 @@ Yo puedo redactar los textos. Ustedes los revisan.
 
 | Dato | Apple | Google | Comentario |
 |---|---|---|---|
-| Nombre de la app | máx. 30 caracteres | máx. 30 caracteres | D4 |
-| Subtítulo / descripción corta | 30 caracteres | 80 caracteres | Ej.: "Shiurim y clases de Torá" |
-| Descripción larga | hasta 4000 caracteres | hasta 4000 | Qué es, qué temas hay, funciones (descargas, guardados, transcripción) |
-| Palabras clave | 100 caracteres | — | Torá, Tania, Parashá, jasidut, judaísmo, shiurim… |
-| Categoría | Educación (o Libros) | Educación | |
+| Nombre de la app | máx. 30 caracteres | máx. 30 caracteres | ✅ "Rabino Yoel Migdal – Shiurim" |
+| Subtítulo / descripción corta | 30 caracteres | 80 caracteres | ✅ Listos en `tiendas/textos.md` |
+| Descripción larga | hasta 4000 caracteres | hasta 4000 | ✅ Lista en `tiendas/textos.md` |
+| Palabras clave | 100 caracteres | — | ✅ Listas en `tiendas/textos.md` |
+| Categoría | ✅ Educación + Libros | ✅ Educación | |
 | Precio | Gratis | Gratis | |
-| Ícono | 1024×1024 (ya está) | 512×512 (lo genero) | |
-| Gráfico destacado | — | 1024×500 | Lo diseño con el logo |
-| Capturas iPhone | pantalla de 6,9" | — | Mínimo 1, ideal 3 a 5 |
-| Capturas iPad | obligatorias (D3 = sí) | — | Pantalla de 13" |
-| Capturas Android | — | mínimo 2 de teléfono | |
-| URL de privacidad | obligatoria | obligatoria | `yoelmigdal.com/privacidad.html` (Etapa A) |
+| Ícono | ✅ 1024×1024 | ✅ 512×512 | `tiendas/imagenes/google/` |
+| Gráfico destacado | — | ✅ 1024×500 | `tiendas/imagenes/google/` |
+| Capturas iPhone | ✅ 4, pantalla de 6,9" | — | `tiendas/imagenes/iphone/` |
+| Capturas iPad | ✅ 4, pantalla de 13" | — | `tiendas/imagenes/ipad/` |
+| Capturas Android | — | ✅ 4 de teléfono | `tiendas/imagenes/android/` |
+| URL de privacidad | obligatoria | obligatoria | `yoelmigdal.com/privacidad.html` (se publica cuando el Rabino apruebe) |
 | URL de soporte | obligatoria | sitio web | `yoelmigdal.com` |
-| Correo de contacto | — | obligatorio y público | D2 |
+| Correo de contacto | — | obligatorio y público | ✅ consultas@yoelmigdal.com |
 | Clasificación por edad | cuestionario | cuestionario | Sin violencia, sin apuestas, etc. → apta para todo público |
-| Privacidad de datos | "App Privacy" | "Seguridad de los datos" | Respuestas listas en `legal/formularios-tiendas.md` |
-| Notas para el revisor (Apple) | recomendado | — | Explicar las funciones propias de la app: descargas sin internet, audio en segundo plano |
+| Privacidad de datos | "App Privacy" | "Seguridad de los datos" | ✅ Respuestas listas en `legal/formularios-tiendas.md` |
+| Notas para el revisor (Apple) | recomendado | — | ✅ Listas en `tiendas/textos.md` |
 | ¿Tiene anuncios? | — | No | |
 | Público objetivo | — | 13 años o más | Coherente con la política |
 | Usuario y contraseña de prueba | no hace falta | no hace falta | La app no tiene cuentas |
@@ -135,9 +141,12 @@ Yo puedo redactar los textos. Ustedes los revisan.
 - **El riesgo más grande con Apple** es que diga que la app es "solo una página web" (regla 4.2). Para eso agregamos funciones propias: descargas sin internet y audio en segundo plano. Después vendrán los avisos. **Nadie puede garantizar la aprobación**: si la rechazan, se corrige y se vuelve a enviar.
 - **Donaciones:** ver D1. Apple no permite pagar o donar por fuera de la app salvo a instituciones benéficas, y siempre abriendo afuera de la app. Google solo exceptúa las donaciones exentas de impuestos.
 - **Unión Europea:** Apple pide declarar si el desarrollador es "comerciante" (trader). Si lo es, muestra su dirección y teléfono. Para una app gratuita sin fines comerciales se suele declarar "no comerciante", pero hay que confirmarlo en el momento. También se puede no publicarla en la Unión Europea.
+- **Avisos para Google Play:** declarar "servicio en primer plano de reproducción multimedia" (por la notificación de Android; suele pedir un video corto) y probar en un Android real.
+- **Llave de Android:** la carpeta `claves-app-yoel-migdal` (en tu carpeta personal) y su clave **no se pueden perder**: guardá una copia.
+- **El repositorio de GitHub es público:** nunca poner ahí contraseñas, claves ni datos personales.
 - **Datos públicos del Rabino:** como las cuentas son personales, las tiendas muestran su **nombre legal**. Google muestra además su **país** y el **correo de desarrollador**.
-- **Tu instalación de prueba en el iPhone vence a los 7 días.** Se renueva en un minuto, pidiéndomelo.
-- **La web y la app comparten el código.** Lo que se publique en la web desde el otro chat también llega a la app, y viceversa. Hoy hay **4 cambios guardados en esta Mac que todavía no se subieron a GitHub**.
+- **Tu instalación de prueba en el iPhone vence a los 7 días** (la última, el 4/11/2026). Se renueva en un minuto, pidiéndomelo.
+- **La web y la app comparten el código.** Lo que se publique en la web desde el otro chat también llega a la app, y viceversa. Los cambios de la app se guardan en esta Mac y se suben con la próxima publicación de la web; ninguno cambia lo que se ve en la web.
 
 ---
 
