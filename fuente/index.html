@@ -264,6 +264,10 @@
     // transcripciones, miniaturas) se leen siempre del sitio publicado, así los shiurim nuevos aparecen
     // sin publicar una versión nueva en las tiendas. En el navegador todo sigue con rutas relativas.
     const ES_APP = typeof window !== "undefined" && (location.protocol === "capacitor:" || !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()));
+    // "Donar" no se muestra dentro de la app hasta que el enlace de Mercado Pago sea de la comunidad
+    // (institución registrada): Apple y Google solo aceptan donaciones a instituciones benéficas y
+    // abriendo la página de pago fuera de la app. En la web se ve siempre.
+    const MOSTRAR_DONAR = !ES_APP;
     const rutaSitio = (ruta) => (!ES_APP || /^(https?:|data:)/.test(ruta) ? ruta : "https://yoelmigdal.com/" + String(ruta).replace(/^\.\//, ""));
 
     // ⚠️ Contraseña del Panel Admin. Cámbiala editando esta línea.
@@ -971,12 +975,14 @@
                   <IconBell size={16} />
                   Suscripción
                 </button>
-                <button
-                  onClick={onDonar}
-                  className="w-full flex items-center justify-center min-h-[44px] text-sm font-medium text-blue-50 bg-blue-900 border border-blue-900 rounded-lg px-3 hover:bg-stone-900 hover:border-stone-900 transition-colors duration-200"
-                >
-                  Donar
-                </button>
+                {MOSTRAR_DONAR && (
+                  <button
+                    onClick={onDonar}
+                    className="w-full flex items-center justify-center min-h-[44px] text-sm font-medium text-blue-50 bg-blue-900 border border-blue-900 rounded-lg px-3 hover:bg-stone-900 hover:border-stone-900 transition-colors duration-200"
+                  >
+                    Donar
+                  </button>
+                )}
               </div>
 
               <p className="text-[11px] uppercase tracking-wide text-stone-400 mt-6 mb-2">Redes</p>
@@ -4351,12 +4357,14 @@
                     <IconBell size={16} />
                     <span className="hidden sm:inline">Suscripción</span>
                   </button>
-                  <button
-                    onClick={() => { rastrear("evento", { tipo: "donar_abrir", origen: "encabezado", contexto: vistaActual }); setShowDonate(true); }}
-                    className="btn-navy flex items-center h-9 min-[420px]:h-11 sm:h-10 px-3 min-[420px]:px-4 sm:px-5 text-sm font-medium rounded-full"
-                  >
-                    Donar
-                  </button>
+                  {MOSTRAR_DONAR && (
+                    <button
+                      onClick={() => { rastrear("evento", { tipo: "donar_abrir", origen: "encabezado", contexto: vistaActual }); setShowDonate(true); }}
+                      className="btn-navy flex items-center h-9 min-[420px]:h-11 sm:h-10 px-3 min-[420px]:px-4 sm:px-5 text-sm font-medium rounded-full"
+                    >
+                      Donar
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -4544,7 +4552,7 @@
           {/* Contacto y Donación */}
           {showContact && <ContactModal onClose={() => setShowContact(false)} />}
           {showSuscripcion && <SuscripcionModal onClose={() => setShowSuscripcion(false)} />}
-          {showDonate && (
+          {MOSTRAR_DONAR && showDonate && (
             <DonateModal
               onClose={() => setShowDonate(false)}
               mercadoPagoLink={config.mercadoPagoLink}

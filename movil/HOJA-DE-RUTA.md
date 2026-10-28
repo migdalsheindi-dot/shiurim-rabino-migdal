@@ -3,7 +3,7 @@
 Todo lo que falta para publicar la app en el App Store (iPhone) y en Google Play (Android): qué hay que
 hacer, qué hay que decidir, qué datos hay que cargar y qué conviene saber.
 
-Actualizado: 26 de octubre de 2026. Los requisitos de Apple y Google se leyeron ese día en sus páginas
+Actualizado: 28 de octubre de 2026. Los requisitos de Apple y Google se leyeron ese día en sus páginas
 oficiales, pero **cambian seguido**: hay que volver a revisarlos justo antes de crear las cuentas y de enviar la app.
 
 Quién hace cada cosa: **Vos** = quien maneja el proyecto · **Rabino** · **Claude** = yo, en el chat.
@@ -25,9 +25,9 @@ Quién hace cada cosa: **Vos** = quien maneja el proyecto · **Rabino** · **Cla
 
 | # | Qué decidir | Opciones | Mi recomendación |
 |---|---|---|---|
-| D1 | **Botón "Donar" en la app** | (a) dejarlo, abriendo la página de pago **afuera** de la app, solo si cobra una **institución benéfica registrada**; (b) ocultarlo solo en la app | Si no está 100 % confirmado quién cobra, **(b) ocultarlo** para la primera revisión |
+| D1 | **Botón "Donar" en la app** | ✅ **Decidido (28/10/2026):** no se muestra en la app hasta que el enlace de Mercado Pago sea de la cuenta de la comunidad. En la web sigue igual | Cuando cambie el enlace, se vuelve a mostrar abriendo la página de pago afuera de la app (lo hace Claude) |
 | D2 | **Correo público** para privacidad y para las tiendas | (a) un reenvío gratis en Namecheap, por ejemplo `contacto@yoelmigdal.com`, que llega al correo del Rabino; (b) un Gmail nuevo | **(a)**. Google muestra este correo **públicamente** en la ficha de la app |
-| D3 | **¿La app también para iPad?** | Hoy está configurada para iPhone **y** iPad | Si queda para iPad, Apple pide capturas de iPad. Si no hay iPad para probar, **solo iPhone** |
+| D3 | **¿La app también para iPad?** | ✅ **Decidido (28/10/2026):** sí, iPhone y iPad | Apple pide capturas de iPad (de 13"). El diseño se probó con tamaños de iPad en la computadora |
 | D4 | **Nombre en las tiendas** | Por ejemplo "Rabino Yoel Migdal" o "Shiurim – Rabino Yoel Migdal" | Algo corto: en el iPhone se ve "Rabino Yoel Migdal" debajo del ícono |
 | D5 | **Países donde se publica** | Todos, o elegir | Todos. Ver el aviso de la Unión Europea en la sección 5 |
 
@@ -42,7 +42,7 @@ Quién hace cada cosa: **Vos** = quien maneja el proyecto · **Rabino** · **Cla
 3. **Vos:** crear el correo público en Namecheap (D2). Pasos: namecheap.com → Domain List → Manage en yoelmigdal.com → Redirect Email → Add Forwarder.
 4. **Claude:** poner el correo en la política, armar la página `privacidad.html` de la web y agregar el enlace en el pie de la web y en el menú de la app. Es un cambio en la web: te pido permiso antes.
 5. **Vos:** publicar la web con la política. Desde el otro chat, o me pedís permiso a mí.
-6. **Claude:** aplicar las decisiones D1 y D3 en la app.
+6. ~~**Claude:** aplicar las decisiones D1 y D3 en la app.~~ Hecho el 28/10/2026.
 7. **Juntar 12 personas con teléfono Android** (familia, alumnos, comunidad) que acepten probar la app **14 días seguidos**. Google lo exige para cuentas personales nuevas (ver la sección 5). Conviene empezar a juntarlas ya.
 
 ### Etapa B — Cuentas de desarrollador (las hace el Rabino, con sus datos)
@@ -102,7 +102,7 @@ Yo puedo redactar los textos. Ustedes los revisan.
 | Ícono | 1024×1024 (ya está) | 512×512 (lo genero) | |
 | Gráfico destacado | — | 1024×500 | Lo diseño con el logo |
 | Capturas iPhone | pantalla de 6,9" | — | Mínimo 1, ideal 3 a 5 |
-| Capturas iPad | solo si D3 = iPad | — | |
+| Capturas iPad | obligatorias (D3 = sí) | — | Pantalla de 13" |
 | Capturas Android | — | mínimo 2 de teléfono | |
 | URL de privacidad | obligatoria | obligatoria | `yoelmigdal.com/privacidad.html` (Etapa A) |
 | URL de soporte | obligatoria | sitio web | `yoelmigdal.com` |
