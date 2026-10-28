@@ -37,6 +37,12 @@ Xcode 27.1 (simulador iOS 27.1: solo existe "iPhone Duo", id `0F76F88C-968E-45BD
 
 Lista completa para publicar (decisiones, tareas, datos de las tiendas, cuentas): ver `HOJA-DE-RUTA.md`. Borrador de los textos de las fichas (nombre, descripciones, palabras clave, notas para el revisor): `tiendas/textos.md` (2026-10-27), pendiente de revisión.
 
+## Verificado el 2026-10-28 (sin publicar nada)
+- Android (emulador): el audio SIGUE con la app minimizada y la pantalla apagada (+2 min medidos), pero NO hay notificación con controles (el WebView no la crea). Riesgo: en teléfonos con ahorro de batería agresivo el sistema puede cortar shiurim largos. Solución propuesta: pieza nativa (servicio en primer plano + MediaSession) y declarar "mediaPlayback" en Play Console.
+- iOS: agregado `ios/App/App/PrivacyInfo.xcprivacy` (sin rastreo; FileTimestamp C617.1 por @capacitor/filesystem) e `ITSAppUsesNonExemptEncryption = false` en Info.plist. Incluidos en la compilación.
+- Android: firma de release lista. Llave y claves FUERA del repo en `~/claves-app-yoel-migdal/` (`subida.jks` + `firma.properties`, creadas por `movil/android/crear-llave-de-firma.sh`); `app/build.gradle` las usa si existen. `./gradlew bundleRelease` genera `app-release.aab` firmado (CN=Yoel Migdal). Hay que guardar copia de esa carpeta: sin ella no se pueden subir actualizaciones (Google permite pedir cambio de llave, pero es un trámite).
+- Seguridad: solo permiso INTERNET en Android, sin excepciones de ATS en iOS, enlaces externos abren en el navegador.
+
 ## Pendiente (en este orden, de a un tema por vez, sin saturar)
 1. ~~Prueba del audio en segundo plano con un iPhone real~~ (hecho y funcionando, 2026-10-26).
 2. ~~Ícono y pantalla de inicio propios~~ (hecho 2026-10-26: el logo de la web, libro con "YM" sobre fondo #211B13). Se regeneran con `npm run iconos` (`generar-iconos.mjs` crea `assets/` desde `../icons/logo-ym.svg` y `@capacitor/assets` hace todos los tamaños; el paso `despues` arregla el fondo del ícono adaptativo de Android). En Android 12+ el fondo oscuro de arranque sale de `windowSplashScreenBackground` en `styles.xml`.

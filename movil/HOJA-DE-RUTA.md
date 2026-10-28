@@ -75,6 +75,9 @@ Quién hace cada cosa: **Vos** = quien maneja el proyecto · **Rabino** · **Cla
 
 ### Etapa C — Armar y probar las versiones para las tiendas
 
+- Ya hecho (28/10/2026): manifiesto de privacidad de Apple, firma de Android lista (llave en `~/claves-app-yoel-migdal`, **hacer copia**), versión de Google Play compilada y firmada.
+- Pendiente: notificación con controles de reproducción en Android (el audio ya sigue en segundo plano, pero sin controles).
+
 11. **Claude:** cambiar la firma de la app de tu cuenta gratuita a la cuenta del Rabino, y armar las versiones finales para iPhone y para Android.
 12. ~~**Claude:** sacar las **capturas de pantalla** y el gráfico de Google (ver la sección 4).~~ Hecho el 28/10/2026, en `tiendas/imagenes/` (4 de iPhone 1320×2868, 4 de iPad 2064×2752, 4 de Android 1080×2160, gráfico 1024×500 e ícono 512×512). Si cambia el diseño de la app, hay que volver a sacarlas.
 13. **Vos:** cargar la ficha de la app en cada tienda con los datos de la sección 4. Yo te dicto qué va en cada campo.
