@@ -268,6 +268,9 @@
     // (institución registrada): Apple y Google solo aceptan donaciones a instituciones benéficas y
     // abriendo la página de pago fuera de la app. En la web se ve siempre.
     const MOSTRAR_DONAR = !ES_APP;
+    // En la app de Android el WebView no muestra controles de reproducción: los muestra una pieza
+    // nativa propia (ControlesAudio, en movil/android) que además mantiene vivo el audio en segundo plano.
+    const ES_APP_ANDROID = ES_APP && !!(window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform() === "android");
     const rutaSitio = (ruta) => (!ES_APP || /^(https?:|data:)/.test(ruta) ? ruta : "https://yoelmigdal.com/" + String(ruta).replace(/^\.\//, ""));
 
     // ⚠️ Contraseña del Panel Admin. Cámbiala editando esta línea.
@@ -4010,6 +4013,44 @@
           try { navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused"; } catch (e) {}
         }
       }, [isPlaying]);
+
+      // App de Android: notificación con controles (ver ES_APP_ANDROID). Se le avisa qué suena, si está
+      // en pausa y en qué minuto va; sus botones vuelven como acciones sobre el mismo reproductor.
+      const avisarControlesRef = useRef(() => {});
+      avisarControlesRef.current = () => {
+        if (!ES_APP_ANDROID) return;
+        if (!current) { nativo("ControlesAudio", "detener").catch(() => {}); return; }
+        const audio = audioRef.current;
+        nativo("ControlesAudio", "actualizar", {
+          titulo: tituloPrincipalDe(current),
+          artista: "Rabino Yoel Migdal",
+          portada: current.miniatura || current.portadaUrl ? rutaSitio(current.miniatura || current.portadaUrl) : "",
+          reproduciendo: isPlaying,
+          posicion: audio ? audio.currentTime || 0 : 0,
+          duracion: audio && isFinite(audio.duration) ? audio.duration : 0,
+          velocidad: speed,
+        }).catch(() => {});
+      };
+      useEffect(() => { avisarControlesRef.current(); }, [current && current.id, isPlaying, speed, duracion]);
+      useEffect(() => {
+        if (!ES_APP_ANDROID) return;
+        const audio = audioRef.current;
+        const alSaltar = () => avisarControlesRef.current();
+        if (audio) audio.addEventListener("seeked", alSaltar);
+        const escucha = window.Capacitor.addListener("ControlesAudio", "accion", (d) => {
+          const a = audioRef.current;
+          if (!d) return;
+          if (d.tipo === "play") setIsPlaying(true);
+          else if (d.tipo === "pausa") setIsPlaying(false);
+          else if (a && d.tipo === "atrasar") a.currentTime = Math.max(0, a.currentTime - 10);
+          else if (a && d.tipo === "adelantar") a.currentTime = Math.min(a.duration || 0, a.currentTime + 10);
+          else if (a && d.tipo === "ir" && isFinite(d.posicion)) a.currentTime = d.posicion;
+        });
+        return () => {
+          if (audio) audio.removeEventListener("seeked", alSaltar);
+          escucha.remove();
+        };
+      }, []);
 
       // Reproducciones contadas por el servicio propio (shiur.id -> total). Solo
       // se piden cuando se entra como administrador: es lo que muestra el Panel
