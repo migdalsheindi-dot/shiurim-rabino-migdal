@@ -44,7 +44,7 @@ Quién hace cada cosa: **Vos** = quien maneja el proyecto · **Rabino** · **Cla
 ### Etapa A — Preparación (se puede hacer ya, sin pagar nada)
 
 1. ~~**Vos:** revisar el borrador de la política.~~ Hecho el 28/10/2026; PDF enviado al Rabino (`legal/Politica-de-privacidad-Rabino-Yoel-Migdal.pdf`).
-2. **Rabino:** leer la política y aprobarla. Puntos ya confirmados (28/10/2026): domicilio solo "CABA", formularios para mayores de 13, la suscripción sirve para novedades del Rabino y de sus actividades (sin nombrar a ISEJ), la baja se pide a consultas@. Pendiente: que la lea alguien con conocimiento legal del entorno del Rabino o de ISEJ.
+2. ~~**Rabino:** aprobar la política.~~ ✅ Aprobada el 28/10/2026. Va solo enlazada desde el menú de la app (chiquita); en la web existe la página `privacidad.html` porque las tiendas piden una dirección pública, pero no hay ningún enlace a ella y los buscadores no la muestran.
 3. ~~**Vos:** crear el correo público (D2).~~ Hecho el 28/10/2026: consultas@yoelmigdal.com.
 4. ~~**Claude:** armar la página de privacidad y el enlace en el menú de la app.~~ Hecho el 28/10/2026: el enlace "Política de privacidad" ya está en el menú de la app (solo en la app). La página se genera con `node movil/legal/generar-privacidad.mjs` (crea `privacidad.html` en la raíz) **recién cuando el Rabino apruebe la política**, y se publica con la web.
 5. **Vos:** publicar la web con la política. Desde el otro chat, o me pedís permiso a mí.

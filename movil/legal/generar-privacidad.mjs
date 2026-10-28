@@ -23,7 +23,7 @@ const html = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${TITULO}</title>
 <meta name="description" content="${DESCRIPCION}">
-<meta name="robots" content="index,follow">
+<meta name="robots" content="noindex,nofollow">
 <link rel="canonical" href="https://yoelmigdal.com/privacidad.html">
 <link rel="icon" href="favicon.ico" sizes="48x48">
 <link rel="icon" type="image/svg+xml" href="icons/logo-icon.svg">

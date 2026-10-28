@@ -4,7 +4,7 @@
 
 Última actualización: 28 de octubre de 2026
 
-> BORRADOR casi final (28/10/2026): falta la aprobación del Rabino y, si se puede, una lectura legal.
+> APROBADA por el Rabino el 28/10/2026.
 > No es asesoramiento legal: conviene que lo lea un abogado antes de publicarlo.
 
 ## 1. Quién es el responsable
