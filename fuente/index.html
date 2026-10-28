@@ -1016,6 +1016,18 @@
                   Instalar la app
                 </button>
               )}
+
+              {/* Solo en la app: las tiendas piden que la política de privacidad se pueda abrir desde adentro */}
+              {ES_APP && (
+                <a
+                  href={rutaSitio("privacidad.html")}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-6 block text-center text-xs text-stone-500 underline underline-offset-2 hover:text-stone-700"
+                >
+                  Política de privacidad
+                </a>
+              )}
             </div>
           </div>
         </div>

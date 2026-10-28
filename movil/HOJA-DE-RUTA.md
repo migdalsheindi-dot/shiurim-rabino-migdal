@@ -40,7 +40,7 @@ Quién hace cada cosa: **Vos** = quien maneja el proyecto · **Rabino** · **Cla
 1. **Vos:** leer el borrador `legal/politica-de-privacidad.md` y avisarme qué cambiar.
 2. **Rabino:** leer la política y aprobarla. Puntos ya confirmados (28/10/2026): domicilio solo "CABA", formularios para mayores de 13, la suscripción sirve para novedades del Rabino y de sus actividades (sin nombrar a ISEJ), la baja se pide a consultas@. Pendiente: que la lea alguien con conocimiento legal del entorno del Rabino o de ISEJ.
 3. ~~**Vos:** crear el correo público (D2).~~ Hecho el 28/10/2026: consultas@yoelmigdal.com.
-4. **Claude:** poner el correo en la política, armar la página `privacidad.html` de la web y agregar el enlace en el pie de la web y en el menú de la app. Es un cambio en la web: te pido permiso antes.
+4. ~~**Claude:** armar la página de privacidad y el enlace en el menú de la app.~~ Hecho el 28/10/2026: el enlace "Política de privacidad" ya está en el menú de la app (solo en la app). La página se genera con `node movil/legal/generar-privacidad.mjs` (crea `privacidad.html` en la raíz) **recién cuando el Rabino apruebe la política**, y se publica con la web.
 5. **Vos:** publicar la web con la política. Desde el otro chat, o me pedís permiso a mí.
 6. ~~**Claude:** aplicar las decisiones D1 y D3 en la app.~~ Hecho el 28/10/2026.
 7. **Juntar 12 personas con teléfono Android** (familia, alumnos, comunidad) que acepten probar la app **14 días seguidos**. Google lo exige para cuentas personales nuevas (ver la sección 5). Conviene empezar a juntarlas ya.
