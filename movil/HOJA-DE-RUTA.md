@@ -100,7 +100,7 @@ Quién hace cada cosa: **Vos** = quien maneja el proyecto · **Rabino** · **Cla
 
 ### Después de publicar
 
-19. **Claude:** avisos de shiurim nuevos (notificaciones). Necesitan la cuenta paga de Apple para poder probarse.
+19. Avisos de shiurim nuevos: ✅ **Android listo y el servidor publicado** (28/10/2026). Falta iPhone: necesita la cuenta paga de Apple del Rabino (clave de avisos de Apple + configuración en Firebase), lo hace Claude.
 20. **Rabino:** renovar Apple cada año (US$ 99). Si no se paga, la app desaparece del App Store.
 21. **Cada tanto:** las tiendas piden actualizar la app a versiones nuevas de iOS/Android, más o menos una vez por año. Los shiurim nuevos **no** necesitan actualizar la app: aparecen solos.
 
