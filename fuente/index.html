@@ -75,17 +75,15 @@
   }
   </script>
 
-  <!-- Modo claro / oscuro. PRUEBA: por ahora solo se activa en el dispositivo donde se abre una vez
-       yoelmigdal.com/?modo=auto (sigue el modo del celular) o ?modo=oscuro; ?modo=claro lo desactiva.
-       Cuando se apruebe la prueba, AUTO_PARA_TODOS = true lo activa para todos los visitantes. -->
+  <!-- Modo claro / oscuro: por defecto la web sigue el modo del celular o la computadora (AUTO_PARA_TODOS).
+       Se puede forzar en un dispositivo con ?modo=claro, ?modo=oscuro o ?modo=auto (queda guardado ahí). -->
   <script>
     (function () {
-      var AUTO_PARA_TODOS = false;
+      var AUTO_PARA_TODOS = true;
       var d = document.documentElement, modo = "claro", mq = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
       try {
         var q = new URLSearchParams(location.search).get("modo");
-        if (q === "claro") localStorage.removeItem("ry_modo");
-        else if (q === "auto" || q === "oscuro") localStorage.setItem("ry_modo", q);
+        if (q === "claro" || q === "auto" || q === "oscuro") localStorage.setItem("ry_modo", q);
         modo = localStorage.getItem("ry_modo") || (AUTO_PARA_TODOS ? "auto" : "claro");
       } catch (e) { if (AUTO_PARA_TODOS) modo = "auto"; }
       function aplicar() {
