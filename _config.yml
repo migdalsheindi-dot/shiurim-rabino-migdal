@@ -1,0 +1,10 @@
+# Configuración de GitHub Pages (Jekyll). Solo dice qué NO se publica en yoelmigdal.com:
+# código fuente, herramientas y notas internas que la web no necesita para funcionar.
+# Si se agrega una carpeta nueva que la web sí usa, NO ponerla en esta lista.
+exclude:
+  - movil
+  - contador
+  - tools
+  - scripts
+  - fuente
+  - node_modules
