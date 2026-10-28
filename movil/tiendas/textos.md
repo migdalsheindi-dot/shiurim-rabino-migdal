@@ -97,7 +97,7 @@ Leilui Nishmat Shaia ben Hersh Wolf Z"L
 | Categoría secundaria (Apple) | Libros, o Estilo de vida |
 | Sitio web / URL de soporte | https://yoelmigdal.com |
 | URL de privacidad | https://yoelmigdal.com/privacidad.html (falta publicarla) |
-| Correo de contacto (Google, público) | falta definir (decisión D2) |
+| Correo de contacto (Google, público) | consultas@yoelmigdal.com |
 | Precio | Gratis |
 | Idioma principal | Español (Argentina, o Latinoamérica en Google) |
 | Derechos de autor (Apple) | 2026 Yoel Migdal |

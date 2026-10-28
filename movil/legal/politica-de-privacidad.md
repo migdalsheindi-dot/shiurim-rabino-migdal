@@ -11,7 +11,7 @@
 
 El responsable de este sitio y de la aplicación es el **Rabino Yoel Migdal**, con domicilio en la Ciudad Autónoma de Buenos Aires, Argentina.
 
-Para cualquier consulta sobre tus datos podés escribirnos desde el formulario de **Contacto** de la web o la aplicación, o al correo [A COMPLETAR: correo para consultas de privacidad].
+Para cualquier consulta sobre tus datos podés escribirnos desde el formulario de **Contacto** de la web o la aplicación, o al correo **consultas@yoelmigdal.com**.
 
 ## 2. Resumen en pocas palabras
 
@@ -51,7 +51,7 @@ Para darte de baja o pedir que borremos tus datos, escribinos (ver punto 1) y lo
 
 ## 6. Formulario de contacto
 
-Si nos escribís desde el formulario de **Contacto**, tu nombre, apellido, correo y mensaje se envían al correo del Rabino a través del servicio **EmailJS**, solo para poder responderte. El sitio no guarda una copia de esos mensajes.
+Si nos escribís desde el formulario de **Contacto**, tu nombre, apellido, correo y mensaje se envían al correo del Rabino a través del servicio **EmailJS**, solo para poder responderte. El sitio no guarda una copia de esos mensajes. Lo mismo vale si nos escribís directamente a consultas@yoelmigdal.com: el mensaje llega al correo del Rabino y la respuesta se envía a través del servicio **Resend**.
 
 ## 7. Servicios de terceros que intervienen
 
@@ -62,6 +62,7 @@ Para funcionar, el sitio y la aplicación usan estos servicios. Cada uno recibe 
 - **GitHub Pages**: aloja el sitio web.
 - **Google Fonts**: tipografías del sitio.
 - **EmailJS**: envío del formulario de contacto.
+- **Resend**: envío de las respuestas que mandamos desde consultas@yoelmigdal.com.
 
 Si tocás los botones de **Donar** (Mercado Pago), **WhatsApp** o **Instagram**, salís hacia esos servicios. Lo que hagas ahí se rige por sus propias políticas: nosotros no recibimos tus datos de pago.
 

@@ -30,7 +30,7 @@ Notas:
 
 - **¿Recopila o comparte datos?** Sí, los recopila. **No los comparte**: EmailJS y Cloudflare son proveedores que trabajan por cuenta nuestra.
 - **¿Están cifrados en tránsito?** Sí (HTTPS).
-- **¿Se puede pedir que se borren?** Sí, escribiendo desde Contacto o al correo de la política. Hace falta poner un enlace a una página que explique cómo pedirlo; puede ser la misma política, punto 5.
+- **¿Se puede pedir que se borren?** Sí, escribiendo desde Contacto o a consultas@yoelmigdal.com. Hace falta poner un enlace a una página que explique cómo pedirlo; puede ser la misma política, punto 5.
 
 | Tipo de dato (Google) | ¿Obligatorio u opcional? | Para qué |
 |---|---|---|
@@ -42,5 +42,5 @@ Notas:
 ## Pendientes antes de enviar
 
 1. Publicar la política en la web (`privacidad.html`) y poner un enlace en el pie de la web y en el menú de la app.
-2. Definir el correo de contacto para privacidad (el correo del Rabino no va en el código).
+2. ~~Definir el correo de contacto~~: **consultas@yoelmigdal.com** (reenvío de Namecheap al correo del Rabino; las respuestas salen desde esa misma dirección a través de Resend).
 3. Si se agregan avisos push: declarar también un identificador del dispositivo (Device ID, para App functionality).

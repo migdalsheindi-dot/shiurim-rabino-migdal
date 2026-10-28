@@ -26,7 +26,7 @@ Quién hace cada cosa: **Vos** = quien maneja el proyecto · **Rabino** · **Cla
 | # | Qué decidir | Opciones | Mi recomendación |
 |---|---|---|---|
 | D1 | **Botón "Donar" en la app** | ✅ **Decidido (28/10/2026):** no se muestra en la app hasta que el enlace de Mercado Pago sea de la cuenta de la comunidad. En la web sigue igual | Cuando cambie el enlace, se vuelve a mostrar abriendo la página de pago afuera de la app (lo hace Claude) |
-| D2 | **Correo público** para privacidad y para las tiendas | (a) un reenvío gratis en Namecheap, por ejemplo `contacto@yoelmigdal.com`, que llega al correo del Rabino; (b) un Gmail nuevo | **(a)**. Google muestra este correo **públicamente** en la ficha de la app |
+| D2 | **Correo público** para privacidad y para las tiendas | ✅ **Decidido y creado (28/10/2026):** **consultas@yoelmigdal.com**. Reenvío gratis en Namecheap al Gmail del Rabino; las respuestas salen como consultas@ a través de Resend (gratis, 100 correos/día) | Falta configurar "Enviar como" en el Gmail del Rabino |
 | D3 | **¿La app también para iPad?** | ✅ **Decidido (28/10/2026):** sí, iPhone y iPad | Apple pide capturas de iPad (de 13"). El diseño se probó con tamaños de iPad en la computadora |
 | D4 | **Nombre en las tiendas** | Por ejemplo "Rabino Yoel Migdal" o "Shiurim – Rabino Yoel Migdal" | Algo corto: en el iPhone se ve "Rabino Yoel Migdal" debajo del ícono |
 | D5 | **Países donde se publica** | Todos, o elegir | Todos. Ver el aviso de la Unión Europea en la sección 5 |
@@ -39,11 +39,19 @@ Quién hace cada cosa: **Vos** = quien maneja el proyecto · **Rabino** · **Cla
 
 1. **Vos:** leer el borrador `legal/politica-de-privacidad.md` y avisarme qué cambiar.
 2. **Rabino:** leer la política y aprobarla. Idealmente, que la mire también un abogado.
-3. **Vos:** crear el correo público en Namecheap (D2). Pasos: namecheap.com → Domain List → Manage en yoelmigdal.com → Redirect Email → Add Forwarder.
+3. ~~**Vos:** crear el correo público (D2).~~ Hecho el 28/10/2026: consultas@yoelmigdal.com.
 4. **Claude:** poner el correo en la política, armar la página `privacidad.html` de la web y agregar el enlace en el pie de la web y en el menú de la app. Es un cambio en la web: te pido permiso antes.
 5. **Vos:** publicar la web con la política. Desde el otro chat, o me pedís permiso a mí.
 6. ~~**Claude:** aplicar las decisiones D1 y D3 en la app.~~ Hecho el 28/10/2026.
 7. **Juntar 12 personas con teléfono Android** (familia, alumnos, comunidad) que acepten probar la app **14 días seguidos**. Google lo exige para cuentas personales nuevas (ver la sección 5). Conviene empezar a juntarlas ya.
+
+3b. **Rabino — responder como consultas@yoelmigdal.com** (en Gmail **de computadora**, no en la app del celular):
+    - Antes: pedirle a quien maneja el proyecto la clave de Resend (empieza con `re_`); no se manda por chat.
+    - Gmail → ⚙️ → Ver toda la configuración → **Cuentas e importación** → "Enviar como" → **Agregar otra dirección**.
+    - Nombre: `Rabino Yoel Migdal` · Dirección: `consultas@yoelmigdal.com` · Siguiente.
+    - Servidor SMTP `smtp.resend.com` · Puerto `587` · Usuario `resend` · Contraseña: la clave `re_…` · Conexión segura con TLS → Agregar cuenta.
+    - Confirmar con el correo que llega a consultas@ (cae en su mismo Gmail).
+    - En "Al responder a un mensaje" elegir **"Responder desde la misma dirección a la que se envió el mensaje"**.
 
 ### Etapa B — Cuentas de desarrollador (las hace el Rabino, con sus datos)
 
