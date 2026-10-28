@@ -16,3 +16,7 @@ android/app/src/main/assets/public/
 android/app/src/main/assets/capacitor.config.json
 android/app/src/main/assets/capacitor.plugins.json
 android/capacitor-cordova-android-plugins/
+
+# Configuración de Firebase (no es secreta, pero el repositorio es público)
+android/app/google-services.json
+ios/App/App/GoogleService-Info.plist

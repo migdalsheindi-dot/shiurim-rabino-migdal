@@ -178,12 +178,107 @@ async function revisarFeed(env) {
   return { ok: true, motivo: `GitHub avisado (${huella})` };
 }
 
+// ---- Avisos de shiurim nuevos en la app (Firebase Cloud Messaging) -------------------
+// Cada minuto mira el episodio más nuevo del feed. Cuando aparece uno distinto al último
+// avisado Y ya está publicado en la web (data-lite.json), manda UN aviso al tema "shiurim"
+// de Firebase: le llega a todos los teléfonos que activaron los avisos en la app.
+// Necesita el secret FCM_CUENTA (el JSON de la "cuenta de servicio" de Firebase); sin él no hace nada.
+const TEMA_AVISOS = "shiurim";
+const DATOS_WEB = "https://yoelmigdal.com/data-lite.json";
+
+function base64url(bytes) {
+  let s = "";
+  for (const b of new Uint8Array(bytes)) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+// Permiso de Google para mandar avisos: un JWT firmado con la clave de la cuenta de servicio
+async function tokenDeFirebase(cuenta) {
+  const ahora = Math.floor(Date.now() / 1000);
+  const enc = new TextEncoder();
+  const cabecera = base64url(enc.encode(JSON.stringify({ alg: "RS256", typ: "JWT" })));
+  const datos = base64url(enc.encode(JSON.stringify({
+    iss: cuenta.client_email,
+    scope: "https://www.googleapis.com/auth/firebase.messaging",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: ahora,
+    exp: ahora + 3600,
+  })));
+  const pem = cuenta.private_key.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
+  const clave = await crypto.subtle.importKey(
+    "pkcs8",
+    Uint8Array.from(atob(pem), (c) => c.charCodeAt(0)),
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const firma = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", clave, enc.encode(`${cabecera}.${datos}`));
+  const r = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${cabecera}.${datos}.${base64url(firma)}`,
+  });
+  if (!r.ok) throw new Error(`Google respondió ${r.status} al pedir permiso`);
+  return (await r.json()).access_token;
+}
+
+function decodificarXml(t) {
+  return String(t || "")
+    .replace(/^<!\[CDATA\[|\]\]>$/g, "")
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .trim();
+}
+
+async function avisarShiurNuevo(env) {
+  if (!env.FCM_CUENTA) return { ok: false, motivo: "falta FCM_CUENTA" };
+  const r = await fetch(`${FEED_URL}?cb=${Math.floor(Date.now() / 60000)}`, { headers: { "User-Agent": "Mozilla/5.0 (compatible; ShiurimAviso/1.0)" } });
+  if (!r.ok) return { ok: false, motivo: `feed HTTP ${r.status}` };
+  const item = ((await r.text()).match(/<item>([\s\S]*?)<\/item>/) || [])[1];
+  if (!item) return { ok: false, motivo: "feed sin episodios" };
+  const audio = (item.match(/<enclosure[^>]*url="([^"]+)"/) || [])[1];
+  const titulo = decodificarXml((item.match(/<title>([\s\S]*?)<\/title>/) || [])[1]);
+  if (!audio) return { ok: false, motivo: "episodio sin audio" };
+
+  const previo = await env.DB.prepare("SELECT valor FROM estado WHERE clave = 'aviso_push'").first();
+  const guardar = () => env.DB.prepare("INSERT INTO estado (clave, valor) VALUES ('aviso_push', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor").bind(audio).run();
+  if (!previo) { await guardar(); return { ok: true, motivo: "primer registro, sin aviso" }; }
+  if (previo.valor === audio) return { ok: true, motivo: "sin cambios" };
+
+  // Espera a que la web ya lo tenga, así al tocar el aviso el shiur aparece en la app
+  const datos = await fetch(`${DATOS_WEB}?cb=${Date.now()}`, { cf: { cacheTtl: 0 } }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+  if (!datos || !Array.isArray(datos.shiurim) || !datos.shiurim.some((s) => s.audioUrl === audio)) {
+    return { ok: true, motivo: "esperando que la web publique el episodio" };
+  }
+
+  const cuenta = JSON.parse(env.FCM_CUENTA);
+  const token = await tokenDeFirebase(cuenta);
+  const envio = await fetch(`https://fcm.googleapis.com/v1/projects/${cuenta.project_id}/messages:send`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message: {
+        topic: TEMA_AVISOS,
+        notification: { title: "Nuevo shiur del Rabino Yoel Migdal", body: titulo.slice(0, 180) },
+        android: { priority: "HIGH", notification: { channel_id: "shiurim", icon: "ic_notificacion", color: "#211B13" } },
+      },
+    }),
+  });
+  if (!envio.ok) return { ok: false, motivo: `Firebase respondió ${envio.status}: ${(await envio.text()).slice(0, 200)}` };
+  await guardar();
+  return { ok: true, motivo: `aviso enviado: ${titulo}` };
+}
+
 export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil(
       revisarFeed(env)
         .then((r) => { if (!r.ok || r.motivo !== "sin cambios") console.log("revisión del feed:", JSON.stringify(r)); })
         .catch((e) => console.log("error revisando el feed:", String(e)))
+    );
+    ctx.waitUntil(
+      avisarShiurNuevo(env)
+        .then((r) => { if (!r.ok || !["sin cambios", "falta FCM_CUENTA"].includes(r.motivo)) console.log("avisos:", JSON.stringify(r)); })
+        .catch((e) => console.log("error en avisos:", String(e)))
     );
   },
 

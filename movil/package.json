@@ -9,6 +9,7 @@
     "iconos": "node generar-iconos.mjs && capacitor-assets generate --ios --android --iconBackgroundColor '#211B13' --iconBackgroundColorDark '#211B13' --splashBackgroundColor '#211B13' --splashBackgroundColorDark '#211B13' && node generar-iconos.mjs despues"
   },
   "dependencies": {
+    "@capacitor-firebase/messaging": "^8.5.2",
     "@capacitor/android": "^8.5.3",
     "@capacitor/app": "^8.1.2",
     "@capacitor/cli": "^8.5.3",

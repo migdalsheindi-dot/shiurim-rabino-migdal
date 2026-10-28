@@ -20,6 +20,7 @@ Ambas tiendas piden el **enlace público a la política de privacidad**. La prop
 | Contact Info → **Email Address** | Developer's Advertising or Marketing | Sí | No |
 | Usage Data → **Product Interaction** (visitas, reproducciones, segundos escuchados) | Analytics | No | No |
 | Location → **Coarse Location** (solo el país, como contador) | Analytics | No | No |
+| Identifiers → **Device ID** (identificador de Firebase para los avisos, solo si los activa) | App Functionality | No | No |
 
 Notas:
 - Nombre y email salen del formulario de **Suscripción**. El formulario de **Contacto** usa los mismos datos, así que ya quedan declarados.
@@ -38,9 +39,10 @@ Notas:
 | Personal info → **Email address** | Opcional | Developer communications |
 | App activity → **App interactions** | Se recopila automáticamente | Analytics |
 | Location → **Approximate location** (país) | Se recopila automáticamente | Analytics |
+| Device or other IDs → **Device or other IDs** (Firebase, avisos) | Opcional (solo si activa los avisos) | App functionality |
 
 ## Pendientes antes de enviar
 
 1. Publicar la política en la web (`privacidad.html`) y poner un enlace en el pie de la web y en el menú de la app.
 2. ~~Definir el correo de contacto~~: **consultas@yoelmigdal.com** (reenvío de Namecheap al correo del Rabino; las respuestas salen desde esa misma dirección a través de Resend).
-3. Si se agregan avisos push: declarar también un identificador del dispositivo (Device ID, para App functionality).
+3. ~~Avisos push~~: ya declarados arriba (Device ID / Device or other IDs). En iPhone, cuando se activen, revisar que el manifiesto de privacidad siga siendo correcto.

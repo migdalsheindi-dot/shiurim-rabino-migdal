@@ -49,11 +49,17 @@ Si completás el formulario de **Suscripción**, guardamos tu **nombre, apellido
 
 Para darte de baja o pedir que borremos tus datos, escribinos (ver punto 1) y lo hacemos sin costo.
 
-## 6. Formulario de contacto
+## 6. Avisos de shiurim nuevos (solo en la aplicación)
+
+Si activás **"Avisos en este teléfono"**, tu teléfono se anota para recibir un aviso cuando se publica un shiur nuevo. Para eso, el servicio **Firebase Cloud Messaging** de Google le asigna a la aplicación un identificador técnico del dispositivo. Nosotros **no guardamos ese identificador** ni lo asociamos a tu nombre o tu correo: el aviso se manda una sola vez, a todos los teléfonos anotados.
+
+Podés dejar de recibirlos cuando quieras, apagando el interruptor en la aplicación o desde los ajustes de notificaciones de tu teléfono.
+
+## 7. Formulario de contacto
 
 Si nos escribís desde el formulario de **Contacto**, tu nombre, apellido, correo y mensaje se envían al correo del Rabino a través del servicio **EmailJS**, solo para poder responderte. El sitio no guarda una copia de esos mensajes. Lo mismo vale si nos escribís directamente a consultas@yoelmigdal.com: el mensaje llega al correo del Rabino y la respuesta se envía a través del servicio **Resend**.
 
-## 7. Servicios de terceros que intervienen
+## 8. Servicios de terceros que intervienen
 
 Para funcionar, el sitio y la aplicación usan estos servicios. Cada uno recibe los datos técnicos mínimos de la conexión (por ejemplo, la IP y el tipo de dispositivo) y se rige por su propia política de privacidad:
 
@@ -62,28 +68,29 @@ Para funcionar, el sitio y la aplicación usan estos servicios. Cada uno recibe 
 - **GitHub Pages**: aloja el sitio web.
 - **Google Fonts**: tipografías del sitio.
 - **EmailJS**: envío del formulario de contacto.
+- **Firebase Cloud Messaging (Google)**: entrega de los avisos de shiurim nuevos en la aplicación.
 - **Resend**: envío de las respuestas que mandamos desde consultas@yoelmigdal.com.
 
 Si tocás los botones de **Donar** (Mercado Pago), **WhatsApp** o **Instagram**, salís hacia esos servicios. Lo que hagas ahí se rige por sus propias políticas: nosotros no recibimos tus datos de pago.
 
-## 8. Permisos de la aplicación
+## 9. Permisos de la aplicación
 
-La aplicación solo usa internet, para cargar los shiurim, y el almacenamiento propio de la aplicación, para las descargas. **No accede** a tus contactos, fotos, ubicación precisa, micrófono ni cámara.
+La aplicación solo usa internet, para cargar los shiurim, el almacenamiento propio de la aplicación, para las descargas, y, si los activás, el permiso de notificaciones, para los avisos de shiurim nuevos. **No accede** a tus contactos, fotos, ubicación precisa, micrófono ni cámara.
 
-## 9. Menores de edad
+## 10. Menores de edad
 
 El contenido es apto para todo público, pero los formularios de suscripción y contacto están pensados para mayores de 13 años. Si sos madre, padre o tutor y creés que un menor nos envió sus datos, escribinos y los borramos.
 
-## 10. Seguridad y conservación
+## 11. Seguridad y conservación
 
 Todas las comunicaciones viajan cifradas (HTTPS). Los datos de suscripción se guardan mientras sigas suscripto o hasta que pidas borrarlos. Las estadísticas son totales anónimos y pueden conservarse sin límite de tiempo.
 
-## 11. Tus derechos
+## 12. Tus derechos
 
 De acuerdo con la **Ley 25.326 de Protección de los Datos Personales** de Argentina, podés pedir **acceso, rectificación, actualización o supresión** de tus datos escribiéndonos (ver punto 1). Respondemos dentro de los plazos que fija la ley.
 
 La AGENCIA DE ACCESO A LA INFORMACIÓN PÚBLICA, en su carácter de Órgano de Control de la Ley N° 25.326, tiene la atribución de atender las denuncias y reclamos que interpongan quienes resulten afectados en sus derechos por incumplimiento de las normas vigentes en materia de protección de datos personales.
 
-## 12. Cambios en esta política
+## 13. Cambios en esta política
 
 Si cambiamos esta política, publicamos la versión nueva en esta misma página con su fecha de actualización.

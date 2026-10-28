@@ -2,6 +2,15 @@
   "appId": "com.yoelmigdal.shiurim",
   "appName": "Rabino Yoel Migdal",
   "webDir": "www",
-  "ios": { "contentInset": "never" },
-  "android": { "allowMixedContent": false }
+  "ios": {
+    "contentInset": "never",
+    "includePlugins": [
+      "@capacitor/app",
+      "@capacitor/file-transfer",
+      "@capacitor/filesystem"
+    ]
+  },
+  "android": {
+    "allowMixedContent": false
+  }
 }

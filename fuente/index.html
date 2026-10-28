@@ -271,6 +271,8 @@
     // En la app de Android el WebView no muestra controles de reproducción: los muestra una pieza
     // nativa propia (ControlesAudio, en movil/android) que además mantiene vivo el audio en segundo plano.
     const ES_APP_ANDROID = ES_APP && !!(window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform() === "android");
+    // Avisos de shiurim nuevos (Firebase): por ahora solo Android; en iPhone se activan con la cuenta de Apple del Rabino.
+    const AVISOS_DISPONIBLES = ES_APP_ANDROID;
     const rutaSitio = (ruta) => (!ES_APP || /^(https?:|data:)/.test(ruta) ? ruta : "https://yoelmigdal.com/" + String(ruta).replace(/^\.\//, ""));
 
     // ⚠️ Contraseña del Panel Admin. Cámbiala editando esta línea.
@@ -1071,6 +1073,23 @@
       const ext = (/\.(m4a|mp3|aac|mp4|ogg|opus|wav)(?:[?#]|$)/i.exec(String(url || "")) || [, "mp3"])[1].toLowerCase();
       return `${slugDe(String(id)) || "shiur"}.${ext}`;
     };
+    // Avisos de shiurim nuevos: el teléfono se anota al tema "shiurim" de Firebase y el servidor
+    // (contador/) manda un solo aviso a ese tema cuando sale un shiur. Sin cuentas ni datos personales.
+    const CLAVE_AVISOS = "ry_avisos";
+    const TEMA_AVISOS = "shiurim";
+    async function activarAvisos() {
+      const permiso = await nativo("FirebaseMessaging", "requestPermissions");
+      if (!permiso || permiso.receive !== "granted") return false;
+      await nativo("FirebaseMessaging", "createChannel", { id: "shiurim", name: "Shiurim nuevos", description: "Aviso cuando se publica un shiur nuevo", importance: 3 }).catch(() => {});
+      await nativo("FirebaseMessaging", "subscribeToTopic", { topic: TEMA_AVISOS });
+      guardarJSON(CLAVE_AVISOS, true);
+      return true;
+    }
+    async function desactivarAvisos() {
+      await nativo("FirebaseMessaging", "unsubscribeFromTopic", { topic: TEMA_AVISOS }).catch(() => {});
+      guardarJSON(CLAVE_AVISOS, false);
+    }
+
     function formatMB(bytes) {
       const mb = (Number(bytes) || 0) / (1024 * 1024);
       return mb >= 1000 ? `${(mb / 1024).toFixed(1).replace(".", ",")} GB` : `${Math.max(1, Math.round(mb))} MB`;
@@ -2274,6 +2293,43 @@
     // Los datos van al contador propio (Cloudflare D1); solo el administrador
     // puede leerlos desde el panel de estadísticas.
     // ---------------------------------------------------------------------
+    // Interruptor de avisos dentro de la ventana de Suscripción (solo en la app, ver AVISOS_DISPONIBLES).
+    function AvisosEnTelefono() {
+      const [activos, setActivos] = useState(() => leerJSON(CLAVE_AVISOS, false));
+      const [estado, setEstado] = useState(""); // "", "cargando", "bloqueado", "error"
+      if (!AVISOS_DISPONIBLES) return null;
+      const cambiar = async () => {
+        setEstado("cargando");
+        try {
+          if (activos) { await desactivarAvisos(); setActivos(false); setEstado(""); }
+          else { const ok = await activarAvisos(); setActivos(ok); setEstado(ok ? "" : "bloqueado"); }
+        } catch (e) { setEstado("error"); }
+      };
+      return (
+        <div className="mb-6 rounded-lg border border-stone-200 bg-stone-50 p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-stone-900">Avisos en este teléfono</p>
+              <p className="text-xs text-stone-500 mt-0.5">Te avisamos cuando se publica un shiur nuevo.</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={activos}
+              aria-label="Avisos de shiurim nuevos"
+              onClick={cambiar}
+              disabled={estado === "cargando"}
+              className={`relative shrink-0 w-12 h-7 rounded-full transition-colors duration-200 disabled:opacity-60 ${activos ? "bg-blue-900" : "bg-stone-300"}`}
+            >
+              <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${activos ? "translate-x-5" : ""}`} />
+            </button>
+          </div>
+          {estado === "bloqueado" && <p className="text-xs text-amber-700 mt-3">Los avisos están bloqueados para esta app. Activalos en Ajustes del teléfono → Apps → Rabino Yoel Migdal → Notificaciones.</p>}
+          {estado === "error" && <p className="text-xs text-red-500 mt-3">No se pudo cambiar. Revisá tu conexión y probá de nuevo.</p>}
+        </div>
+      );
+    }
+
     function SuscripcionModal({ onClose }) {
       const [form, setForm] = useState({ nombre: "", apellido: "", email: "", web: "" });
       const [estado, setEstado] = useState("idle"); // idle | enviando | ok | error | espera
@@ -2315,6 +2371,7 @@
             </div>
             <h2 className="font-serif text-xl text-stone-900 mb-1">Suscribite a las novedades</h2>
             <p className="text-sm text-stone-500 mb-6">Completá tus datos y enterate apenas se sube contenido nuevo.</p>
+            <AvisosEnTelefono />
 
             {estado === "ok" ? (
               <div className="space-y-4">
@@ -4050,6 +4107,14 @@
           if (audio) audio.removeEventListener("seeked", alSaltar);
           escucha.remove();
         };
+      }, []);
+
+      // Si la persona ya activó los avisos, se vuelve a anotar al abrir la app (sin volver a pedir permiso).
+      useEffect(() => {
+        if (!AVISOS_DISPONIBLES || !leerJSON(CLAVE_AVISOS, false)) return;
+        nativo("FirebaseMessaging", "checkPermissions")
+          .then((p) => { if (p && p.receive === "granted") return nativo("FirebaseMessaging", "subscribeToTopic", { topic: TEMA_AVISOS }); })
+          .catch(() => {});
       }, []);
 
       // Botón "atrás" de Android: cierra lo que esté abierto, después vuelve al inicio y, ya en el inicio,
