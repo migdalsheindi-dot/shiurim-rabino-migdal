@@ -75,6 +75,31 @@
   }
   </script>
 
+  <!-- Modo claro / oscuro. PRUEBA: por ahora solo se activa en el dispositivo donde se abre una vez
+       yoelmigdal.com/?modo=auto (sigue el modo del celular) o ?modo=oscuro; ?modo=claro lo desactiva.
+       Cuando se apruebe la prueba, AUTO_PARA_TODOS = true lo activa para todos los visitantes. -->
+  <script>
+    (function () {
+      var AUTO_PARA_TODOS = false;
+      var d = document.documentElement, modo = "claro", mq = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+      try {
+        var q = new URLSearchParams(location.search).get("modo");
+        if (q === "claro") localStorage.removeItem("ry_modo");
+        else if (q === "auto" || q === "oscuro") localStorage.setItem("ry_modo", q);
+        modo = localStorage.getItem("ry_modo") || (AUTO_PARA_TODOS ? "auto" : "claro");
+      } catch (e) { if (AUTO_PARA_TODOS) modo = "auto"; }
+      function aplicar() {
+        var osc = modo === "oscuro" || (modo === "auto" && !!mq && mq.matches);
+        d.classList.toggle("oscuro", osc);
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute("content", osc ? "#0B1220" : "#211b13");
+      }
+      aplicar();
+      document.addEventListener("DOMContentLoaded", aplicar);
+      if (modo === "auto" && mq) { if (mq.addEventListener) mq.addEventListener("change", aplicar); else if (mq.addListener) mq.addListener(aplicar); }
+    })();
+  </script>
+
   <!-- PWA: instalable en pantalla de inicio del celular / computadora -->
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#211b13" />
@@ -227,6 +252,56 @@
     /* Corazón de "Guardados": late al activarse */
     @keyframes latido { 0% { transform: scale(1); } 40% { transform: scale(1.4); } 100% { transform: scale(1); } }
     .es-favorito svg { animation: latido .45s ease; }
+    /* ---- Modo oscuro (se activa con la clase "oscuro" en <html>; ver el script del <head>) ----
+       Mantiene el azul noche y el dorado de la marca. Solo cambia los colores de las zonas claras. */
+    html.oscuro { color-scheme: dark; }
+    .oscuro body, .oscuro .bg-stone-50 { background-color: #0B1220; }
+    .oscuro .bg-white { background-color: #141D31; }
+    .oscuro .bg-white\/90 { background-color: rgba(11,18,32,.9); }
+    .oscuro .bg-white\/95 { background-color: rgba(20,29,49,.95); }
+    .oscuro .bg-stone-100 { background-color: #1B2540; }
+    .oscuro .bg-stone-200 { background-color: #2A3550; }
+    .oscuro .bg-blue-50 { background-color: rgba(111,140,200,.14); }
+    .oscuro .bg-gold-100 { background-color: rgba(199,154,75,.18); }
+    .oscuro .bg-salvia-100 { background-color: rgba(58,154,107,.2); }
+    .oscuro .text-stone-900, .oscuro .text-stone-800 { color: #F1EBDD; }
+    .oscuro .text-stone-700 { color: #DDD5C3; }
+    .oscuro .text-stone-600 { color: #C2BAA8; }
+    .oscuro .text-stone-500 { color: #A9A18F; }
+    .oscuro .text-stone-400 { color: #938B79; }
+    .oscuro .text-stone-300 { color: #4A5573; }
+    .oscuro .text-blue-900 { color: #EFE6D0; }
+    .oscuro .text-gold-600 { color: #D9B063; }
+    .oscuro .text-salvia-600 { color: #6FCB9B; }
+    .oscuro .text-red-500, .oscuro .text-red-700 { color: #F29A9A; }
+    .oscuro .text-amber-600 { color: #E5B05A; }
+    .oscuro .border-stone-200, .oscuro .border-stone-200\/70 { border-color: #26304A; }
+    .oscuro .border-stone-300 { border-color: #37435F; }
+    .oscuro .border-blue-100 { border-color: #2B3A5E; }
+    .oscuro .hover\:bg-stone-50:hover { background-color: #1B2540; }
+    .oscuro .hover\:bg-stone-100:hover { background-color: #222D4A; }
+    .oscuro .hover\:bg-white:hover, .oscuro .group:hover .group-hover\:bg-white { background-color: #1B2540; }
+    .oscuro .hover\:bg-blue-50:hover { background-color: rgba(111,140,200,.18); }
+    .oscuro .hover\:text-stone-700:hover, .oscuro .hover\:text-stone-900:hover, .oscuro .hover\:text-stone-600:hover { color: #F1EBDD; }
+    .oscuro .hover\:text-blue-900:hover, .oscuro .hover\:text-gold-600:hover { color: #E3BE78; }
+    .oscuro .hover\:border-stone-500:hover { border-color: #6B7899; }
+    .oscuro .hover\:border-blue-900:hover, .oscuro .focus\:border-blue-900:focus { border-color: #C79A4B; }
+    .oscuro .bg-stone-900, .oscuro .border-stone-900 { background-color: #C79A4B; border-color: #C79A4B; }
+    .oscuro .border-stone-900:not(.bg-stone-900) { background-color: transparent; }
+    .oscuro .bg-stone-900.text-white { color: #14203A; }
+    .oscuro .hover\:bg-stone-800:hover { background-color: #D3A94F; }
+    .oscuro .bg-blue-900, .oscuro .btn-navy { background-color: #2B3F6B; }
+    .oscuro .btn-navy:hover { background-color: #34497A; }
+    .oscuro .hover\:bg-stone-900:hover { background-color: #34497A; border-color: #34497A; }
+    .oscuro .ring-blue-900\/\[0\.07\], .oscuro .ring-blue-900\/\[0\.06\] { --tw-ring-color: rgba(255,255,255,.08); }
+    .oscuro .glass { background: rgba(20,29,49,.66); border-color: rgba(255,255,255,.1); }
+    .oscuro input:not([type="range"]), .oscuro textarea { background-color: #101828; color: #F1EBDD; }
+    .oscuro ::placeholder { color: #8E8777; }
+    .oscuro .accent-stone-900 { accent-color: #C79A4B; }
+    .oscuro .chip-cat { background-color: rgba(255,255,255,.1) !important; color: #E4DCC8 !important; }
+    .oscuro .icono-cat { color: #E4DCC8 !important; }
+    .oscuro .hover\:\!bg-blue-900:hover { background-color: #34497A !important; }
+    .oscuro img[src$="logo-ym.svg"] { filter: invert(1) hue-rotate(180deg); }
     /* Respeta a quienes piden menos movimiento */
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
@@ -1192,7 +1267,7 @@
       const c = colorDeCategoria(categoria);
       return (
         <span
-          className={`inline-block text-[11px] font-medium tracking-wider uppercase px-2.5 py-1 rounded-full ${className}`}
+          className={`chip-cat inline-block text-[11px] font-medium tracking-wider uppercase px-2.5 py-1 rounded-full ${className}`}
           style={{ color: c.texto, backgroundColor: c.fondo }}
         >
           {categoria}
@@ -1612,7 +1687,7 @@
                     onClick={() => onElegir(cat)}
                     className="group flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 min-h-[48px] rounded-full glass text-left transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card hover:bg-white hover:shadow-card active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
                   >
-                    <span className="shrink-0 w-9 h-9 rounded-full bg-stone-100 group-hover:bg-white flex items-center justify-center transition-colors duration-300" style={{ color }}>
+                    <span className="icono-cat shrink-0 w-9 h-9 rounded-full bg-stone-100 group-hover:bg-white flex items-center justify-center transition-colors duration-300" style={{ color }}>
                       <IconoDeCategoria cat={cat} size={19} />
                     </span>
                     <span className="flex flex-col leading-tight">
@@ -2105,7 +2180,7 @@
               </button>
 
               <span
-                className="inline-block text-[11px] tracking-wide uppercase px-2 py-1 rounded mb-3"
+                className="chip-cat inline-block text-[11px] tracking-wide uppercase px-2 py-1 rounded mb-3"
                 style={{ color: colorDeCategoria(shiur.categoria).texto, backgroundColor: colorDeCategoria(shiur.categoria).fondo }}
               >
                 {shiur.categoria}
