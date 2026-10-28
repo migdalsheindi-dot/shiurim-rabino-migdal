@@ -83,7 +83,8 @@ Quién hace cada cosa: **Vos** = quien maneja el proyecto · **Rabino** · **Cla
 
 - Ya hecho (28/10/2026): manifiesto de privacidad de Apple, firma de Android lista (llave en `~/claves-app-yoel-migdal`, **hacer copia**), versión de Google Play compilada y firmada.
 - Hecho (28/10/2026): notificación con controles de reproducción en Android, probada en el emulador. Falta probarla en un Android real (puede ser uno de los 12 testers).
-- Al cargar la app en Google Play: declarar el uso de "servicio en primer plano de reproducción multimedia" (Play Console lo pide; suele requerir un video corto mostrando la notificación). Lo preparo yo.
+- Al cargar la app en Google Play: declarar el uso de "servicio en primer plano de reproducción multimedia". ✅ Video listo (28/10/2026): `tiendas/video/notificacion-android-reproduccion.mp4` (47 s: reproducir, minimizar, pausa y reproducir desde la notificación, pantalla apagada). Google suele pedirlo como enlace (por ejemplo, de YouTube "no listado"): se sube cuando llegue el momento.
+- ✅ Probada la **versión final firmada** de Android (28/10/2026): descargas, reproducción desde el archivo, notificación, pausa desde el sistema y botón atrás funcionan igual que en la de desarrollo.
 
 11. **Claude:** cambiar la firma de la app de tu cuenta gratuita a la cuenta del Rabino, y armar las versiones finales para iPhone y para Android.
 12. ~~**Claude:** sacar las **capturas de pantalla** y el gráfico de Google (ver la sección 4).~~ Hecho el 28/10/2026, en `tiendas/imagenes/` (4 de iPhone 1320×2868, 4 de iPad 2064×2752, 4 de Android 1080×2160, gráfico 1024×500 e ícono 512×512). Si cambia el diseño de la app, hay que volver a sacarlas.
