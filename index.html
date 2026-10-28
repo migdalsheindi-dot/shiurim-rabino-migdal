@@ -76,16 +76,17 @@
   }
   </script>
 
-  <!-- Modo claro / oscuro: por defecto la web sigue el modo del celular o la computadora (AUTO_PARA_TODOS).
-       Se puede forzar en un dispositivo con ?modo=claro, ?modo=oscuro o ?modo=auto (queda guardado ahí). -->
+  <!-- Modo claro / oscuro: DESACTIVADO por ahora (todos ven la web clara). Para activarlo para todos:
+       AUTO_PARA_TODOS = true (sigue el modo del celular). Para probarlo solo en un dispositivo:
+       ?modo=auto u ?modo=oscuro (queda guardado ahí); ?modo=claro lo vuelve a apagar. -->
   <script>
     (function () {
-      var AUTO_PARA_TODOS = true;
+      var AUTO_PARA_TODOS = false;
       var d = document.documentElement, modo = "claro", mq = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
       try {
         var q = new URLSearchParams(location.search).get("modo");
-        if (q === "claro" || q === "auto" || q === "oscuro") localStorage.setItem("ry_modo", q);
-        modo = localStorage.getItem("ry_modo") || (AUTO_PARA_TODOS ? "auto" : "claro");
+        if (q === "claro" || q === "auto" || q === "oscuro") localStorage.setItem("ry_modo_v2", q);
+        modo = localStorage.getItem("ry_modo_v2") || (AUTO_PARA_TODOS ? "auto" : "claro");
       } catch (e) { if (AUTO_PARA_TODOS) modo = "auto"; }
       function aplicar() {
         var osc = modo === "oscuro" || (modo === "auto" && !!mq && mq.matches);
