@@ -4052,6 +4052,26 @@
         };
       }, []);
 
+      // Botón "atrás" de Android: cierra lo que esté abierto, después vuelve al inicio y, ya en el inicio,
+      // minimiza la app (sin cerrarla, para que el shiur siga sonando). Usa el complemento @capacitor/app.
+      const atrasRef = useRef(() => {});
+      atrasRef.current = () => {
+        if (shiurACompartir) setShiurACompartir(null);
+        else if (selectedShiur) setSelectedShiur(null);
+        else if (showContact) setShowContact(false);
+        else if (showSuscripcion) setShowSuscripcion(false);
+        else if (showDonate) setShowDonate(false);
+        else if (showInstallHelp) setShowInstallHelp(false);
+        else if (menuAbierto) setMenuAbierto(false);
+        else if (categoriaActiva !== "Todas" || query.trim()) { setCategoriaActiva("Todas"); setQuery(""); window.scrollTo({ top: 0 }); }
+        else nativo("App", "minimizeApp").catch(() => {});
+      };
+      useEffect(() => {
+        if (!ES_APP_ANDROID) return;
+        const escucha = window.Capacitor.addListener("App", "backButton", () => atrasRef.current());
+        return () => escucha.remove();
+      }, []);
+
       // Reproducciones contadas por el servicio propio (shiur.id -> total). Solo
       // se piden cuando se entra como administrador: es lo que muestra el Panel
       // Admin. null = servicio desactivado o sin respuesta (se usa el número a mano).
