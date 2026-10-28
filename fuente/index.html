@@ -589,6 +589,8 @@
     }
 
     const SPEEDS = [1, 1.25, 1.5, 2, 2.25, 2.5];
+    // Un solo botón de velocidad: cada toque pasa a la siguiente y, después de la última, vuelve a 1x
+    const siguienteVelocidad = (v) => SPEEDS[(SPEEDS.indexOf(v) + 1) % SPEEDS.length];
 
     // Un shiur "válido" para mostrar necesita, como mínimo, título y audio.
     // Filtra silenciosamente cualquier entrada rota (por ejemplo, si data.json
@@ -2162,19 +2164,16 @@
                     <span className="text-[10px] text-stone-400 w-8 shrink-0">{formatTiempo(isActive ? duracion : 0)}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <span className="shrink-0 max-[359px]:hidden text-[10px] sm:text-[11px] text-stone-500 mr-0.5">Velocidad:</span>
-                  {SPEEDS.map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => onSpeedChange(s)}
-                      className={`flex-1 sm:flex-none min-w-0 text-center text-[11px] sm:text-xs px-0 sm:px-2.5 py-1.5 rounded border transition-colors ${
-                        speed === s ? "bg-stone-900 text-white border-stone-900" : "border-stone-300 text-stone-600 hover:border-stone-500"
-                      }`}
-                    >
-                      {s}x
-                    </button>
-                  ))}
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-stone-500">Velocidad:</span>
+                  <button
+                    onClick={() => onSpeedChange(siguienteVelocidad(speed))}
+                    className="min-w-[56px] text-xs font-medium px-3 py-1.5 rounded border bg-stone-900 text-white border-stone-900 active:scale-95 transition-transform"
+                    aria-label={`Velocidad de reproducción ${speed}x. Tocá para cambiarla`}
+                    title="Cambiar velocidad"
+                  >
+                    {speed}x
+                  </button>
                 </div>
               </div>
 
@@ -2230,10 +2229,7 @@
     function FloatingPlayer({ current, isPlaying, speed, progreso, actual, duracion, onTogglePlay, onSeek, onSpeedChange, onClose, onOpenDetail }) {
       if (!current) return null;
 
-      const cycleSpeed = () => {
-        const idx = SPEEDS.indexOf(speed);
-        onSpeedChange(SPEEDS[(idx + 1) % SPEEDS.length]);
-      };
+      const cycleSpeed = () => onSpeedChange(siguienteVelocidad(speed));
 
       return (
         <div
