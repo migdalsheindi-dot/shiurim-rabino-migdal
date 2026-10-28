@@ -38,7 +38,7 @@ Quién hace cada cosa: **Vos** = quien maneja el proyecto · **Rabino** · **Cla
 ### Etapa A — Preparación (se puede hacer ya, sin pagar nada)
 
 1. **Vos:** leer el borrador `legal/politica-de-privacidad.md` y avisarme qué cambiar.
-2. **Rabino:** leer la política y aprobarla. Idealmente, que la mire también un abogado.
+2. **Rabino:** leer la política y aprobarla. Puntos ya confirmados (28/10/2026): domicilio solo "CABA", formularios para mayores de 13, la suscripción sirve para novedades del Rabino y de sus actividades (sin nombrar a ISEJ), la baja se pide a consultas@. Pendiente: que la lea alguien con conocimiento legal del entorno del Rabino o de ISEJ.
 3. ~~**Vos:** crear el correo público (D2).~~ Hecho el 28/10/2026: consultas@yoelmigdal.com.
 4. **Claude:** poner el correo en la política, armar la página `privacidad.html` de la web y agregar el enlace en el pie de la web y en el menú de la app. Es un cambio en la web: te pido permiso antes.
 5. **Vos:** publicar la web con la política. Desde el otro chat, o me pedís permiso a mí.

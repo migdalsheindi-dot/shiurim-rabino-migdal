@@ -2,9 +2,9 @@
 
 **Rabino Yoel Migdal — Shiurim** (sitio web yoelmigdal.com y aplicación para iPhone y Android)
 
-Última actualización: 26 de octubre de 2026
+Última actualización: 28 de octubre de 2026
 
-> BORRADOR para revisar. Lo marcado con [A COMPLETAR] falta definirlo antes de publicar.
+> BORRADOR casi final (28/10/2026): falta la aprobación del Rabino y, si se puede, una lectura legal.
 > No es asesoramiento legal: conviene que lo lea un abogado antes de publicarlo.
 
 ## 1. Quién es el responsable
@@ -45,9 +45,9 @@ Para no contar dos veces a la misma persona usamos un código cifrado e irrevers
 
 ## 5. Suscripción a las novedades
 
-Si completás el formulario de **Suscripción**, guardamos tu **nombre, apellido y correo electrónico** y la fecha en que te anotaste. Los usamos solamente para avisarte de shiurim y novedades del Rabino.
+Si completás el formulario de **Suscripción**, guardamos tu **nombre, apellido y correo electrónico** y la fecha en que te anotaste. Los usamos solamente para avisarte de shiurim y novedades del Rabino y de las actividades y clases que dicta. No los vendemos ni los usamos para otra cosa.
 
-Para darte de baja o pedir que borremos tus datos, escribinos (ver punto 1) y lo hacemos sin costo. [A COMPLETAR si se agrega un enlace para darse de baja en cada correo.]
+Para darte de baja o pedir que borremos tus datos, escribinos (ver punto 1) y lo hacemos sin costo.
 
 ## 6. Formulario de contacto
 

@@ -1,6 +1,6 @@
 # Textos para las tiendas
 
-Borrador del 27 de octubre de 2026, para revisar con el Rabino. Va en el mismo tono de la web ("Aprendé…", voseo).
+Revisado el 28 de octubre de 2026 (decisiones marcadas con ✅). Va en el mismo tono de la web ("Aprendé…", voseo).
 Los largos máximos están entre paréntesis; el número después de cada texto es cuántos caracteres usa.
 
 Reglas a tener en cuenta (las dos tiendas rechazan fichas que no las cumplen):
@@ -12,9 +12,7 @@ Reglas a tener en cuenta (las dos tiendas rechazan fichas que no las cumplen):
 
 ## Nombre de la app (máx. 30, igual en las dos tiendas)
 
-**Rabino Yoel Migdal – Shiurim** · 28
-
-Alternativa más corta: **Rabino Yoel Migdal** · 18
+✅ **Rabino Yoel Migdal – Shiurim** · 28
 
 Debajo del ícono, en el teléfono, se va a leer "Rabino Yoel Migdal" (eso ya está configurado y no depende de este nombre).
 
@@ -24,7 +22,7 @@ Debajo del ícono, en el teléfono, se va a leer "Rabino Yoel Migdal" (eso ya es
 
 ### Subtítulo (máx. 30)
 
-**Clases de Torá y jasidut** · 24
+✅ **Clases de Torá y jasidut** · 24
 
 ### Palabras clave (máx. 100, separadas por coma, sin espacios)
 
@@ -49,7 +47,7 @@ tora,torah,tania,tanya,parasha,parsha,judaismo,jabad,chabad,jasidico,pirkei avot
 
 **Shiurim y clases de Torá del Rabino Yoel Migdal. Escuchalos cuando quieras.** · 75
 
-### Descripción completa (máx. 4000, la misma para Apple)
+### Descripción completa (máx. 4000, la misma para Apple) — ✅ aprobada, con el párrafo del Rabino y la dedicatoria tal como están
 
 ```
 Aprendé judaísmo de forma clara y profunda con el Rabino Yoel Migdal.
@@ -93,8 +91,8 @@ Leilui Nishmat Shaia ben Hersh Wolf Z"L
 
 | Campo | Propuesta |
 |---|---|
-| Categoría principal | Educación (las dos tiendas) |
-| Categoría secundaria (Apple) | Libros, o Estilo de vida |
+| Categoría principal | ✅ Educación (las dos tiendas) |
+| Categoría secundaria (Apple) | ✅ Libros |
 | Sitio web / URL de soporte | https://yoelmigdal.com |
 | URL de privacidad | https://yoelmigdal.com/privacidad.html (falta publicarla) |
 | Correo de contacto (Google, público) | consultas@yoelmigdal.com |
