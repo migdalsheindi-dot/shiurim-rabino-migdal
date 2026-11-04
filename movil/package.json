@@ -17,7 +17,8 @@
     "@capacitor/file-transfer": "^2.0.6",
     "@capacitor/filesystem": "^8.1.5",
     "@capacitor/haptics": "^8.0.2",
-    "@capacitor/ios": "^8.5.3"
+    "@capacitor/ios": "^8.5.3",
+    "@capacitor/keyboard": "^8.0.6"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5"

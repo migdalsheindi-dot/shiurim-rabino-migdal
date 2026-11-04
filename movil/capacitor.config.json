@@ -8,10 +8,17 @@
       "@capacitor/app",
       "@capacitor/file-transfer",
       "@capacitor/filesystem",
-      "@capacitor/haptics"
+      "@capacitor/haptics",
+      "@capacitor/keyboard"
     ]
   },
   "android": {
     "allowMixedContent": false
+  },
+  "plugins": {
+    "Keyboard": {
+      "resize": "native",
+      "resizeOnFullScreen": true
+    }
   }
 }

@@ -309,6 +309,10 @@
     html.en-app input, html.en-app textarea { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
     /* Con letra de menos de 16px, el iPhone agranda la pantalla al tocar un campo de texto */
     html.en-app input:not([type="range"]):not([type="checkbox"]), html.en-app textarea { font-size: 16px; }
+    /* Pantalla "Más": letra del sistema del teléfono y sin línea debajo de la última fila de cada grupo */
+    .texto-sistema { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif; word-spacing: normal; }
+    .fila-mas:last-child .linea-mas { border-bottom-width: 0; }
+    html.teclado-abierto .ocultar-con-teclado { display: none; }
     /* Respeta a quienes piden menos movimiento */
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
@@ -359,7 +363,17 @@
     // Vibración cortita al tocar (como en las apps nativas, complemento @capacitor/haptics). En la web no hace nada.
     const vibrar = () => { if (ES_APP) window.Capacitor.nativePromise("Haptics", "impact", { style: "LIGHT" }).catch(() => {}); };
     // Dentro de la app, la clase "en-app" activa los estilos de app nativa (ver el CSS de "en-app").
-    if (ES_APP) document.documentElement.classList.add("en-app");
+    if (ES_APP) {
+      document.documentElement.classList.add("en-app");
+      // Sin zoom (ni con dos dedos ni al tocar un campo): la pantalla queda quieta, como en una app nativa
+      const vista = document.querySelector('meta[name="viewport"]');
+      if (vista) vista.setAttribute("content", vista.getAttribute("content") + ", maximum-scale=1, user-scalable=no");
+      // Con el teclado abierto (complemento @capacitor/keyboard, que achica la pantalla en vez de
+      // correrla) se esconden la barra de pestañas y el reproductor, para que no queden flotando arriba del teclado.
+      const marcarTeclado = (abierto) => () => document.documentElement.classList.toggle("teclado-abierto", abierto);
+      window.Capacitor.addListener("Keyboard", "keyboardWillShow", marcarTeclado(true));
+      window.Capacitor.addListener("Keyboard", "keyboardWillHide", marcarTeclado(false));
+    }
 
     // ⚠️ Contraseña del Panel Admin. Cámbiala editando esta línea.
     const ADMIN_PASSWORD = "Migdal2026";
@@ -1155,7 +1169,7 @@
     function BarraPestanas({ activa, onElegir }) {
       return (
         <nav
-          className="fixed inset-x-0 bottom-0 z-[44] bg-white/90 backdrop-blur-md border-t border-stone-200/70"
+          className="ocultar-con-teclado fixed inset-x-0 bottom-0 z-[44] bg-white/90 backdrop-blur-md border-t border-stone-200/70"
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
           aria-label="Secciones"
         >
@@ -1179,18 +1193,22 @@
       );
     }
 
+    // Filas al estilo de los Ajustes del teléfono: letra del sistema (San Francisco en iPhone,
+    // Roboto en Android), ícono blanco sobre cuadrito azul y línea divisoria que empieza después del ícono.
     function FilaMas({ icono, texto, detalle, onClick, href }) {
       const contenido = (
         <React.Fragment>
-          <span className="shrink-0 w-8 h-8 rounded-lg bg-blue-50 text-blue-900 flex items-center justify-center">{icono}</span>
-          <span className="flex-1 min-w-0">
-            <span className="block text-[15px] text-stone-900">{texto}</span>
-            {detalle && <span className="block text-xs text-stone-500">{detalle}</span>}
+          <span className="shrink-0 w-[30px] h-[30px] rounded-[8px] bg-blue-900 text-white flex items-center justify-center">{icono}</span>
+          <span className="linea-mas flex-1 min-w-0 self-stretch flex items-center gap-3 border-b border-stone-200 pr-4">
+            <span className="flex-1 min-w-0 py-3">
+              <span className="block text-[17px] leading-[22px] tracking-[-0.01em] text-stone-900">{texto}</span>
+              {detalle && <span className="block text-[13px] leading-[18px] text-stone-500 mt-0.5">{detalle}</span>}
+            </span>
+            <IconChevron size={17} strokeWidth={2.4} className="shrink-0 text-stone-300" />
           </span>
-          <IconChevron size={18} className="shrink-0 text-stone-300" />
         </React.Fragment>
       );
-      const clase = "w-full flex items-center gap-3 min-h-[56px] px-4 text-left active:bg-stone-100";
+      const clase = "fila-mas w-full flex items-center gap-3.5 min-h-[52px] pl-4 text-left active:bg-stone-100";
       return href ? (
         <a href={href} target="_blank" rel="noopener noreferrer" className={clase}>{contenido}</a>
       ) : (
@@ -1198,35 +1216,22 @@
       );
     }
 
-    function PantallaMas({ hayReproductor, onContacto, onSuscripcion }) {
-      const grupo = "bg-white rounded-2xl border border-stone-200 divide-y divide-stone-200 overflow-hidden";
+    // Pantalla "Más": va debajo del encabezado; al fondo se ven "Rabino Yoel Migdal" (con "Más sobre
+    // el Rabino"), la dedicatoria y la política de privacidad (esas tres las dibuja ShiurimApp).
+    function PantallaMas({ onContacto, onSuscripcion }) {
+      const titulo = "text-[13px] leading-[18px] text-stone-500 mb-2 px-4";
+      const grupo = "bg-white rounded-[14px] overflow-hidden";
       return (
-        <div className="fixed inset-0 z-[42] bg-stone-50 overflow-y-auto safe-top">
-          <div
-            className="max-w-xl mx-auto px-4 pt-4"
-            style={{ paddingBottom: `calc(env(safe-area-inset-bottom) + ${hayReproductor ? 160 : 88}px)` }}
-          >
-            <h1 className="font-serif text-[28px] font-semibold text-blue-900 mb-5">Más</h1>
+        <div className="texto-sistema max-w-xl mx-auto w-full px-4 pt-7 pb-10">
+          <p className={titulo}>Contacto</p>
+          <div className={grupo}>
+            <FilaMas icono={<IconMail size={17} />} texto="Escribile al Rabino" detalle="Mandale tu consulta" onClick={onContacto} />
+            <FilaMas icono={<IconBell size={17} />} texto="Suscripción" detalle={AVISOS_DISPONIBLES ? "Novedades por correo y avisos en el teléfono" : "Novedades por correo"} onClick={onSuscripcion} />
+          </div>
 
-            <p className="text-[11px] uppercase tracking-wide text-stone-500 mb-2 px-1">El Rabino</p>
-            <div className={grupo}>
-              <FilaMas icono={<IconMail size={17} />} texto="Contacto" detalle="Escribile una consulta al Rabino" onClick={onContacto} />
-              <FilaMas icono={<IconBell size={17} />} texto="Suscripción" detalle={AVISOS_DISPONIBLES ? "Novedades por correo y avisos en el teléfono" : "Novedades por correo"} onClick={onSuscripcion} />
-            </div>
-
-            <p className="text-[11px] uppercase tracking-wide text-stone-500 mt-7 mb-2 px-1">Comunidad y redes</p>
-            <div className={grupo}>
-              <FilaMas icono={<IconWhatsApp size={17} />} texto="Grupo de WhatsApp" href={WHATSAPP_GRUPO} />
-              <FilaMas icono={<IconInstagram size={17} />} texto="Instagram" href={INSTAGRAM_DEL_RABINO} />
-              <FilaMas icono={<IconX_Red size={15} />} texto="X (Twitter)" href={X_DEL_RABINO} />
-            </div>
-
-            <p className="text-[11px] uppercase tracking-wide text-stone-500 mt-7 mb-2 px-1">Información</p>
-            <div className={grupo}>
-              <FilaMas icono={<IconLock size={17} />} texto="Política de privacidad" href={rutaSitio("privacidad.html")} />
-            </div>
-
-            <p className="mt-10 text-center font-serif italic text-stone-500 text-sm">Leilui Nishmat Shaia ben Hersh wolf Z”L</p>
+          <p className={`${titulo} mt-8`}>Comunidad</p>
+          <div className={grupo}>
+            <FilaMas icono={<IconWhatsApp size={17} />} texto="Grupo de WhatsApp" href={WHATSAPP_GRUPO} />
           </div>
         </div>
       );
@@ -1823,11 +1828,11 @@
     // Sobre el Rabino: banner azul noche con degradé, foto en tarjeta flotante,
     // cargos como etiquetas de vidrio y redes como botones flotantes.
     // ---------------------------------------------------------------------
-    function SobreElRabino() {
+    function SobreElRabino({ claseExtra = "mt-6 sm:mt-10" }) {
       const [abierto, setAbierto] = useState(false);
       const boton = "group/red relative inline-flex items-center justify-center w-12 h-12 rounded-full glass-dark text-white hover:-translate-y-1 hover:bg-gold-500 hover:text-[#14203A] hover:border-gold-400 hover:shadow-[0_14px_30px_-8px_rgba(199,154,75,0.7)] active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-400";
       return (
-        <section aria-labelledby="inicio-rabino" className="relative overflow-hidden mt-6 sm:mt-10 rounded-t-[2.25rem] sm:rounded-t-[3rem] text-white bg-gradient-to-br from-[#0B1428] via-[#14224A] to-[#223664]">
+        <section aria-labelledby="inicio-rabino" className={`relative overflow-hidden ${claseExtra} rounded-t-[2.25rem] sm:rounded-t-[3rem] text-white bg-gradient-to-br from-[#0B1428] via-[#14224A] to-[#223664]`}>
           <div className="pointer-events-none absolute -top-32 -left-24 w-[480px] h-[480px] rounded-full opacity-25" style={{ background: "radial-gradient(closest-side, rgba(199,154,75,.6), transparent)" }} />
           <div className="pointer-events-none absolute -bottom-40 right-0 w-[560px] h-[560px] rounded-full opacity-30" style={{ background: "radial-gradient(closest-side, rgba(80,110,190,.55), transparent)" }} />
           <div className="relative max-w-6xl mx-auto px-5 sm:px-6 py-14 sm:py-20">
@@ -2225,7 +2230,7 @@
     // ---------------------------------------------------------------------
     function BarraBusqueda({ query, onChange }) {
       return (
-        <div className="group relative transition-transform duration-300 focus-within:scale-[1.015]">
+        <div className={ES_APP ? "group relative" : "group relative transition-transform duration-300 focus-within:scale-[1.015]"}>
           <IconSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-500 group-focus-within:text-gold-600 transition-colors duration-300 pointer-events-none" size={21} />
           <input
             type="text"
@@ -2254,12 +2259,14 @@
     // buscador. En los temas y en las búsquedas se pliega y queda solo el
     // buscador (es el mismo campo, así no se pierde el foco al escribir).
     // ---------------------------------------------------------------------
-    function Hero({ esInicio, query, onQuery, categoria, onVolver }) {
+    // En la app, el buscador va solo en la pestaña "Buscar" (buscador = false lo saca) y la foto
+    // aparece y desaparece sin animación, para que la pantalla no salte al cambiar de pestaña.
+    function Hero({ esInicio, query, onQuery, categoria, onVolver, buscador = true }) {
       return (
         <section className="relative overflow-hidden text-white bg-gradient-to-br from-[#0D172C] via-[#14223F] to-[#1C2B4A]">
           <div className="pointer-events-none absolute -top-24 right-0 w-[520px] h-[520px] rounded-full opacity-30" style={{ background: "radial-gradient(closest-side, rgba(199,154,75,.55), transparent)" }} />
           <div className="relative">
-            <div className={`grid transition-all duration-500 ease-out ${esInicio ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+            <div className={`grid ${ES_APP ? "" : "transition-all duration-500 ease-out "}${esInicio ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
               <div className="overflow-hidden min-h-0">
                 <div className="relative max-w-6xl mx-auto px-4 sm:px-6 min-h-[270px] sm:min-h-[300px] md:min-h-0 md:grid md:grid-cols-[1.15fr_0.85fr] md:items-center">
                   <div className="absolute inset-y-0 right-0 w-[80%] sm:w-[62%] md:static md:w-auto md:order-2 md:h-[400px] flex justify-end">
@@ -2280,7 +2287,7 @@
                 </div>
               </div>
             </div>
-            <div className={`max-w-6xl mx-auto px-4 sm:px-6 transition-all duration-500 ${esInicio ? "pt-5 pb-8 sm:pb-12" : "py-5 sm:py-6"}`}>
+            {buscador && <div className={`max-w-6xl mx-auto px-4 sm:px-6 ${ES_APP ? "" : "transition-all duration-500 "}${esInicio ? "pt-5 pb-8 sm:pb-12" : "py-5 sm:py-6"}`}>
               {!esInicio && categoria !== "Todas" && !(ES_APP && (categoria === "Guardados" || categoria === "Descargas")) && (
                 <button
                   onClick={onVolver}
@@ -2292,7 +2299,7 @@
               <div className="max-w-2xl">
                 <BarraBusqueda query={query} onChange={onQuery} />
               </div>
-            </div>
+            </div>}
           </div>
         </section>
       );
@@ -2531,7 +2538,7 @@
 
       return (
         <div
-          className={`fixed inset-x-2.5 sm:inset-x-4 mx-auto max-w-3xl glass-dark shadow-float rounded-2xl text-white ${ES_APP ? "z-[43]" : "z-40"}`}
+          className={`fixed inset-x-2.5 sm:inset-x-4 mx-auto max-w-3xl glass-dark shadow-float rounded-2xl text-white ${ES_APP ? "z-[43] ocultar-con-teclado" : "z-40"}`}
           style={{ bottom: ES_APP ? "calc(env(safe-area-inset-bottom) + 64px)" : "calc(env(safe-area-inset-bottom) + 10px)" }}
         >
           <div className="px-3 sm:px-4 py-3 flex items-center gap-3 sm:gap-4">
@@ -4593,7 +4600,7 @@
       // "instant" porque el CSS de la página tiene scroll suave, que se corta si el alto cambia.
       useEffect(() => {
         window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-      }, [categoriaActiva, esInicio]);
+      }, [categoriaActiva, esInicio, pestanaMas]);
       const rastrearRef = useRef(rastrear);
       rastrearRef.current = rastrear;
       useEffect(() => {
@@ -4852,16 +4859,25 @@
             onDonar={() => { rastrear("evento", { tipo: "donar_abrir", origen: "menu", contexto: vistaActual }); setMenuAbierto(false); setShowDonate(true); }}
           />
 
-          {/* Hero: foto, frase y buscador (se pliega al buscar o elegir un tema) */}
-          <Hero
-            esInicio={esInicio}
-            query={query}
-            onQuery={setQuery}
-            categoria={categoriaActiva}
-            onVolver={() => { setCategoriaActiva("Todas"); setQuery(""); }}
-          />
+          {/* Solo en la app: pestaña "Más" (en lugar del contenido) */}
+          {ES_APP && pestanaMas && (
+            <PantallaMas onContacto={() => setShowContact(true)} onSuscripcion={() => setShowSuscripcion(true)} />
+          )}
 
-          <main className={`max-w-6xl mx-auto px-4 sm:px-6 pt-8 sm:pt-12 pb-10 flex-1 w-full ${cargando ? "min-h-[130vh]" : ""}`}>
+          {/* Hero: foto, frase y buscador (se pliega al buscar o elegir un tema). En la app: la foto solo
+              en Inicio y el buscador solo en la pestaña "Buscar"; en Guardados y Descargas no va. */}
+          {!(ES_APP && (pestanaMas || pestanaActiva === "guardados" || pestanaActiva === "descargas")) && (
+            <Hero
+              esInicio={esInicio}
+              query={query}
+              onQuery={setQuery}
+              categoria={categoriaActiva}
+              onVolver={() => { setCategoriaActiva("Todas"); setQuery(""); }}
+              buscador={!ES_APP || pestanaActiva === "buscar"}
+            />
+          )}
+
+          {!(ES_APP && pestanaMas) && <main className={`max-w-6xl mx-auto px-4 sm:px-6 pt-8 sm:pt-12 pb-10 flex-1 w-full ${cargando ? "min-h-[130vh]" : ""}`}>
             {cargando ? (
               <React.Fragment>
                 <h2 className="font-serif text-2xl font-semibold text-blue-900 mb-4">Últimos Shiurim</h2>
@@ -4869,7 +4885,8 @@
               </React.Fragment>
             ) : esInicio && shiurim.length > 0 ? (
               <div className="space-y-12 sm:space-y-16">
-                {seguirEscuchando.length > 0 && (
+                {/* En la app, "Seguir escuchando" va al final del inicio */}
+                {!ES_APP && seguirEscuchando.length > 0 && (
                   <Reveal>
                     <Carrusel id="inicio-seguir" titulo="Seguir escuchando">
                       {seguirEscuchando.map(filaDeShiur)}
@@ -4901,6 +4918,13 @@
                   <Reveal>
                     <Carrusel id="inicio-destacados" titulo="Destacados">
                       {inicioDestacados.map(destacadoDeShiur)}
+                    </Carrusel>
+                  </Reveal>
+                )}
+                {ES_APP && seguirEscuchando.length > 0 && (
+                  <Reveal>
+                    <Carrusel id="inicio-seguir" titulo="Seguir escuchando">
+                      {seguirEscuchando.map(filaDeShiur)}
                     </Carrusel>
                   </Reveal>
                 )}
@@ -4948,9 +4972,11 @@
                 )}
               </React.Fragment>
             )}
-          </main>
+          </main>}
 
-          {esInicio && !cargando && shiurim.length > 0 && <SobreElRabino />}
+          {/* "Rabino Yoel Migdal" y "Más sobre el Rabino": en la web, al final del inicio; en la app, al final de "Más" */}
+          {!ES_APP && esInicio && !cargando && shiurim.length > 0 && <SobreElRabino />}
+          {ES_APP && pestanaMas && <SobreElRabino claseExtra="" />}
 
           {/* Dedicatoria permanente: va en todas las pantallas (inicio, temas, búsquedas) */}
           <footer
@@ -4962,6 +4988,12 @@
             <p className="font-serif italic text-gold-100/90 text-[15px] sm:text-base leading-relaxed tracking-wide">
               Leilui Nishmat Shaia ben Hersh wolf Z”L
             </p>
+            {/* Solo en la app, chiquito al pie de "Más": las tiendas piden poder abrir la política desde adentro */}
+            {ES_APP && pestanaMas && (
+              <a href={rutaSitio("privacidad.html")} target="_blank" rel="noopener noreferrer" className="mt-6 inline-block text-[11px] text-white/35">
+                Política de privacidad
+              </a>
+            )}
           </footer>
 
           {/* Elemento de audio único, compartido por toda la app */}
@@ -5001,14 +5033,7 @@
             onOpenDetail={() => current && setSelectedShiur(current)}
           />
 
-          {/* Solo en la app: pantalla "Más" y barra de pestañas */}
-          {ES_APP && pestanaMas && (
-            <PantallaMas
-              hayReproductor={!!current}
-              onContacto={() => setShowContact(true)}
-              onSuscripcion={() => setShowSuscripcion(true)}
-            />
-          )}
+          {/* Solo en la app: barra de pestañas */}
           {ES_APP && <BarraPestanas activa={pestanaActiva} onElegir={irAPestana} />}
 
           {/* Vista detallada */}
