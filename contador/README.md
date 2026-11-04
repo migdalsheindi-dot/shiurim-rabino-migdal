@@ -19,6 +19,7 @@ No se registra nada de lo que hagas vos como administrador, ni de quienes tienen
 - `POST /escucha` `{ "id": "<id>", "segundos": 120 }` suma tiempo escuchado.
 - `POST /evento` `{ "tipo": "donar_abrir" | "donar_click", "origen": "encabezado" | "menu" | "modal", "contexto": "<página>" }`
 - `GET /conteos` reproducciones por shiur (público, lo usa la sección "Popularidad").
+- `GET /ubicacion` ciudad aproximada de quien pregunta (la informa Cloudflare; no se guarda nada). La web la usa para mostrar la hora de las velas de Shabat en su ciudad.
 - `POST /suscribir` `{ "nombre", "apellido", "email" }` formulario "Suscripción" de la web (guarda los datos en la tabla `suscriptores`).
 - `GET /suscriptores` **solo con la clave secreta**: lista de suscriptores (la usa el Panel Admin para mostrarla y descargarla en CSV).
 - `GET /estadisticas?dias=30` **solo con la clave secreta** (`Authorization: Bearer <ADMIN_TOKEN>`).

@@ -2,6 +2,7 @@
 //
 //   POST /reproduccion  { "id": "<id del shiur>" }  -> suma 1 reproducción
 //   GET  /conteos                                    -> reproducciones de cada shiur
+//   GET  /ubicacion                                  -> ciudad aproximada de quien pregunta (para las velas)
 //
 //   POST /visita        { pagina }                       -> suma una visita (y un único si es la 1ª del día)
 //   POST /escucha       { id, segundos }                 -> suma segundos escuchados de un shiur
@@ -287,6 +288,15 @@ export default {
     const cors = cabecerasCors(request);
 
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+
+    // Ubicación aproximada de quien pregunta, para calcular la hora de las velas de Shabat en su ciudad.
+    // Cloudflare la informa en cada pedido (request.cf); no se guarda nada ni se usa la IP.
+    if (url.pathname === "/ubicacion" && request.method === "GET") {
+      const cf = request.cf || {};
+      const lat = parseFloat(cf.latitude), lon = parseFloat(cf.longitude);
+      const datos = isFinite(lat) && isFinite(lon) && cf.timezone ? { ciudad: cf.city || "", pais: cf.country || "", lat, lon, tz: cf.timezone } : {};
+      return json(datos, 200, { ...cors, "Cache-Control": "private, no-store" });
+    }
 
     if (url.pathname === "/conteos" && request.method === "GET") {
       const { results } = await env.DB.prepare(

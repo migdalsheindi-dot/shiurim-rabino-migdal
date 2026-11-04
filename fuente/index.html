@@ -1786,6 +1786,36 @@
       return Date.UTC(anio, mes - 1, dia) + mod(T - lngHora, 24) * 3600000;
     }
 
+    // Puesta de sol (ms UTC) en cualquier lugar del mundo (lat/lon en grados, lon positiva al este),
+    // para el día civil local anio-mes-dia. Fórmulas astronómicas de NOAA. Comparado con Hebcal en 1300
+    // viernes de 25 ciudades y con los horarios de Jabad: coincide al minuto. NaN si no hay puesta de sol.
+    function puestaDeSolEn(anio, mes, dia, lat, lon) {
+      const rad = Math.PI / 180;
+      const jd0 = Date.UTC(anio, mes - 1, dia) / 86400000 + 2440587.5;
+      const sol = (minUT) => {
+        const t = (jd0 + minUT / 1440 - 2451545) / 36525;
+        const L0 = (((280.46646 + t * (36000.76983 + t * 0.0003032)) % 360) + 360) % 360;
+        const M = 357.52911 + t * (35999.05029 - 0.0001537 * t);
+        const e = 0.016708634 - t * (0.000042037 + 0.0000001267 * t);
+        const C = Math.sin(M * rad) * (1.914602 - t * (0.004817 + 0.000014 * t)) + Math.sin(2 * M * rad) * (0.019993 - 0.000101 * t) + Math.sin(3 * M * rad) * 0.000289;
+        const om = 125.04 - 1934.136 * t;
+        const lam = L0 + C - 0.00569 - 0.00478 * Math.sin(om * rad);
+        const eps = 23 + (26 + (21.448 - t * (46.815 + t * (0.00059 - t * 0.001813))) / 60) / 60 + 0.00256 * Math.cos(om * rad);
+        const dec = Math.asin(Math.sin(eps * rad) * Math.sin(lam * rad));
+        const y = Math.tan((eps * rad) / 2) ** 2;
+        const eq = (4 / rad) * (y * Math.sin(2 * L0 * rad) - 2 * e * Math.sin(M * rad) + 4 * e * y * Math.sin(M * rad) * Math.cos(2 * L0 * rad) - 0.5 * y * y * Math.sin(4 * L0 * rad) - 1.25 * e * e * Math.sin(2 * M * rad));
+        return { dec, eq };
+      };
+      let min = 720 - 4 * lon;
+      for (let i = 0; i < 3; i++) {
+        const { dec, eq } = sol(min);
+        const c = Math.cos(90.833 * rad) / (Math.cos(lat * rad) * Math.cos(dec)) - Math.tan(lat * rad) * Math.tan(dec);
+        if (c < -1 || c > 1) return NaN;
+        min = 720 - 4 * (lon - Math.acos(c) / rad) - eq;
+      }
+      return Date.UTC(anio, mes - 1, dia) + min * 60000;
+    }
+
     // Número en letras hebreas (guematria): 15 -> ט״ו, 20 -> כ׳, 787 -> תשפ״ז
     function guematria(n) {
       const U = ["", "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט"], D = ["", "י", "כ", "ל", "מ", "נ", "ס", "ע", "פ", "צ"], C = ["", "ק", "ר", "ש", "ת"];
@@ -1838,7 +1868,7 @@
           const viernes = new Date(shabat.getTime() - 86400000);
           const pv = {};
           new Intl.DateTimeFormat("es-AR", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" }).formatToParts(viernes).forEach((p) => { pv[p.type] = p.value; });
-          const velas = min ? { hora: `${Math.floor(min / 60)}:${String(min % 60).padStart(2, "0")}`, dia: `${cap(pv.weekday)} ${pv.day} de ${pv.month}` } : null;
+          const velas = min ? { hora: `${Math.floor(min / 60)}:${String(min % 60).padStart(2, "0")}`, dia: `${cap(pv.weekday)} ${pv.day} de ${pv.month}`, fecha: [viernes.getUTCFullYear(), viernes.getUTCMonth() + 1, viernes.getUTCDate()] } : null;
           semana = { shabat: `${ps.day} de ${ps.month}`, velas, parasha: codigo >= 0 ? datos.nombres[codigo] : null, fiesta: codigo < 0 ? datos.fiestas[-codigo - 1].es : null };
         }
       }
@@ -1930,22 +1960,64 @@
 
     // Sección del inicio: la Parashá de esta semana (se actualiza sola cada semana)
     const URL_VELAS_JABAD = "https://es.chabad.org/calendar/candlelighting.htm";
-    // Encendido de velas de Shabat (Buenos Aires) + enlace al calculador de Jabad para otras ciudades
+    // Ubicación aproximada de quien visita (ciudad, país, coordenadas y huso horario), que informa Cloudflare
+    // a través del contador propio. No pide permiso, no se guarda nada y sirve solo para calcular la hora de
+    // las velas. Si falla, se muestra Buenos Aires.
+    function useUbicacion() {
+      const [u, setU] = useState(() => { try { return JSON.parse(sessionStorage.getItem("ry_ubic")); } catch (e) { return null; } });
+      useEffect(() => {
+        if (u !== null || !CONTADOR_URL) return;
+        let cancelado = false;
+        fetch(`${CONTADOR_URL}/ubicacion`, { cache: "no-store" })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => {
+            if (cancelado) return;
+            const v = d && typeof d.lat === "number" && typeof d.lon === "number" && d.tz ? d : false;
+            try { sessionStorage.setItem("ry_ubic", JSON.stringify(v)); } catch (e) {}
+            setU(v);
+          })
+          .catch(() => {});
+        return () => { cancelado = true; };
+      }, []);
+      return u || null;
+    }
+
+    // Regla de Jabad: velas 18 minutos antes de la puesta de sol (40 en Jerusalem). Las demás ciudades de
+    // Israel usan otras reglas que no están verificadas: ahí se muestra Buenos Aires y el enlace a Jabad.
+    function velasEnLugar(velas, u) {
+      if (!u || !velas.fecha) return null;
+      const esBA = u.pais === "AR" && u.ciudad === "Buenos Aires";
+      if (esBA) return { hora: velas.hora, lugar: "Buenos Aires" };
+      if (u.pais === "IL" && u.ciudad !== "Jerusalem") return null;
+      const ms = puestaDeSolEn(velas.fecha[0], velas.fecha[1], velas.fecha[2], u.lat, u.lon) - (u.pais === "IL" ? 40 : 18) * 60000;
+      if (!isFinite(ms)) return null;
+      try {
+        const hora = new Intl.DateTimeFormat("en-GB", { timeZone: u.tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(Math.round(ms / 60000) * 60000));
+        return { hora, lugar: u.ciudad || "tu ciudad" };
+      } catch (e) { return null; }
+    }
+
+    // Encendido de velas de Shabat: según la ciudad de quien mira (Buenos Aires si no se puede saber)
+    // + enlace al calculador de Jabad para otras ciudades
     function VelasDeShabat({ velas }) {
+      const ubicacion = useUbicacion();
+      const local = velasEnLugar(velas, ubicacion);
+      const hora = local ? local.hora : velas.hora;
+      const lugar = local ? local.lugar : "Buenos Aires";
       return (
         <div className="shrink-0 border-white/15 border-t min-[420px]:border-t-0 min-[420px]:border-l md:border-t md:border-l-0 lg:border-t-0 lg:border-l pt-4 min-[420px]:pt-0 min-[420px]:pl-6 md:pt-4 md:pl-0 lg:pt-0 lg:pl-6 min-[420px]:max-w-[215px] md:max-w-none lg:max-w-[215px]">
           <p className="flex items-center gap-1.5 text-gold-200 text-[11px] sm:text-xs tracking-[0.2em] uppercase">
             <IconVela size={15} /> Encendido de velas
           </p>
-          <p className="font-serif font-bold text-4xl leading-none mt-2 tabular-nums">{velas.hora}<span className="text-base font-normal text-white/70 ml-1">hs</span></p>
-          <p className="text-white/70 text-[13px] mt-1.5 leading-snug">Buenos Aires · {velas.dia}</p>
+          <p className="font-serif font-bold text-4xl leading-none mt-2 tabular-nums">{hora}<span className="text-base font-normal text-white/70 ml-1">hs</span></p>
+          <p className="text-white/70 text-[13px] mt-1.5 leading-snug">{lugar} · {velas.dia}</p>
           <a
             href={URL_VELAS_JABAD}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-3 inline-flex items-start gap-1 text-gold-200 hover:text-white text-[13px] font-medium leading-snug underline underline-offset-4 decoration-gold-200/50 transition-colors"
           >
-            <span>Fijate a qué hora se prende en tu ciudad</span>
+            <span>{local && lugar !== "Buenos Aires" ? "¿No es tu ciudad? Fijate a qué hora se prende en la tuya" : "Fijate a qué hora se prende en tu ciudad"}</span>
             <IconChevron size={14} className="shrink-0 mt-[2px]" />
           </a>
         </div>
