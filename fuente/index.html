@@ -1982,14 +1982,49 @@
       return u || null;
     }
 
-    // Regla de Jabad: velas 18 minutos antes de la puesta de sol (40 en Jerusalem). Las demás ciudades de
-    // Israel usan otras reglas que no están verificadas: ahí se muestra Buenos Aires y el enlace a Jabad.
+    // Reglas de Jabad (es.chabad.org/calendar/candlelighting.htm): velas 18 minutos antes de la puesta de sol
+    // en todo el mundo; en Israel cada ciudad tiene su minhag. Estas son las de las ciudades principales,
+    // tomadas de la página de Jabad de cada ciudad (verificadas el 3/11/2026). Las demás localidades de
+    // Israel no están cargadas: ahí se muestra Buenos Aires y el enlace a Jabad.
+    const REGLAS_ISRAEL = [
+      { n: ["jerusalem"], min: 40, lat: 31.769, lon: 35.216 },
+      { n: ["telaviv", "telavivyafo", "yafo", "jaffa"], min: 22, lat: 32.081, lon: 34.781 },
+      { n: ["haifa"], min: 30, lat: 32.818, lon: 34.989 },
+      { n: ["beersheba", "beersheva", "beerseba"], min: 20, lat: 31.252, lon: 34.791 },
+      { n: ["netanya"], min: 30, lat: 32.333, lon: 34.86 },
+      { n: ["petahtikva", "petachtikva", "petahtiqwa", "petahtiqva"], min: 40, lat: 32.087, lon: 34.887 },
+      { n: ["rishonlezion", "rishonletsiyyon", "rishonleziyyon", "rishonlezyon"], min: 30, lat: 31.971, lon: 34.789 },
+      { n: ["rehovot"], min: 18, lat: 31.894, lon: 34.812 },
+      { n: ["ashdod"], min: 22, lat: 31.792, lon: 34.65 },
+      { n: ["ashkelon"], min: 30, lat: 31.669, lon: 34.571 },
+      { n: ["eilat", "elat"], min: 30, lat: 29.558, lon: 34.948 },
+      { n: ["tiberias", "teveria"], min: 30, lat: 32.796, lon: 35.531 },
+      { n: ["tzfat", "safed", "zefat", "tsfat", "tzefat"], min: 30, lat: 32.965, lon: 35.496 },
+      { n: ["bneibrak", "benebraq", "bnaibrak"], min: 22, lat: 32.081, lon: 34.834 },
+      { n: ["ramatgan"], min: 22, lat: 32.068, lon: 34.824 },
+      { n: ["raanana"], min: 20, lat: 32.184, lon: 34.874 },
+      { n: ["herzliya", "hertseliyya", "herzliyya"], min: 30, lat: 32.166, lon: 34.825 },
+      { n: ["holon"], min: 30, lat: 32.01, lon: 34.779 },
+      { n: ["bethshemesh", "beitshemesh"], min: 40, lat: 31.73, lon: 34.987 },
+      { n: ["modiin", "modiinmaccabimreut", "modiinmakkabbimreut"], min: 30, lat: 31.898, lon: 35.01 },
+    ];
+    function minutosAntes(u) {
+      if (u.pais !== "IL") return 18;
+      const nombre = String(u.ciudad || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z]/g, "");
+      let r = REGLAS_ISRAEL.find((c) => c.n.includes(nombre));
+      if (!r) { // otra forma de escribir el nombre: se acepta solo si está a menos de 2 km del centro
+        const km = (c) => Math.hypot((c.lat - u.lat) * 111, (c.lon - u.lon) * 111 * Math.cos(u.lat * Math.PI / 180));
+        r = REGLAS_ISRAEL.find((c) => km(c) < 2);
+      }
+      return r ? r.min : null;
+    }
+
     function velasEnLugar(velas, u) {
       if (!u || !velas.fecha) return null;
-      const esBA = u.pais === "AR" && u.ciudad === "Buenos Aires";
-      if (esBA) return { hora: velas.hora, lugar: "Buenos Aires" };
-      if (u.pais === "IL" && u.ciudad !== "Jerusalem") return null;
-      const ms = puestaDeSolEn(velas.fecha[0], velas.fecha[1], velas.fecha[2], u.lat, u.lon) - (u.pais === "IL" ? 40 : 18) * 60000;
+      if (u.pais === "AR" && u.ciudad === "Buenos Aires") return { hora: velas.hora, lugar: "Buenos Aires" };
+      const minutos = minutosAntes(u);
+      if (minutos === null) return null;
+      const ms = puestaDeSolEn(velas.fecha[0], velas.fecha[1], velas.fecha[2], u.lat, u.lon) - minutos * 60000;
       if (!isFinite(ms)) return null;
       try {
         const hora = new Intl.DateTimeFormat("en-GB", { timeZone: u.tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(Math.round(ms / 60000) * 60000));
