@@ -69,7 +69,31 @@ def quitar_acentos(s):
     return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn").lower()
 
 
+def _nombres_de_parashot():
+    """Nombres de las Parashot (y variantes de escritura) de tools/parashot.json, sin acentos ni símbolos."""
+    try:
+        ruta = Path(__file__).resolve().parent.parent / "tools" / "parashot.json"
+        datos = json.loads(ruta.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return set()
+    norm = lambda t: re.sub(r"[^a-z0-9]+", "", quitar_acentos(t))
+    nombres = set()
+    for p in datos.get("nombres", []):
+        for v in [p.get("es", ""), p.get("k", ""), *p.get("al", [])]:
+            nombres.add(norm(v))
+            nombres.update(norm(parte) for parte in re.split(r"[-\s]+", v) if len(parte) > 3 and "-" in v)
+    return {n for n in nombres if n}
+
+
+def es_titulo_de_parasha(titulo):
+    """Títulos como '5 - Jaié Sará. Más allá de la muerte...' (número y nombre de la Parashá, sin la palabra 'Parashá')."""
+    m = re.match(r"\s*\d+\s*-\s*([^-–.:]+?)\s*[-–.:]", titulo or "")
+    return bool(m) and re.sub(r"[^a-z0-9]+", "", quitar_acentos(m.group(1))) in _nombres_de_parashot()
+
+
 def detectar_categoria(titulo, descripcion):
+    if es_titulo_de_parasha(titulo):
+        return "Parashá de la semana"
     texto = quitar_acentos(f"{titulo} {descripcion}")
     for categoria, palabras in REGLAS_CATEGORIA:
         if any(quitar_acentos(p) in texto for p in palabras):
