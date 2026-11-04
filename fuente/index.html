@@ -301,6 +301,14 @@
     .oscuro .icono-cat { color: #E4DCC8 !important; }
     .oscuro .hover\:\!bg-blue-900:hover { background-color: #34497A !important; }
     .oscuro img[src$="logo-ym.svg"] { filter: invert(1) hue-rotate(180deg); }
+    /* ---- Solo dentro de la app (clase "en-app" en <html>) ----
+       Como en una app nativa: sin selección de texto, sin el menú de "copiar / abrir enlace" al
+       mantener apretado y sin el resaltado gris al tocar. Los campos de texto se siguen pudiendo editar. */
+    html.en-app { -webkit-tap-highlight-color: transparent; }
+    html.en-app body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+    html.en-app input, html.en-app textarea { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+    /* Con letra de menos de 16px, el iPhone agranda la pantalla al tocar un campo de texto */
+    html.en-app input:not([type="range"]):not([type="checkbox"]), html.en-app textarea { font-size: 16px; }
     /* Respeta a quienes piden menos movimiento */
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
@@ -348,6 +356,10 @@
     // Avisos de shiurim nuevos (Firebase): por ahora solo Android; en iPhone se activan con la cuenta de Apple del Rabino.
     const AVISOS_DISPONIBLES = ES_APP_ANDROID;
     const rutaSitio = (ruta) => (!ES_APP || /^(https?:|data:)/.test(ruta) ? ruta : "https://yoelmigdal.com/" + String(ruta).replace(/^\.\//, ""));
+    // Vibración cortita al tocar (como en las apps nativas, complemento @capacitor/haptics). En la web no hace nada.
+    const vibrar = () => { if (ES_APP) window.Capacitor.nativePromise("Haptics", "impact", { style: "LIGHT" }).catch(() => {}); };
+    // Dentro de la app, la clase "en-app" activa los estilos de app nativa (ver el CSS de "en-app").
+    if (ES_APP) document.documentElement.classList.add("en-app");
 
     // ⚠️ Contraseña del Panel Admin. Cámbiala editando esta línea.
     const ADMIN_PASSWORD = "Migdal2026";
@@ -429,6 +441,19 @@
         <line x1="3" y1="6" x2="21" y2="6" />
         <line x1="3" y1="12" x2="21" y2="12" />
         <line x1="3" y1="18" x2="21" y2="18" />
+      </Icon>
+    );
+    const IconHome = (p) => (
+      <Icon {...p}>
+        <path d="M3 10.5 12 3l9 7.5" />
+        <path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5" />
+      </Icon>
+    );
+    const IconMas = (p) => (
+      <Icon {...p}>
+        <circle cx="5" cy="12" r="1.3" fill="currentColor" />
+        <circle cx="12" cy="12" r="1.3" fill="currentColor" />
+        <circle cx="19" cy="12" r="1.3" fill="currentColor" />
       </Icon>
     );
     const IconShare = (p) => (
@@ -1110,6 +1135,98 @@
                 </a>
               )}
             </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Solo en la app: barra de pestañas abajo (en lugar del menú hamburguesa de la web)
+    // y la pantalla "Más" con contacto, suscripción, redes y la política de privacidad.
+    // ---------------------------------------------------------------------
+    const PESTANAS = [
+      { id: "inicio", texto: "Inicio", Icono: IconHome },
+      { id: "buscar", texto: "Buscar", Icono: IconSearch },
+      { id: "guardados", texto: "Guardados", Icono: IconHeart },
+      { id: "descargas", texto: "Descargas", Icono: IconDownload },
+      { id: "mas", texto: "Más", Icono: IconMas },
+    ];
+
+    function BarraPestanas({ activa, onElegir }) {
+      return (
+        <nav
+          className="fixed inset-x-0 bottom-0 z-[44] bg-white/90 backdrop-blur-md border-t border-stone-200/70"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+          aria-label="Secciones"
+        >
+          <div className="max-w-3xl mx-auto grid grid-cols-5">
+            {PESTANAS.map(({ id, texto, Icono }) => {
+              const activo = activa === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => onElegir(id)}
+                  aria-current={activo ? "page" : undefined}
+                  className={`h-14 flex flex-col items-center justify-center gap-1 text-[10.5px] font-medium ${activo ? "text-blue-900" : "text-stone-400"}`}
+                >
+                  <Icono size={22} strokeWidth={activo ? 2.2 : 1.8} {...(id === "guardados" ? { lleno: activo } : {})} />
+                  <span className="leading-none">{texto}</span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      );
+    }
+
+    function FilaMas({ icono, texto, detalle, onClick, href }) {
+      const contenido = (
+        <React.Fragment>
+          <span className="shrink-0 w-8 h-8 rounded-lg bg-blue-50 text-blue-900 flex items-center justify-center">{icono}</span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-[15px] text-stone-900">{texto}</span>
+            {detalle && <span className="block text-xs text-stone-500">{detalle}</span>}
+          </span>
+          <IconChevron size={18} className="shrink-0 text-stone-300" />
+        </React.Fragment>
+      );
+      const clase = "w-full flex items-center gap-3 min-h-[56px] px-4 text-left active:bg-stone-100";
+      return href ? (
+        <a href={href} target="_blank" rel="noopener noreferrer" className={clase}>{contenido}</a>
+      ) : (
+        <button onClick={onClick} className={clase}>{contenido}</button>
+      );
+    }
+
+    function PantallaMas({ hayReproductor, onContacto, onSuscripcion }) {
+      const grupo = "bg-white rounded-2xl border border-stone-200 divide-y divide-stone-200 overflow-hidden";
+      return (
+        <div className="fixed inset-0 z-[42] bg-stone-50 overflow-y-auto safe-top">
+          <div
+            className="max-w-xl mx-auto px-4 pt-4"
+            style={{ paddingBottom: `calc(env(safe-area-inset-bottom) + ${hayReproductor ? 160 : 88}px)` }}
+          >
+            <h1 className="font-serif text-[28px] font-semibold text-blue-900 mb-5">Más</h1>
+
+            <p className="text-[11px] uppercase tracking-wide text-stone-500 mb-2 px-1">El Rabino</p>
+            <div className={grupo}>
+              <FilaMas icono={<IconMail size={17} />} texto="Contacto" detalle="Escribile una consulta al Rabino" onClick={onContacto} />
+              <FilaMas icono={<IconBell size={17} />} texto="Suscripción" detalle={AVISOS_DISPONIBLES ? "Novedades por correo y avisos en el teléfono" : "Novedades por correo"} onClick={onSuscripcion} />
+            </div>
+
+            <p className="text-[11px] uppercase tracking-wide text-stone-500 mt-7 mb-2 px-1">Comunidad y redes</p>
+            <div className={grupo}>
+              <FilaMas icono={<IconWhatsApp size={17} />} texto="Grupo de WhatsApp" href={WHATSAPP_GRUPO} />
+              <FilaMas icono={<IconInstagram size={17} />} texto="Instagram" href={INSTAGRAM_DEL_RABINO} />
+              <FilaMas icono={<IconX_Red size={15} />} texto="X (Twitter)" href={X_DEL_RABINO} />
+            </div>
+
+            <p className="text-[11px] uppercase tracking-wide text-stone-500 mt-7 mb-2 px-1">Información</p>
+            <div className={grupo}>
+              <FilaMas icono={<IconLock size={17} />} texto="Política de privacidad" href={rutaSitio("privacidad.html")} />
+            </div>
+
+            <p className="mt-10 text-center font-serif italic text-stone-500 text-sm">Leilui Nishmat Shaia ben Hersh wolf Z”L</p>
           </div>
         </div>
       );
@@ -2164,7 +2281,7 @@
               </div>
             </div>
             <div className={`max-w-6xl mx-auto px-4 sm:px-6 transition-all duration-500 ${esInicio ? "pt-5 pb-8 sm:pb-12" : "py-5 sm:py-6"}`}>
-              {!esInicio && categoria !== "Todas" && (
+              {!esInicio && categoria !== "Todas" && !(ES_APP && (categoria === "Guardados" || categoria === "Descargas")) && (
                 <button
                   onClick={onVolver}
                   className="inline-flex items-center gap-1 min-h-[44px] -ml-1 px-1 mb-1 text-sm text-white/80 hover:text-gold-200 transition-colors"
@@ -2414,8 +2531,8 @@
 
       return (
         <div
-          className="fixed inset-x-2.5 sm:inset-x-4 mx-auto max-w-3xl glass-dark shadow-float rounded-2xl text-white z-40"
-          style={{ bottom: "calc(env(safe-area-inset-bottom) + 10px)" }}
+          className={`fixed inset-x-2.5 sm:inset-x-4 mx-auto max-w-3xl glass-dark shadow-float rounded-2xl text-white ${ES_APP ? "z-[43]" : "z-40"}`}
+          style={{ bottom: ES_APP ? "calc(env(safe-area-inset-bottom) + 64px)" : "calc(env(safe-area-inset-bottom) + 10px)" }}
         >
           <div className="px-3 sm:px-4 py-3 flex items-center gap-3 sm:gap-4">
             <button
@@ -3909,6 +4026,9 @@
       const [query, setQuery] = useState(busquedaDesdeUrl);
       const [categoriaActiva, setCategoriaActiva] = useState(() => categoriaDesdeUrl() || "Todas");
       const [menuAbierto, setMenuAbierto] = useState(false);
+      // Solo en la app: pestaña "Buscar" (lista completa con el buscador) y pantalla "Más"
+      const [buscando, setBuscando] = useState(false);
+      const [pestanaMas, setPestanaMas] = useState(false);
       const [selectedShiur, setSelectedShiur] = useState(null);
       const [shiurACompartir, setShiurACompartir] = useState(null);
       const [showContact, setShowContact] = useState(false);
@@ -3980,13 +4100,15 @@
 
       // Guardados y progreso de escucha (solo en este dispositivo)
       const [favoritos, setFavoritos] = useState(() => leerJSON(CLAVE_FAVORITOS, []).map(String));
-      const toggleFavorito = (id) =>
+      const toggleFavorito = (id) => {
+        vibrar();
         setFavoritos((prev) => {
           const clave = String(id);
           const nuevo = prev.includes(clave) ? prev.filter((x) => x !== clave) : [clave, ...prev];
           guardarJSON(CLAVE_FAVORITOS, nuevo);
           return nuevo;
         });
+      };
       const [progresos, setProgresos] = useState(() => leerJSON(CLAVE_PROGRESO, {}));
       const progresosRef = useRef(progresos);
       // Shiurim escuchados completos (solo en este dispositivo)
@@ -4034,6 +4156,7 @@
       const descargar = async (shiur) => {
         const clave = String(shiur.id);
         if (!ES_APP || bajando[clave] !== undefined || descargas[clave]) return;
+        vibrar();
         setBajando((b) => ({ ...b, [clave]: 0 }));
         let escucha = null;
         try {
@@ -4305,7 +4428,8 @@
         else if (showDonate) setShowDonate(false);
         else if (showInstallHelp) setShowInstallHelp(false);
         else if (menuAbierto) setMenuAbierto(false);
-        else if (categoriaActiva !== "Todas" || query.trim()) { setCategoriaActiva("Todas"); setQuery(""); window.scrollTo({ top: 0 }); }
+        else if (pestanaMas) setPestanaMas(false);
+        else if (categoriaActiva !== "Todas" || query.trim() || buscando) { setCategoriaActiva("Todas"); setQuery(""); setBuscando(false); window.scrollTo({ top: 0 }); }
         else nativo("App", "minimizeApp").catch(() => {});
       };
       useEffect(() => {
@@ -4385,6 +4509,7 @@
       };
 
       const handlePlay = (shiur) => {
+        vibrar();
         if (current && current.id === shiur.id) setIsPlaying((p) => !p);
         else {
           guardarProgreso(true); // guarda dónde quedó el shiur anterior
@@ -4440,7 +4565,27 @@
       // en que se muestran). Si un id ya no existe, simplemente se saltea.
       const INICIO_RECIENTES = 5;
       const INICIO_DESTACADOS = 4;
-      const esInicio = categoriaActiva === "Todas" && !query.trim();
+      const esInicio = categoriaActiva === "Todas" && !query.trim() && !buscando;
+      // Pestañas de abajo (solo en la app)
+      const pestanaActiva = pestanaMas ? "mas" : categoriaActiva === "Guardados" ? "guardados" : categoriaActiva === "Descargas" ? "descargas" : esInicio ? "inicio" : "buscar";
+      const irAPestana = (id) => {
+        vibrar();
+        setPestanaMas(id === "mas");
+        if (id === "mas") return;
+        if (id === pestanaActiva) {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          if (id !== "buscar") return;
+        }
+        setBuscando(id === "buscar");
+        if (id !== "buscar" || pestanaActiva !== "buscar") setQuery("");
+        setCategoriaActiva(id === "guardados" ? "Guardados" : id === "descargas" ? "Descargas" : "Todas");
+        if (id === "buscar") {
+          setTimeout(() => {
+            const campo = document.querySelector('input[aria-label="Buscar shiurim"]');
+            if (campo) campo.focus();
+          }, 300);
+        }
+      };
       const vistaActual = selectedShiur
         ? `shiur:${selectedShiur.id}`
         : categoriaActiva !== "Todas" ? `tema:${categoriaActiva}` : query.trim() ? "busqueda" : "inicio";
@@ -4636,15 +4781,15 @@
             <div className="max-w-6xl mx-auto px-3 min-[420px]:px-4 sm:px-6 py-3 sm:py-6">
               <div className="flex items-center justify-between gap-2 sm:gap-3">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                  <button
+                  {!ES_APP && <button
                     onClick={() => setMenuAbierto(true)}
                     className="shrink-0 w-10 h-10 min-[420px]:w-11 min-[420px]:h-11 flex items-center justify-center rounded-full border border-stone-300 text-stone-600 hover:bg-stone-50 hover:border-stone-500 transition-colors duration-200"
                     aria-label="Abrir menú"
                   >
                     <IconMenu size={20} />
-                  </button>
+                  </button>}
                   <button
-                    onClick={() => { setCategoriaActiva("Todas"); setQuery(""); window.scrollTo({ top: 0 }); }}
+                    onClick={() => { setCategoriaActiva("Todas"); setQuery(""); setBuscando(false); window.scrollTo({ top: 0 }); }}
                     className="flex items-center gap-2 sm:gap-3 min-w-0 text-left rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-900"
                     aria-label="Rabino Yoel Migdal, ir al inicio"
                   >
@@ -4655,7 +4800,8 @@
                     </span>
                   </button>
                 </div>
-                <div className="flex items-center gap-1.5 min-[420px]:gap-2 shrink-0">
+                {/* En la app, Contacto y Suscripción están en la pestaña "Más" */}
+                {!ES_APP && <div className="flex items-center gap-1.5 min-[420px]:gap-2 shrink-0">
                   <button
                     onClick={() => setShowContact(true)}
                     className="flex items-center justify-center gap-1.5 w-9 h-9 min-[420px]:w-11 min-[420px]:h-11 sm:w-auto sm:h-10 sm:px-4 text-sm text-stone-600 border border-stone-300 rounded-full hover:bg-stone-50 transition-colors"
@@ -4680,7 +4826,7 @@
                       Donar
                     </button>
                   )}
-                </div>
+                </div>}
               </div>
             </div>
             {/* Fecha hebrea / gregoriana y Parashá: quedan fijas arriba junto con el encabezado */}
@@ -4761,6 +4907,17 @@
               </div>
             ) : (
               <React.Fragment>
+                {/* Pestaña "Buscar" de la app, sin nada escrito: primero los temas */}
+                {buscando && categoriaActiva === "Todas" && !query.trim() && (
+                  <div className="mb-10">
+                    <TemasDelInicio
+                      shiurim={shiurim}
+                      cantidadGuardados={favoritos.filter((id) => shiurim.some((x) => String(x.id) === id)).length}
+                      cantidadDescargas={Object.keys(descargas).filter((id) => shiurim.some((x) => String(x.id) === id)).length}
+                      onElegir={(cat) => { vibrar(); setCategoriaActiva(cat); window.scrollTo({ top: 0 }); }}
+                    />
+                  </div>
+                )}
                 <div className="flex items-baseline justify-between gap-3 mb-5">
                   <h2 className="font-serif text-2xl sm:text-[28px] font-semibold text-blue-900 leading-none">
                     {categoriaActiva === "Todas" ? (query.trim() ? "Resultados" : "Últimos Shiurim") : categoriaActiva === "Populares" ? "Más Escuchados" : categoriaActiva === "Guardados" ? "Guardados" : categoriaActiva}
@@ -4797,7 +4954,9 @@
 
           {/* Dedicatoria permanente: va en todas las pantallas (inicio, temas, búsquedas) */}
           <footer
-            className={`bg-[#0B1428] border-t border-white/10 text-center px-5 pt-8 ${current ? "pb-32" : "pb-[max(2.25rem,env(safe-area-inset-bottom))]"}`}
+            className={`bg-[#0B1428] border-t border-white/10 text-center px-5 pt-8 ${
+              ES_APP ? (current ? "pb-[calc(env(safe-area-inset-bottom)+10.5rem)]" : "pb-[calc(env(safe-area-inset-bottom)+6rem)]") : current ? "pb-32" : "pb-[max(2.25rem,env(safe-area-inset-bottom))]"
+            }`}
           >
             <div className="mx-auto mb-5 h-px w-16 bg-gradient-to-r from-transparent via-gold-500 to-transparent" aria-hidden="true" />
             <p className="font-serif italic text-gold-100/90 text-[15px] sm:text-base leading-relaxed tracking-wide">
@@ -4835,12 +4994,22 @@
             progreso={progreso}
             actual={actual}
             duracion={duracion}
-            onTogglePlay={() => setIsPlaying((p) => !p)}
+            onTogglePlay={() => { vibrar(); setIsPlaying((p) => !p); }}
             onSeek={handleSeek}
             onSpeedChange={setSpeed}
             onClose={() => { setCurrent(null); setIsPlaying(false); }}
             onOpenDetail={() => current && setSelectedShiur(current)}
           />
+
+          {/* Solo en la app: pantalla "Más" y barra de pestañas */}
+          {ES_APP && pestanaMas && (
+            <PantallaMas
+              hayReproductor={!!current}
+              onContacto={() => setShowContact(true)}
+              onSuscripcion={() => setShowSuscripcion(true)}
+            />
+          )}
+          {ES_APP && <BarraPestanas activa={pestanaActiva} onElegir={irAPestana} />}
 
           {/* Vista detallada */}
           {selectedShiur && (

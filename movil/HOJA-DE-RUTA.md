@@ -146,7 +146,7 @@ Yo puedo redactar los textos. Ustedes los revisan.
 - **Llave de Android:** la carpeta `claves-app-yoel-migdal` (en tu carpeta personal) y su clave **no se pueden perder**: guardá una copia.
 - **El repositorio de GitHub es público:** nunca poner ahí contraseñas, claves ni datos personales.
 - **Datos públicos del Rabino:** como las cuentas son personales, las tiendas muestran su **nombre legal**. Google muestra además su **país** y el **correo de desarrollador**.
-- **Tu instalación de prueba en el iPhone vence a los 7 días** (la última, el 4/11/2026). Se renueva en un minuto, pidiéndomelo.
+- **Tu instalación de prueba en el iPhone vence a los 7 días** (la última, el 4/11/2026; vence el 11/11/2026). Se renueva en un minuto, pidiéndomelo.
 - **La web y la app comparten el código.** Lo que se publique en la web desde el otro chat también llega a la app, y viceversa. Los cambios de la app se guardan en esta Mac y se suben con la próxima publicación de la web; ninguno cambia lo que se ve en la web.
 
 ---
