@@ -1726,7 +1726,7 @@
     // Carrusel horizontal: se desliza con el dedo; en pantallas grandes tiene
     // flechas. Cada hijo va envuelto en una celda que se "engancha" al scroll.
     // ---------------------------------------------------------------------
-    function Carrusel({ id, titulo, ancho = "w-[92%] sm:w-[440px]", children }) {
+    function Carrusel({ id, titulo, ancho = "w-[92%] sm:w-[440px]", anchos, children }) {
       const ref = useRef(null);
       const [pos, setPos] = useState({ inicio: true, fin: false });
       const actualizar = () => {
@@ -1761,8 +1761,8 @@
             onScroll={actualizar}
             className="flex gap-3.5 sm:gap-5 overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth -mx-4 px-4 sm:-mx-6 sm:px-6 scroll-pl-4 sm:scroll-pl-6 pt-1 pb-7 -mb-4"
           >
-            {React.Children.map(children, (hijo) => (
-              <div className={`snap-start shrink-0 ${ancho}`}>{hijo}</div>
+            {React.Children.map(children, (hijo, i) => (
+              <div className={`snap-start shrink-0 ${(anchos && anchos[i]) || ancho}`}>{hijo}</div>
             ))}
           </div>
         </section>
@@ -2261,7 +2261,13 @@
         .map((x) => ({ x, atras: (ordenDia(hoy) - ordenDia(x.f) + ciclo) % ciclo }))
         .filter((y) => y.atras > 0 && y.atras <= 60)
         .sort((a, b) => a.atras - b.atras || nuevoPrimero(a.x, b.x))[0];
-      return antes ? { shiur: antes.x.s, exacto: false } : null;
+      if (antes) return { shiur: antes.x.s, exacto: false };
+      // Ninguno anterior: si ya está subido uno de los próximos días (se sube con anticipación), se ofrece ese
+      const despues = conFecha
+        .map((x) => ({ x, falta: (ordenDia(x.f) - ordenDia(hoy) + ciclo) % ciclo }))
+        .filter((y) => y.falta > 0 && y.falta <= 40)
+        .sort((a, b) => a.falta - b.falta || nuevoPrimero(a.x, b.x))[0];
+      return despues ? { shiur: despues.x.s, exacto: false, adelantado: true } : null;
     }
 
     const URL_TANIA_CHABAD = "https://es.chabad.org/dailystudy/tanya.asp?tdate=";
@@ -2272,10 +2278,9 @@
       const episodio = useMemo(() => (hoy.dia && hoy.mes ? episodioDeTania(shiurim, hoy) : null), [shiurim, hoy]);
       const [texto, setTexto] = useState(undefined); // undefined = cargando, null = no disponible
       const [idioma, setIdioma] = useState("es");
-      const [abierto, setAbierto] = useState(false);
       useEffect(() => {
         let cancelado = false;
-        setTexto(undefined); setAbierto(false);
+        setTexto(undefined);
         fetch(rutaSitio(`tania/${cal.iso}.json`), { cache: "no-store" })
           .then((r) => (r.ok ? r.json() : null))
           .then((d) => { if (!cancelado) setTexto(d && Array.isArray(d.parrafos) && d.parrafos.length ? d : null); })
@@ -2283,7 +2288,6 @@
         return () => { cancelado = true; };
       }, [cal.iso]);
 
-      const largo = texto ? texto.parrafos.join("").length > 1600 : false;
       const pestana = (id, etiqueta, extra = {}) => (
         <button
           role="tab"
@@ -2295,34 +2299,38 @@
           {etiqueta}
         </button>
       );
+      const tarjeta = "rounded-2xl bg-white ring-1 ring-blue-900/[0.07] shadow-card";
+      // Tres tarjetas en fila que se deslizan hacia el costado: fecha, audio y texto del día
       return (
-        <section aria-labelledby="inicio-tania-dia">
-          <h2 id="inicio-tania-dia" className="font-serif text-2xl sm:text-[28px] font-semibold text-blue-900 leading-none mb-4">Tania Diario</h2>
-          <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-3.5 sm:gap-5 items-stretch">
-            <div className="relative overflow-hidden rounded-2xl text-white bg-gradient-to-br from-[#14203A] via-[#1A2A4A] to-[#22345A] shadow-card p-5 sm:p-6 flex flex-col justify-center">
-              <div className="pointer-events-none absolute -top-16 -right-10 w-56 h-56 rounded-full opacity-25" style={{ background: "radial-gradient(closest-side, rgba(199,154,75,.7), transparent)" }} />
-              <p className="relative text-gold-200 text-[11px] sm:text-xs tracking-[0.2em] uppercase mb-2">{cal.gregoriano.replace(/ de \d{4}$/, "")}</p>
-              <h3 className="relative font-serif font-bold text-3xl sm:text-4xl leading-tight">{cal.hebreoEs ? cal.hebreoEs.replace(/ de \d+$/, "") : "Hoy"}</h3>
-              {cal.hebreoLetras && <p dir="rtl" lang="he" className="relative text-gold-100 text-2xl mt-1 text-left">{cal.hebreoLetras}</p>}
-              {texto && <p className="relative text-white/70 text-[13px] mt-3 leading-snug">Hoy se estudia: {texto.referencia}</p>}
-            </div>
-            <div className="flex flex-col justify-center gap-2">
-              {episodio ? (
-                <>
-                  {!episodio.exacto && <p className="text-[13px] text-stone-500 leading-snug">Todavía no se subió el audio de hoy. Este es el último disponible:</p>}
-                  {filaDeShiur(episodio.shiur)}
-                </>
-              ) : (
-                <div className="rounded-2xl bg-white ring-1 ring-blue-900/[0.07] shadow-card p-5 sm:p-6 text-center md:text-left">
-                  <p className="font-serif text-lg text-blue-900 mb-1">Todavía no se subió el audio de hoy</p>
-                  <p className="text-stone-600 text-sm leading-relaxed">Apenas esté disponible, aparece acá. Mientras tanto podés leer el texto del día.</p>
-                </div>
-              )}
-            </div>
+        <Carrusel id="inicio-tania-dia" titulo="Tania Diario" anchos={["w-[86%] sm:w-[280px]", "w-[92%] sm:w-[420px]", "w-[92%] sm:w-[460px]"]}>
+          <div className="relative h-full overflow-hidden rounded-2xl text-white bg-gradient-to-br from-[#14203A] via-[#1A2A4A] to-[#22345A] shadow-card p-5 sm:p-6 flex flex-col justify-center">
+            <div className="pointer-events-none absolute -top-16 -right-10 w-56 h-56 rounded-full opacity-25" style={{ background: "radial-gradient(closest-side, rgba(199,154,75,.7), transparent)" }} />
+            <p className="relative text-gold-200 text-[11px] sm:text-xs tracking-[0.2em] uppercase mb-2">{cal.gregoriano.replace(/ de \d{4}$/, "")}</p>
+            <h3 className="relative font-serif font-bold text-3xl sm:text-4xl leading-tight">{cal.hebreoEs ? cal.hebreoEs.replace(/ de \d+$/, "") : "Hoy"}</h3>
+            {cal.hebreoLetras && <p dir="rtl" lang="he" className="relative text-gold-100 text-2xl mt-1 text-left">{cal.hebreoLetras}</p>}
+            {texto && <p className="relative text-white/70 text-[13px] mt-3 leading-snug">Hoy se estudia: {texto.referencia}</p>}
           </div>
 
-          <div className="mt-3.5 sm:mt-5 rounded-2xl bg-white ring-1 ring-blue-900/[0.07] shadow-card p-5 sm:p-6">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="h-full flex flex-col gap-2">
+            {episodio ? (
+              <>
+                {!episodio.exacto && (
+                  <p className="text-[13px] text-stone-500 leading-snug">
+                    {episodio.adelantado ? "El audio de hoy todavía no está. Ya está subido el siguiente:" : "Todavía no se subió el audio de hoy. Este es el último disponible:"}
+                  </p>
+                )}
+                <div className="flex-1 min-h-0">{filaDeShiur(episodio.shiur)}</div>
+              </>
+            ) : (
+              <div className={`${tarjeta} h-full p-5 sm:p-6 flex flex-col justify-center text-center sm:text-left`}>
+                <p className="font-serif text-lg text-blue-900 mb-1">Todavía no se subió el audio de hoy</p>
+                <p className="text-stone-600 text-sm leading-relaxed">Apenas esté disponible, aparece acá. Mientras tanto podés leer el texto del día.</p>
+              </div>
+            )}
+          </div>
+
+          <div className={`${tarjeta} h-full p-5 sm:p-6 flex flex-col`}>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
               <h3 className="font-serif text-lg sm:text-xl text-blue-900">Texto del día</h3>
               <div role="tablist" aria-label="Idioma del texto" className="inline-flex p-1 rounded-full bg-stone-100">
                 {pestana("es", "Español")}
@@ -2330,7 +2338,7 @@
               </div>
             </div>
             {idioma === "es" ? (
-              <div dir="ltr" lang="es" className="text-stone-700 text-[15px] leading-relaxed">
+              <div dir="ltr" lang="es" className="h-60 text-stone-700 text-[15px] leading-relaxed">
                 <p className="mb-4">El texto del Tania en español lo publica Chabad.org. Ahí podés leer el estudio de hoy{texto ? <> ({texto.referencia})</> : ""}, en español y en hebreo.</p>
                 <a
                   href={`${URL_TANIA_CHABAD}${cal.tdate}`}
@@ -2338,31 +2346,23 @@
                   rel="noopener noreferrer"
                   className="btn-navy inline-flex items-center gap-1.5 h-11 px-5 rounded-full text-sm font-medium"
                 >
-                  Leer el Tania de hoy en Chabad.org <IconChevron size={15} />
+                  Leer en Chabad.org <IconChevron size={15} />
                 </a>
               </div>
             ) : texto === undefined ? (
-              <p className="text-sm text-stone-500">Cargando el texto…</p>
+              <p className="h-60 text-sm text-stone-500">Cargando el texto…</p>
             ) : texto === null ? (
-              <p dir="ltr" lang="es" className="text-sm text-stone-600 leading-relaxed">El texto hebreo de hoy todavía no está disponible. Mientras tanto, podés leerlo en <button onClick={() => setIdioma("es")} className="underline text-blue-900">Chabad.org</button>.</p>
+              <p dir="ltr" lang="es" className="h-60 text-sm text-stone-600 leading-relaxed">El texto hebreo de hoy todavía no está disponible. Mientras tanto, podés leerlo en <button onClick={() => setIdioma("es")} className="underline text-blue-900">Chabad.org</button>.</p>
             ) : (
-              <>
-                <div className="relative">
-                  <div dir="rtl" lang="he" className={`texto-hebreo text-stone-900 ${largo && !abierto ? "max-h-80 overflow-hidden" : ""}`}>
-                    {texto.parrafos.map((p, i) => <p key={i} className="mb-4 last:mb-0" dangerouslySetInnerHTML={{ __html: p }} />)}
-                  </div>
-                  {largo && !abierto && <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white to-transparent" />}
+              <div className="h-60 flex flex-col">
+                <div dir="rtl" lang="he" className="texto-hebreo text-stone-900 flex-1 min-h-0 overflow-y-auto pl-2">
+                  {texto.parrafos.map((p, i) => <p key={i} className="mb-4 last:mb-0" dangerouslySetInnerHTML={{ __html: p }} />)}
                 </div>
-                {largo && (
-                  <button onClick={() => setAbierto((v) => !v)} className="mt-3 text-sm font-medium text-blue-900 underline underline-offset-4 min-h-[44px]">
-                    {abierto ? "Ver menos" : "Seguir leyendo"}
-                  </button>
-                )}
-                <p dir="ltr" className="text-[11px] text-stone-400 mt-3 leading-relaxed">Texto hebreo: {texto.fuente}.</p>
-              </>
+                <p dir="ltr" className="text-[11px] text-stone-400 mt-2 leading-snug">Texto hebreo: {texto.fuente}.</p>
+              </div>
             )}
           </div>
-        </section>
+        </Carrusel>
       );
     }
 
