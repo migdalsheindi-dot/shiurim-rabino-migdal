@@ -23,7 +23,7 @@ generando solos con la sincronización de Spotify, no hay que compilar nada para
 - Para forzar un shiur concreto, agregar en `data.json` → `config` un mapa `"parashaShiur": { "Vayera": 1786037186896 }`
   (nombre de la Parashá en inglés de Hebcal, o en español, y el id del shiur).
 
-## Tania del Día
+## Tania Diario (sección del inicio)
 - **Audio:** se elige solo, del feed de Spotify: el episodio cuyo título lleva la fecha hebrea de hoy
   (por ejemplo "Tania 19 de Kislev"; también se entienden las letras hebreas, "י״ט כסלו"). Si todavía no se subió el de hoy,
   muestra el último anterior (hasta ~2 meses atrás) avisándolo. El día hebreo cambia a la puesta de sol de Buenos Aires.
