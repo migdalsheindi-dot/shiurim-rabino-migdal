@@ -2271,7 +2271,7 @@
     }
 
     const URL_TANIA_CHABAD = "https://es.chabad.org/dailystudy/tanya.asp?tdate=";
-    function SeccionTaniaDelDia({ shiurim, filaDeShiur }) {
+    function SeccionTaniaDelDia({ shiurim, botonDeShiur }) {
       const ahora = useAhora();
       const cal = useMemo(() => calendarioDeAhora(ahora), [Math.floor(ahora / 60000)]);
       const hoy = useMemo(() => ({ dia: cal.hebreoDia, mes: claveMesHoy(cal.hebreoMes) }), [cal.hebreoDia, cal.hebreoMes]);
@@ -2300,33 +2300,38 @@
         </button>
       );
       const tarjeta = "rounded-2xl bg-white ring-1 ring-blue-900/[0.07] shadow-card";
-      // Tres tarjetas en fila que se deslizan hacia el costado: fecha, audio y texto del día
+      // Dos tarjetas en fila que se deslizan hacia el costado: fecha + audio (todo en la azul) y texto del día
       return (
-        <Carrusel id="inicio-tania-dia" titulo="Tania Diario" anchos={["w-[86%] sm:w-[280px]", "w-[92%] sm:w-[420px]", "w-[92%] sm:w-[460px]"]}>
-          <div className="relative h-full overflow-hidden rounded-2xl text-white bg-gradient-to-br from-[#14203A] via-[#1A2A4A] to-[#22345A] shadow-card p-5 sm:p-6 flex flex-col justify-center">
+        <Carrusel id="inicio-tania-dia" titulo="Tania Diario" anchos={["w-[92%] sm:w-[400px]", "w-[92%] sm:w-[460px]"]}>
+          <div className="relative h-full overflow-hidden rounded-2xl text-white bg-gradient-to-br from-[#14203A] via-[#1A2A4A] to-[#22345A] shadow-card p-5 sm:p-6 flex flex-col">
             <div className="pointer-events-none absolute -top-16 -right-10 w-56 h-56 rounded-full opacity-25" style={{ background: "radial-gradient(closest-side, rgba(199,154,75,.7), transparent)" }} />
             <p className="relative text-gold-200 text-[11px] sm:text-xs tracking-[0.2em] uppercase mb-2">{cal.gregoriano.replace(/ de \d{4}$/, "")}</p>
             <h3 className="relative font-serif font-bold text-3xl sm:text-4xl leading-tight">{cal.hebreoEs ? cal.hebreoEs.replace(/ de \d+$/, "") : "Hoy"}</h3>
             {cal.hebreoLetras && <p dir="rtl" lang="he" className="relative text-gold-100 text-2xl mt-1 text-left">{cal.hebreoLetras}</p>}
-            {texto && <p className="relative text-white/70 text-[13px] mt-3 leading-snug">Hoy se estudia: {texto.referencia}</p>}
-          </div>
+            {texto && <p className="relative text-white/70 text-[13px] mt-2 leading-snug">Hoy se estudia: {texto.referencia}</p>}
 
-          <div className="h-full flex flex-col gap-2">
-            {episodio ? (
-              <>
-                {!episodio.exacto && (
-                  <p className="text-[13px] text-stone-500 leading-snug">
-                    {episodio.adelantado ? "El audio de hoy todavía no está. Ya está subido el siguiente:" : "Todavía no se subió el audio de hoy. Este es el último disponible:"}
-                  </p>
+            <div className="relative mt-auto pt-4">
+              <div className="border-t border-white/15 pt-4">
+                {episodio ? (
+                  <>
+                    {!episodio.exacto && (
+                      <p className="text-white/70 text-[13px] leading-snug mb-2.5">
+                        {episodio.adelantado ? "El audio de hoy todavía no está. Ya está subido el siguiente:" : "Todavía no se subió el audio de hoy. Este es el último disponible:"}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-3">
+                      {botonDeShiur(episodio.shiur)}
+                      <p className="min-w-0 text-white/90 text-[15px] leading-snug line-clamp-2">{episodio.shiur.titulo}</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-serif text-lg leading-snug">Todavía no se subió el audio de hoy</p>
+                    <p className="text-white/70 text-[13px] leading-snug mt-1">Apenas esté disponible, aparece acá.</p>
+                  </>
                 )}
-                <div className="flex-1 min-h-0">{filaDeShiur(episodio.shiur)}</div>
-              </>
-            ) : (
-              <div className={`${tarjeta} h-full p-5 sm:p-6 flex flex-col justify-center text-center sm:text-left`}>
-                <p className="font-serif text-lg text-blue-900 mb-1">Todavía no se subió el audio de hoy</p>
-                <p className="text-stone-600 text-sm leading-relaxed">Apenas esté disponible, aparece acá. Mientras tanto podés leer el texto del día.</p>
               </div>
-            )}
+            </div>
           </div>
 
           <div className={`${tarjeta} h-full p-5 sm:p-6 flex flex-col`}>
@@ -5237,6 +5242,17 @@
         [progresos, shiurim]
       );
       const claseGrilla = "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5";
+      // Botón de reproducir suelto (lo usa el Tania Diario dentro de su tarjeta azul)
+      const botonDeShiur = (shiur) => (
+        <BotonReproducir
+          shiur={shiur}
+          isActive={current && current.id === shiur.id}
+          isPlaying={isPlaying}
+          onPlay={handlePlay}
+          variante="gold"
+          textoPlay="Escuchar"
+        />
+      );
       const filaDeShiur = (shiur) => (
         <ShiurFila
           key={shiur.id}
@@ -5508,7 +5524,7 @@
                   />
                 </Reveal>
                 <Reveal>
-                  <SeccionTaniaDelDia shiurim={shiurim} filaDeShiur={filaDeShiur} />
+                  <SeccionTaniaDelDia shiurim={shiurim} botonDeShiur={botonDeShiur} />
                 </Reveal>
                 <Reveal>
                   <SeccionParasha
