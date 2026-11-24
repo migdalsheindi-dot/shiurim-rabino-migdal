@@ -2263,10 +2263,15 @@
       const hoy = useMemo(() => ({ dia: cal.hebreoDia, mes: claveMesHoy(cal.hebreoMes) }), [cal.hebreoDia, cal.hebreoMes]);
       const episodio = useMemo(() => (hoy.dia && hoy.mes ? episodioDeTania(shiurim, hoy) : null), [shiurim, hoy]);
       const [texto, setTexto] = useState(undefined); // undefined = cargando, null = no disponible
+      const [textoEs, setTextoEs] = useState(null); // texto en español del día (tania/es/AAAA-MM-DD.json), si se cargó
       const [idioma, setIdioma] = useState("es");
       useEffect(() => {
         let cancelado = false;
-        setTexto(undefined);
+        setTexto(undefined); setTextoEs(null);
+        fetch(rutaSitio(`tania/es/${cal.iso}.json`), { cache: "no-store" })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => { if (!cancelado && d && Array.isArray(d.parrafos) && d.parrafos.length) setTextoEs(d); })
+          .catch(() => {});
         fetch(rutaSitio(`tania/${cal.iso}.json`), { cache: "no-store" })
           .then((r) => (r.ok ? r.json() : null))
           .then((d) => { if (!cancelado) setTexto(d && Array.isArray(d.parrafos) && d.parrafos.length ? d : null); })
@@ -2322,17 +2327,28 @@
               </div>
             </div>
             {idioma === "es" ? (
-              <div dir="ltr" lang="es" className="h-60 text-stone-700 text-[15px] leading-relaxed">
-                <p className="mb-4">El texto del Tania en español lo publica Chabad.org. Ahí podés leer el estudio de hoy{texto ? <> ({texto.referencia})</> : ""}, en español y en hebreo.</p>
-                <a
-                  href={`${URL_TANIA_CHABAD}${cal.tdate}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-navy inline-flex items-center gap-1.5 h-11 px-5 rounded-full text-sm font-medium"
-                >
-                  Leer en Chabad.org <IconChevron size={15} />
-                </a>
-              </div>
+              textoEs ? (
+                <div dir="ltr" lang="es" className="h-60 flex flex-col">
+                  <div className="flex-1 min-h-0 overflow-y-auto pr-2 text-stone-800 text-[15px] leading-[1.75]">
+                    {textoEs.parrafos.map((p, i) => <p key={i} className="mb-3 last:mb-0">{p}</p>)}
+                  </div>
+                  <p className="text-[11px] text-stone-400 mt-2 leading-snug">
+                    Texto en español: {textoEs.fuente}. <a href={`${URL_TANIA_CHABAD}${cal.tdate}`} target="_blank" rel="noopener noreferrer" className="underline">Ver en Chabad.org</a>
+                  </p>
+                </div>
+              ) : (
+                <div dir="ltr" lang="es" className="h-60 text-stone-700 text-[15px] leading-relaxed">
+                  <p className="mb-4">El texto del Tania en español lo publica Chabad.org. Ahí podés leer el estudio de hoy{texto ? <> ({texto.referencia})</> : ""}, en español y en hebreo.</p>
+                  <a
+                    href={`${URL_TANIA_CHABAD}${cal.tdate}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-navy inline-flex items-center gap-1.5 h-11 px-5 rounded-full text-sm font-medium"
+                  >
+                    Leer en Chabad.org <IconChevron size={15} />
+                  </a>
+                </div>
+              )
             ) : texto === undefined ? (
               <p className="h-60 text-sm text-stone-500">Cargando el texto…</p>
             ) : texto === null ? (
