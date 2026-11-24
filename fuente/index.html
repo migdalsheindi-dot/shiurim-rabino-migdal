@@ -2206,7 +2206,6 @@
     // texto hebreo del día (tania/AAAA-MM-DD.json, que prepara scripts/tania_del_dia.py) y enlace al texto
     // en español en Chabad.org.
     // ---------------------------------------------------------------------
-    const MESES_HEBREOS = ["tishrei", "jeshvan", "kislev", "tevet", "shvat", "adar1", "adar2", "adar", "nisan", "iyar", "sivan", "tamuz", "av", "elul"];
     const CLAVE_MES = {
       tishri: "tishrei", tishrei: "tishrei", heshvan: "jeshvan", cheshvan: "jeshvan", jeshvan: "jeshvan", marjeshvan: "jeshvan", marheshvan: "jeshvan",
       kislev: "kislev", kislew: "kislev", jislev: "kislev", tevet: "tevet", teves: "tevet", tevetz: "tevet",
@@ -2244,30 +2243,17 @@
     }
     const claveMesHoy = (nombreEn) => CLAVE_MES[sinAcentos(nombreEn).replace(/[^a-z0-9]/g, "")] || "";
     const mismoMes = (deTitulo, deHoy) => deTitulo === deHoy || (deTitulo === "adar" && deHoy.startsWith("adar"));
-    const ordenDia = (f) => { const i = MESES_HEBREOS.indexOf(f.mes); return (i < 0 ? 0 : i) * 40 + f.dia; };
 
-    // Episodio del Tania de hoy; si todavía no se subió, el último anterior (hasta ~2 meses atrás) y se avisa.
+    // Episodio del Tania de hoy (el que lleva la fecha hebrea de hoy en el título), o null si todavía no está.
+    // Si hay más de uno, el más nuevo. No se ofrece el de otro día.
     function episodioDeTania(shiurim, hoy) {
-      const conFecha = [];
+      let mejor = null;
       for (const s of shiurim) {
         const f = fechaHebreaDeTitulo(s.titulo);
-        if (f) conFecha.push({ s, f });
+        if (!f || f.dia !== hoy.dia || !mismoMes(f.mes, hoy.mes)) continue;
+        if (!mejor || String(s.fecha).localeCompare(String(mejor.fecha)) > 0 || (s.fecha === mejor.fecha && Number(s.id) > Number(mejor.id))) mejor = s;
       }
-      const nuevoPrimero = (a, b) => String(b.s.fecha).localeCompare(String(a.s.fecha)) || Number(b.s.id) - Number(a.s.id);
-      const hoyOk = conFecha.filter((x) => x.f.dia === hoy.dia && mismoMes(x.f.mes, hoy.mes)).sort(nuevoPrimero)[0];
-      if (hoyOk) return { shiur: hoyOk.s, exacto: true };
-      const ciclo = MESES_HEBREOS.length * 40;
-      const antes = conFecha
-        .map((x) => ({ x, atras: (ordenDia(hoy) - ordenDia(x.f) + ciclo) % ciclo }))
-        .filter((y) => y.atras > 0 && y.atras <= 60)
-        .sort((a, b) => a.atras - b.atras || nuevoPrimero(a.x, b.x))[0];
-      if (antes) return { shiur: antes.x.s, exacto: false };
-      // Ninguno anterior: si ya está subido uno de los próximos días (se sube con anticipación), se ofrece ese
-      const despues = conFecha
-        .map((x) => ({ x, falta: (ordenDia(x.f) - ordenDia(hoy) + ciclo) % ciclo }))
-        .filter((y) => y.falta > 0 && y.falta <= 40)
-        .sort((a, b) => a.falta - b.falta || nuevoPrimero(a.x, b.x))[0];
-      return despues ? { shiur: despues.x.s, exacto: false, adelantado: true } : null;
+      return mejor;
     }
 
     const URL_TANIA_CHABAD = "https://es.chabad.org/dailystudy/tanya.asp?tdate=";
@@ -2313,21 +2299,14 @@
             <div className="relative mt-auto pt-4">
               <div className="border-t border-white/15 pt-4">
                 {episodio ? (
-                  <>
-                    {!episodio.exacto && (
-                      <p className="text-white/70 text-[13px] leading-snug mb-2.5">
-                        {episodio.adelantado ? "El audio de hoy todavía no está. Ya está subido el siguiente:" : "Todavía no se subió el audio de hoy. Este es el último disponible:"}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-3">
-                      {botonDeShiur(episodio.shiur)}
-                      <p className="min-w-0 text-white/90 text-[15px] leading-snug line-clamp-2">{episodio.shiur.titulo}</p>
-                    </div>
-                  </>
+                  <div className="flex items-center gap-3">
+                    {botonDeShiur(episodio)}
+                    <p className="min-w-0 text-white/90 text-[15px] leading-snug line-clamp-2">{episodio.titulo}</p>
+                  </div>
                 ) : (
                   <>
-                    <p className="font-serif text-lg leading-snug">Todavía no se subió el audio de hoy</p>
-                    <p className="text-white/70 text-[13px] leading-snug mt-1">Apenas esté disponible, aparece acá.</p>
+                    <p className="font-serif text-lg leading-snug">El audio de hoy todavía no está disponible</p>
+                    <p className="text-white/70 text-[13px] leading-snug mt-1">Apenas se suba, aparece acá.</p>
                   </>
                 )}
               </div>
