@@ -211,6 +211,9 @@
     body { font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; word-spacing: .05em; }
     .font-serif { font-family: "Playfair Display", Georgia, "Times New Roman", serif; letter-spacing: -0.012em; font-feature-settings: "lnum" 1; }
     h1, h2, h3 { text-wrap: balance; }
+    /* Texto hebreo con vocales (Tanya): tipografías con soporte de nikud, interlineado amplio */
+    .texto-hebreo { font-family: "Times New Roman", "David", "Noto Serif Hebrew", "SBL Hebrew", serif; font-size: 1.3rem; line-height: 2.05; text-align: right; }
+    .texto-hebreo b { font-weight: 700; }
     /* Zona segura (notch / barra de estado) en PWA instalada, iOS y Android:
        el encabezado nunca queda tapado, sin restarle aire en dispositivos
        sin notch (ahí env(safe-area-inset-top) vale 0 y queda el mínimo de 20px). */
@@ -313,6 +316,9 @@
     .texto-sistema { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif; word-spacing: normal; }
     .fila-mas:last-child .linea-mas { border-bottom-width: 0; }
     html.teclado-abierto .ocultar-con-teclado { display: none; }
+    /* Reproductor a pantalla completa: sube desde abajo al abrirse */
+    @keyframes subir { from { transform: translateY(100%); } to { transform: none; } }
+    .reproductor-sube { animation: subir .3s cubic-bezier(.22,.61,.36,1); }
     /* Respeta a quienes piden menos movimiento */
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
@@ -373,6 +379,8 @@
       const marcarTeclado = (abierto) => () => document.documentElement.classList.toggle("teclado-abierto", abierto);
       window.Capacitor.addListener("Keyboard", "keyboardWillShow", marcarTeclado(true));
       window.Capacitor.addListener("Keyboard", "keyboardWillHide", marcarTeclado(false));
+      // La app siempre se ve clara: letras oscuras en la barra de estado (hora, batería) aunque el teléfono esté en modo oscuro
+      window.Capacitor.nativePromise("StatusBar", "setStyle", { style: "LIGHT" }).catch(() => {});
     }
 
     // ⚠️ Contraseña del Panel Admin. Cámbiala editando esta línea.
@@ -1218,7 +1226,7 @@
 
     // Pantalla "Más": va debajo del encabezado; al fondo se ven "Rabino Yoel Migdal" (con "Más sobre
     // el Rabino"), la dedicatoria y la política de privacidad (esas tres las dibuja ShiurimApp).
-    function PantallaMas({ onContacto, onSuscripcion }) {
+    function PantallaMas({ onContacto, onSuscripcion, ubicacion }) {
       const titulo = "text-[13px] leading-[18px] text-stone-500 mb-2 px-4";
       const grupo = "bg-white rounded-[14px] overflow-hidden";
       return (
@@ -1228,6 +1236,9 @@
             <FilaMas icono={<IconMail size={17} />} texto="Escribile al Rabino" detalle="Mandale tu consulta" onClick={onContacto} />
             <FilaMas icono={<IconBell size={17} />} texto="Suscripción" detalle={AVISOS_DISPONIBLES ? "Novedades por correo y avisos en el teléfono" : "Novedades por correo"} onClick={onSuscripcion} />
           </div>
+
+          <p className={`${titulo} mt-8`}>Recordatorios</p>
+          <Recordatorios ubicacion={ubicacion} />
 
           <p className={`${titulo} mt-8`}>Comunidad</p>
           <div className={grupo}>
@@ -1994,7 +2005,16 @@
           semana = { shabat: `${ps.day} de ${ps.month}`, velas, parasha: codigo >= 0 ? datos.nombres[codigo] : null, fiesta: codigo < 0 ? datos.fiestas[-codigo - 1].es : null };
         }
       }
-      return { gregoriano, hebreoLetras, hebreoEs, semana };
+      // Día hebreo en números/inglés (para buscar el Tania del día) y fecha civil de ese día hebreo (AAAA-MM-DD)
+      const dia = diaHebreo.getUTCDate(), mes1 = diaHebreo.getUTCMonth() + 1, anio = diaHebreo.getUTCFullYear();
+      let hebreoDia = 0, hebreoMes = "";
+      try {
+        const q = {};
+        new Intl.DateTimeFormat("en-u-ca-hebrew", { timeZone: "UTC", day: "numeric", month: "long" }).formatToParts(diaHebreo).forEach((p) => { q[p.type] = p.value; });
+        hebreoDia = Number(q.day) || 0; hebreoMes = q.month || "";
+      } catch (e) {}
+      const iso = `${anio}-${String(mes1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+      return { gregoriano, hebreoLetras, hebreoEs, semana, hebreoDia, hebreoMes, iso, tdate: `${mes1}/${dia}/${anio}` };
     }
 
     // Shiur de esa Parashá. Prioridad: 1) config.parashaShiur en data.json ({ "Vayera": <id> }, a mano),
@@ -2178,6 +2198,171 @@
             <IconChevron size={14} className="shrink-0 mt-[2px]" />
           </a>
         </div>
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Tania del Día: audio del día (episodio del feed cuyo título lleva la fecha hebrea, p. ej. "Tania 19 de Kislev"),
+    // texto hebreo del día (tania/AAAA-MM-DD.json, que prepara scripts/tania_del_dia.py) y enlace al texto
+    // en español en Chabad.org.
+    // ---------------------------------------------------------------------
+    const MESES_HEBREOS = ["tishrei", "jeshvan", "kislev", "tevet", "shvat", "adar1", "adar2", "adar", "nisan", "iyar", "sivan", "tamuz", "av", "elul"];
+    const CLAVE_MES = {
+      tishri: "tishrei", tishrei: "tishrei", heshvan: "jeshvan", cheshvan: "jeshvan", jeshvan: "jeshvan", marjeshvan: "jeshvan", marheshvan: "jeshvan",
+      kislev: "kislev", kislew: "kislev", jislev: "kislev", tevet: "tevet", teves: "tevet", tevetz: "tevet",
+      shevat: "shvat", shvat: "shvat", shebat: "shvat", adar: "adar", adari: "adar1", adar1: "adar1", adarrishon: "adar1", adaralef: "adar1",
+      adarii: "adar2", adar2: "adar2", adarsheni: "adar2", adarbet: "adar2", nisan: "nisan", iyar: "iyar", iyyar: "iyar",
+      sivan: "sivan", tamuz: "tamuz", tammuz: "tamuz", av: "av", ab: "av", menajemav: "av", menachemav: "av", elul: "elul",
+    };
+    const MES_EN_LETRAS = { "תשרי": "tishrei", "חשון": "jeshvan", "חשוון": "jeshvan", "מרחשון": "jeshvan", "מרחשוון": "jeshvan", "כסלו": "kislev", "טבת": "tevet", "שבט": "shvat", "אדר": "adar", "אדר א": "adar1", "אדר ב": "adar2", "ניסן": "nisan", "אייר": "iyar", "סיון": "sivan", "סיוון": "sivan", "תמוז": "tamuz", "אב": "av", "מנחם אב": "av", "אלול": "elul" };
+    const VALOR_LETRA = { "א": 1, "ב": 2, "ג": 3, "ד": 4, "ה": 5, "ו": 6, "ז": 7, "ח": 8, "ט": 9, "י": 10, "כ": 20, "ך": 20, "ל": 30 };
+    const sinAcentos = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+    // Fecha hebrea ({ dia, mes }) que lleva el título de un episodio, o null. Entiende "Tania 19 de Kislev",
+    // "Tania 19 Kislev", "Tania 19 del Jeshván", con o sin acentos, y también letras hebreas ("תניא י״ט בכסלו").
+    function fechaHebreaDeTitulo(titulo) {
+      const t = String(titulo || "");
+      if (!/tania|tanya|תניא/i.test(t)) return null;
+      const es = sinAcentos(t).match(/(?<![\d])(\d{1,2})(?![\d])\s*(?:del|de)?\s*([a-z']+(?:\s+(?:i{1,2}|[12]|rishon|sheni|alef|bet))?)/g) || [];
+      for (const trozo of es) {
+        const m = trozo.match(/(\d{1,2})\s*(?:del|de)?\s*([a-z']+(?:\s+(?:i{1,2}|[12]|rishon|sheni|alef|bet))?)/);
+        const dia = Number(m[1]);
+        const mes = CLAVE_MES[m[2].replace(/[^a-z0-9]/g, "")] || CLAVE_MES[m[2].split(/\s+/)[0].replace(/[^a-z]/g, "")];
+        if (dia >= 1 && dia <= 30 && mes) return { dia, mes };
+      }
+      // Letras hebreas: "י״ט כסלו", "י"ט בכסלו", "ט״ו בשבט", "כ״ט מרחשוון", "ט״ז אדר ב׳"
+      const palabras = t.replace(/[֑-ׇ"'״׳]/g, "").split(/\s+/);
+      for (let i = 0; i < palabras.length - 1; i++) {
+        if (!/^[א-ת]{1,3}$/.test(palabras[i])) continue;
+        const dia = [...palabras[i]].reduce((suma, c) => suma + (VALOR_LETRA[c] || 0), 0);
+        const mes = [palabras[i + 1], `${palabras[i + 1]} ${palabras[i + 2] || ""}`.trim()]
+          .map((p) => MES_EN_LETRAS[p] || MES_EN_LETRAS[p.replace(/^[בלה]/, "")])
+          .reverse().find(Boolean);
+        if (dia >= 1 && dia <= 30 && mes) return { dia, mes };
+      }
+      return null;
+    }
+    const claveMesHoy = (nombreEn) => CLAVE_MES[sinAcentos(nombreEn).replace(/[^a-z0-9]/g, "")] || "";
+    const mismoMes = (deTitulo, deHoy) => deTitulo === deHoy || (deTitulo === "adar" && deHoy.startsWith("adar"));
+    const ordenDia = (f) => { const i = MESES_HEBREOS.indexOf(f.mes); return (i < 0 ? 0 : i) * 40 + f.dia; };
+
+    // Episodio del Tania de hoy; si todavía no se subió, el último anterior (hasta ~2 meses atrás) y se avisa.
+    function episodioDeTania(shiurim, hoy) {
+      const conFecha = [];
+      for (const s of shiurim) {
+        const f = fechaHebreaDeTitulo(s.titulo);
+        if (f) conFecha.push({ s, f });
+      }
+      const nuevoPrimero = (a, b) => String(b.s.fecha).localeCompare(String(a.s.fecha)) || Number(b.s.id) - Number(a.s.id);
+      const hoyOk = conFecha.filter((x) => x.f.dia === hoy.dia && mismoMes(x.f.mes, hoy.mes)).sort(nuevoPrimero)[0];
+      if (hoyOk) return { shiur: hoyOk.s, exacto: true };
+      const ciclo = MESES_HEBREOS.length * 40;
+      const antes = conFecha
+        .map((x) => ({ x, atras: (ordenDia(hoy) - ordenDia(x.f) + ciclo) % ciclo }))
+        .filter((y) => y.atras > 0 && y.atras <= 60)
+        .sort((a, b) => a.atras - b.atras || nuevoPrimero(a.x, b.x))[0];
+      return antes ? { shiur: antes.x.s, exacto: false } : null;
+    }
+
+    const URL_TANIA_CHABAD = "https://es.chabad.org/dailystudy/tanya.asp?tdate=";
+    function SeccionTaniaDelDia({ shiurim, filaDeShiur }) {
+      const ahora = useAhora();
+      const cal = useMemo(() => calendarioDeAhora(ahora), [Math.floor(ahora / 60000)]);
+      const hoy = useMemo(() => ({ dia: cal.hebreoDia, mes: claveMesHoy(cal.hebreoMes) }), [cal.hebreoDia, cal.hebreoMes]);
+      const episodio = useMemo(() => (hoy.dia && hoy.mes ? episodioDeTania(shiurim, hoy) : null), [shiurim, hoy]);
+      const [texto, setTexto] = useState(undefined); // undefined = cargando, null = no disponible
+      const [idioma, setIdioma] = useState("es");
+      const [abierto, setAbierto] = useState(false);
+      useEffect(() => {
+        let cancelado = false;
+        setTexto(undefined); setAbierto(false);
+        fetch(rutaSitio(`tania/${cal.iso}.json`), { cache: "no-store" })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => { if (!cancelado) setTexto(d && Array.isArray(d.parrafos) && d.parrafos.length ? d : null); })
+          .catch(() => { if (!cancelado) setTexto(null); });
+        return () => { cancelado = true; };
+      }, [cal.iso]);
+
+      const largo = texto ? texto.parrafos.join("").length > 1600 : false;
+      const pestana = (id, etiqueta, extra = {}) => (
+        <button
+          role="tab"
+          aria-selected={idioma === id}
+          onClick={() => setIdioma(id)}
+          className={`px-4 h-9 text-sm font-medium rounded-full transition-colors ${idioma === id ? "bg-stone-900 text-white" : "text-stone-600 hover:text-blue-900"}`}
+          {...extra}
+        >
+          {etiqueta}
+        </button>
+      );
+      return (
+        <section aria-labelledby="inicio-tania-dia">
+          <h2 id="inicio-tania-dia" className="font-serif text-2xl sm:text-[28px] font-semibold text-blue-900 leading-none mb-4">Tania del Día</h2>
+          <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-3.5 sm:gap-5 items-stretch">
+            <div className="relative overflow-hidden rounded-2xl text-white bg-gradient-to-br from-[#14203A] via-[#1A2A4A] to-[#22345A] shadow-card p-5 sm:p-6 flex flex-col justify-center">
+              <div className="pointer-events-none absolute -top-16 -right-10 w-56 h-56 rounded-full opacity-25" style={{ background: "radial-gradient(closest-side, rgba(199,154,75,.7), transparent)" }} />
+              <p className="relative text-gold-200 text-[11px] sm:text-xs tracking-[0.2em] uppercase mb-2">{cal.gregoriano.replace(/ de \d{4}$/, "")}</p>
+              <h3 className="relative font-serif font-bold text-3xl sm:text-4xl leading-tight">{cal.hebreoEs ? cal.hebreoEs.replace(/ de \d+$/, "") : "Hoy"}</h3>
+              {cal.hebreoLetras && <p dir="rtl" lang="he" className="relative text-gold-100 text-2xl mt-1 text-left">{cal.hebreoLetras}</p>}
+              {texto && <p className="relative text-white/70 text-[13px] mt-3 leading-snug">Hoy se estudia: {texto.referencia}</p>}
+            </div>
+            <div className="flex flex-col justify-center gap-2">
+              {episodio ? (
+                <>
+                  {!episodio.exacto && <p className="text-[13px] text-stone-500 leading-snug">Todavía no se subió el audio de hoy. Este es el último disponible:</p>}
+                  {filaDeShiur(episodio.shiur)}
+                </>
+              ) : (
+                <div className="rounded-2xl bg-white ring-1 ring-blue-900/[0.07] shadow-card p-5 sm:p-6 text-center md:text-left">
+                  <p className="font-serif text-lg text-blue-900 mb-1">Todavía no se subió el audio de hoy</p>
+                  <p className="text-stone-600 text-sm leading-relaxed">Apenas esté disponible, aparece acá. Mientras tanto podés leer el texto del día.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-3.5 sm:mt-5 rounded-2xl bg-white ring-1 ring-blue-900/[0.07] shadow-card p-5 sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <h3 className="font-serif text-lg sm:text-xl text-blue-900">Texto del día</h3>
+              <div role="tablist" aria-label="Idioma del texto" className="inline-flex p-1 rounded-full bg-stone-100">
+                {pestana("es", "Español")}
+                {pestana("he", "עברית", { lang: "he" })}
+              </div>
+            </div>
+            {idioma === "es" ? (
+              <div dir="ltr" lang="es" className="text-stone-700 text-[15px] leading-relaxed">
+                <p className="mb-4">El texto del Tania en español lo publica Chabad.org. Ahí podés leer el estudio de hoy{texto ? <> ({texto.referencia})</> : ""}, en español y en hebreo.</p>
+                <a
+                  href={`${URL_TANIA_CHABAD}${cal.tdate}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-navy inline-flex items-center gap-1.5 h-11 px-5 rounded-full text-sm font-medium"
+                >
+                  Leer el Tania de hoy en Chabad.org <IconChevron size={15} />
+                </a>
+              </div>
+            ) : texto === undefined ? (
+              <p className="text-sm text-stone-500">Cargando el texto…</p>
+            ) : texto === null ? (
+              <p dir="ltr" lang="es" className="text-sm text-stone-600 leading-relaxed">El texto hebreo de hoy todavía no está disponible. Mientras tanto, podés leerlo en <button onClick={() => setIdioma("es")} className="underline text-blue-900">Chabad.org</button>.</p>
+            ) : (
+              <>
+                <div className="relative">
+                  <div dir="rtl" lang="he" className={`texto-hebreo text-stone-900 ${largo && !abierto ? "max-h-80 overflow-hidden" : ""}`}>
+                    {texto.parrafos.map((p, i) => <p key={i} className="mb-4 last:mb-0" dangerouslySetInnerHTML={{ __html: p }} />)}
+                  </div>
+                  {largo && !abierto && <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white to-transparent" />}
+                </div>
+                {largo && (
+                  <button onClick={() => setAbierto((v) => !v)} className="mt-3 text-sm font-medium text-blue-900 underline underline-offset-4 min-h-[44px]">
+                    {abierto ? "Ver menos" : "Seguir leyendo"}
+                  </button>
+                )}
+                <p dir="ltr" className="text-[11px] text-stone-400 mt-3 leading-relaxed">Texto hebreo: {texto.fuente}.</p>
+              </>
+            )}
+          </div>
+        </section>
       );
     }
 
@@ -2586,6 +2771,339 @@
             </button>
           </div>
         </div>
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Solo en la app: reproductor a pantalla completa (como Podcasts o Spotify). Se abre
+    // tocando el reproductor de abajo y se cierra deslizando hacia abajo. Tiene saltos de
+    // 10 segundos, velocidad, temporizador para dormir y el siguiente shiur de la serie.
+    // ---------------------------------------------------------------------
+    // Siguiente shiur de la misma serie: en Tania, el capítulo que sigue; en los demás
+    // temas, el siguiente que se publicó (así "Parte 1" lleva a "Parte 2").
+    function siguienteDe(shiur, shiurim) {
+      if (!shiur) return null;
+      const mismos = shiurim.filter((s) => s.categoria === shiur.categoria);
+      const orden = shiur.categoria === "Tania" ? [...mismos].sort(compararTania) : [...mismos].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+      const i = orden.findIndex((s) => String(s.id) === String(shiur.id));
+      return i >= 0 && i < orden.length - 1 ? orden[i + 1] : null;
+    }
+
+    const OPCIONES_TEMPORIZADOR = [15, 30, 45, 60];
+
+    const IconSalto = ({ adelante = false, ...p }) => (
+      <Icon {...p}>
+        <path d={adelante ? "M12 5a7 7 0 1 1-7 7" : "M12 5a7 7 0 1 0 7 7"} />
+        <polyline points={adelante ? "12 2 15 5 12 8" : "12 2 9 5 12 8"} />
+        <text x="12" y="15.5" fontSize="6.5" fontWeight="700" textAnchor="middle" fill="currentColor" stroke="none" fontFamily="-apple-system, sans-serif">10</text>
+      </Icon>
+    );
+    const IconLuna = (p) => (
+      <Icon {...p}>
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+      </Icon>
+    );
+    const IconSiguiente = (p) => (
+      <Icon {...p}>
+        <polygon points="5 4 15 12 5 20 5 4" fill="currentColor" />
+        <line x1="19" y1="5" x2="19" y2="19" />
+      </Icon>
+    );
+
+    function ReproductorCompleto({ current, isPlaying, speed, progreso, actual, duracion, onTogglePlay, onSeek, onSaltar, onSpeedChange, onClose, onVerFicha, siguiente, onSiguiente, temporizador, onTemporizador }) {
+      const [bajada, setBajada] = useState(0);
+      const [menuTemporizador, setMenuTemporizador] = useState(false);
+      const toqueRef = useRef(null);
+      const titulo = tituloPrincipalDe(current);
+      const restante = temporizador ? Math.max(0, temporizador - Date.now()) : 0;
+      const textoRestante = temporizador ? `${Math.floor(restante / 60000)}:${String(Math.floor((restante % 60000) / 1000)).padStart(2, "0")}` : "";
+
+      // Deslizar hacia abajo para cerrar (salvo sobre la barra de avance)
+      const empezar = (e) => { toqueRef.current = e.target.type === "range" ? null : e.touches[0].clientY; };
+      const mover = (e) => { if (toqueRef.current !== null) setBajada(Math.max(0, e.touches[0].clientY - toqueRef.current)); };
+      const terminar = () => {
+        if (toqueRef.current === null) return;
+        toqueRef.current = null;
+        if (bajada > 110) onClose();
+        else setBajada(0);
+      };
+
+      const botonRedondo = "flex items-center justify-center rounded-full active:scale-90 transition-transform";
+      return (
+        <div
+          className="reproductor-sube texto-sistema fixed inset-0 z-[48] text-white bg-gradient-to-b from-[#1C2B4A] via-[#14223F] to-[#0B1428] flex flex-col"
+          style={{ transform: bajada ? `translateY(${bajada}px)` : undefined, transition: bajada ? "none" : "transform .25s ease", paddingTop: "max(12px, env(safe-area-inset-top))", paddingBottom: "max(20px, env(safe-area-inset-bottom))" }}
+          onTouchStart={empezar}
+          onTouchMove={mover}
+          onTouchEnd={terminar}
+        >
+          <div className="flex items-center justify-between px-4 h-12 shrink-0">
+            <button onClick={onClose} className={`${botonRedondo} w-11 h-11 text-white/80`} aria-label="Cerrar reproductor">
+              <IconChevron dir="right" size={26} className="rotate-90" />
+            </button>
+            <span className="text-[13px] font-semibold tracking-wide text-white/60 uppercase">Reproduciendo</span>
+            <button onClick={onVerFicha} className="h-11 px-2 text-[15px] text-gold-200 active:opacity-60">Ficha</button>
+          </div>
+
+          <div className="flex-1 min-h-0 flex items-center justify-center px-8 py-4">
+            {current.portadaUrl ? (
+              <img
+                src={current.portadaUrl}
+                alt=""
+                className={`max-h-full w-auto max-w-full aspect-square object-cover rounded-2xl shadow-[0_24px_60px_-12px_rgba(0,0,0,.6)] transition-transform duration-500 ${isPlaying ? "scale-100" : "scale-[.88]"}`}
+              />
+            ) : (
+              <div className="w-64 h-64 rounded-2xl bg-white/10" />
+            )}
+          </div>
+
+          <div className="px-6 shrink-0 max-w-lg w-full mx-auto">
+            <p className="text-[13px] font-semibold text-gold-200 uppercase tracking-wide truncate">{current.categoria}</p>
+            <h2 className="font-serif text-[22px] leading-[1.25] mt-1 line-clamp-2">{titulo}</h2>
+
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={0.1}
+              value={isNaN(progreso) ? 0 : progreso}
+              onChange={(e) => onSeek(Number(e.target.value))}
+              className="w-full mt-5 accent-[#D3A94F] h-4 cursor-pointer"
+              aria-label="Avance del shiur"
+            />
+            <div className="flex justify-between text-[12px] text-white/60 tabular-nums -mt-0.5">
+              <span>{formatTiempo(actual)}</span>
+              <span>-{formatTiempo(Math.max(0, duracion - actual))}</span>
+            </div>
+
+            <div className="flex items-center justify-center gap-8 mt-4">
+              <button onClick={() => onSaltar(-10)} className={`${botonRedondo} w-14 h-14 text-white/90`} aria-label="Atrasar 10 segundos">
+                <IconSalto size={34} strokeWidth={1.8} />
+              </button>
+              <button onClick={onTogglePlay} className={`${botonRedondo} btn-gold w-[76px] h-[76px]`} aria-label={isPlaying ? "Pausar" : "Reproducir"}>
+                {isPlaying ? <IconPause size={30} /> : <IconPlay size={30} />}
+              </button>
+              <button onClick={() => onSaltar(10)} className={`${botonRedondo} w-14 h-14 text-white/90`} aria-label="Adelantar 10 segundos">
+                <IconSalto adelante size={34} strokeWidth={1.8} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 mt-6">
+              <button onClick={() => onSpeedChange(siguienteVelocidad(speed))} className="h-12 rounded-xl bg-white/10 text-[15px] font-semibold active:bg-white/20" aria-label={`Velocidad ${speed}x`}>
+                {speed}x
+              </button>
+              <button
+                onClick={() => setMenuTemporizador(true)}
+                className={`h-12 rounded-xl text-[15px] font-semibold flex items-center justify-center gap-1.5 active:bg-white/20 ${temporizador ? "bg-gold-500 text-[#14203A]" : "bg-white/10"}`}
+                aria-label="Temporizador para dormir"
+              >
+                <IconLuna size={17} />
+                <span className="tabular-nums">{temporizador ? textoRestante : "Dormir"}</span>
+              </button>
+              <button
+                onClick={onSiguiente}
+                disabled={!siguiente}
+                className="h-12 rounded-xl bg-white/10 text-[15px] font-semibold flex items-center justify-center gap-1.5 active:bg-white/20 disabled:opacity-30"
+                aria-label="Siguiente shiur de la serie"
+              >
+                <IconSiguiente size={16} />
+                Siguiente
+              </button>
+            </div>
+            {siguiente && (
+              <button onClick={onSiguiente} className="block w-full text-left mt-3 text-[13px] text-white/50 truncate active:text-white/80">
+                A continuación: <span className="text-white/80">{tituloPrincipalDe(siguiente)}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Menú del temporizador para dormir */}
+          {menuTemporizador && (
+            <div className="fixed inset-0 z-10 flex items-end bg-black/40" onClick={() => setMenuTemporizador(false)} onTouchStart={(e) => e.stopPropagation()}>
+              <div
+                className="w-full bg-[#16233F] text-white rounded-t-[20px] px-4 pt-3"
+                style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="mx-auto w-10 h-1.5 rounded-full bg-white/25 mb-3" />
+                <p className="text-center text-[13px] text-white/55 mb-2">Pausar el shiur después de…</p>
+                <div className="bg-white/[0.07] rounded-[14px] overflow-hidden divide-y divide-white/10">
+                  {OPCIONES_TEMPORIZADOR.map((min) => (
+                    <button key={min} onClick={() => { onTemporizador(min); setMenuTemporizador(false); }} className="w-full h-[52px] text-[17px] text-gold-200 active:bg-white/10">
+                      {min} minutos
+                    </button>
+                  ))}
+                  {temporizador && (
+                    <button onClick={() => { onTemporizador(null); setMenuTemporizador(false); }} className="w-full h-[52px] text-[17px] text-[#FF8A80] active:bg-white/10">
+                      Apagar temporizador
+                    </button>
+                  )}
+                </div>
+                <button onClick={() => setMenuTemporizador(false)} className="w-full h-[52px] mt-2 bg-white/[0.07] rounded-[14px] text-[17px] font-semibold text-white active:bg-white/10">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Solo en la app: recordatorios que arma el propio teléfono (complemento
+    // @capacitor/local-notifications; no pasan por ningún servidor):
+    // encendido de velas del viernes (una hora antes) y un recordatorio diario de estudio.
+    // ---------------------------------------------------------------------
+    const CLAVE_RECORDATORIOS = "ry_recordatorios"; // { velas: true/false, diario: "20:00" o null }
+    const ID_VELAS = 1000; // 1000 a 1007: los próximos 8 viernes
+    const ID_DIARIO = 2000;
+    const VIERNES_PROGRAMADOS = 8;
+    const AVISO_VELAS_MINUTOS_ANTES = 60; // a qué hora del viernes llega el aviso (minutos antes de las velas)
+
+    // Próximos viernes con la hora de las velas, en la ciudad de quien usa la app (si se sabe) o en Buenos Aires
+    function proximasVelas(ubicacion, cantidad) {
+      const lugarConocido = ubicacion && minutosAntes(ubicacion) !== null;
+      const zona = lugarConocido ? ubicacion.tz : ZONA_ARGENTINA;
+      const lat = lugarConocido ? ubicacion.lat : BUENOS_AIRES.lat;
+      const lon = lugarConocido ? ubicacion.lon : BUENOS_AIRES.lon;
+      const antes = lugarConocido ? minutosAntes(ubicacion) : 18;
+      const lugar = lugarConocido ? ubicacion.ciudad || "tu ciudad" : "Buenos Aires";
+      const [y, m, d] = new Intl.DateTimeFormat("en-CA", { timeZone: zona, year: "numeric", month: "2-digit", day: "2-digit" }).format(Date.now()).split("-").map(Number);
+      const hoy = new Date(Date.UTC(y, m - 1, d, 12));
+      const lista = [];
+      for (let i = 0; lista.length < cantidad && i < 7 * (cantidad + 1); i++) {
+        const dia = new Date(hoy.getTime() + i * 86400000);
+        if (dia.getUTCDay() !== 5) continue;
+        const ms = puestaDeSolEn(dia.getUTCFullYear(), dia.getUTCMonth() + 1, dia.getUTCDate(), lat, lon) - antes * 60000;
+        if (!isFinite(ms)) continue;
+        // Mismo redondeo que muestra la web: Buenos Aires sale de la tabla de Hebcal (corta los segundos), las demás ciudades redondean
+        const redondear = lugar === "Buenos Aires" ? Math.floor : Math.round;
+        const hora = new Intl.DateTimeFormat("en-GB", { timeZone: zona, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(redondear(ms / 60000) * 60000));
+        lista.push({ ms, hora, lugar });
+      }
+      return lista;
+    }
+
+    async function permisoRecordatorios() {
+      const p = await nativo("LocalNotifications", "checkPermissions");
+      if (p.display === "granted") return true;
+      const r = await nativo("LocalNotifications", "requestPermissions");
+      return r.display === "granted";
+    }
+
+    // Borra los recordatorios armados y vuelve a armar los que estén activos (se llama al abrir la app y al cambiarlos)
+    async function programarRecordatorios(pref, ubicacion) {
+      const ids = [...Array(VIERNES_PROGRAMADOS)].map((_, i) => ({ id: ID_VELAS + i })).concat({ id: ID_DIARIO });
+      await nativo("LocalNotifications", "cancel", { notifications: ids }).catch(() => {});
+      if (!pref.velas && !pref.diario) return;
+      await nativo("LocalNotifications", "createChannel", { id: "recordatorios", name: "Recordatorios", description: "Encendido de velas y recordatorio de estudio", importance: 4 }).catch(() => {});
+      const avisos = [];
+      if (pref.velas) {
+        proximasVelas(ubicacion, VIERNES_PROGRAMADOS).forEach((v, i) => {
+          const cuando = new Date(v.ms - AVISO_VELAS_MINUTOS_ANTES * 60000);
+          if (cuando.getTime() <= Date.now() + 60000) return;
+          avisos.push({
+            id: ID_VELAS + i,
+            title: "Encendido de velas de Shabat",
+            body: `Hoy en ${v.lugar} se encienden las velas a las ${v.hora}. ¡Shabat Shalom!`,
+            // Un aviso por viernes, a esa fecha y hora exactas. El iPhone no entiende la fecha escrita como texto
+            // ("at"): la manda en el momento. Por eso ahí va por partes (año, mes, día, hora y minuto del teléfono).
+            schedule: ES_APP_ANDROID
+              ? { at: cuando.toISOString(), allowWhileIdle: true }
+              : { on: { year: cuando.getFullYear(), month: cuando.getMonth() + 1, day: cuando.getDate(), hour: cuando.getHours(), minute: cuando.getMinutes() } },
+            channelId: "recordatorios",
+            isExactNotification: false, // en Android, sin el permiso de "alarmas exactas" (puede llegar unos minutos tarde)
+          });
+        });
+      }
+      if (pref.diario) {
+        const [hora, minuto] = pref.diario.split(":").map(Number);
+        avisos.push({
+          id: ID_DIARIO,
+          title: "Tu shiur del día",
+          body: "Un ratito de Torá con el Rabino Yoel Migdal te está esperando.",
+          schedule: { on: { hour: hora, minute: minuto }, allowWhileIdle: true },
+          channelId: "recordatorios",
+          isExactNotification: false,
+        });
+      }
+      if (avisos.length) await nativo("LocalNotifications", "schedule", { notifications: avisos });
+    }
+
+    function Interruptor({ activo, onCambiar, etiqueta, deshabilitado }) {
+      return (
+        <button
+          type="button"
+          role="switch"
+          aria-checked={activo}
+          aria-label={etiqueta}
+          onClick={onCambiar}
+          disabled={deshabilitado}
+          className={`relative shrink-0 w-[51px] h-[31px] rounded-full transition-colors duration-200 disabled:opacity-60 ${activo ? "bg-blue-900" : "bg-stone-300"}`}
+        >
+          <span className={`absolute top-[2px] left-[2px] w-[27px] h-[27px] rounded-full bg-white shadow transition-transform duration-200 ${activo ? "translate-x-5" : ""}`} />
+        </button>
+      );
+    }
+
+    // Grupo "Recordatorios" de la pantalla "Más"
+    function Recordatorios({ ubicacion }) {
+      const [pref, setPref] = useState(() => ({ velas: false, diario: null, ...leerJSON(CLAVE_RECORDATORIOS, {}) }));
+      const [aviso, setAviso] = useState("");
+      const cambiar = async (nuevo) => {
+        setAviso("");
+        const activa = (nuevo.velas && !pref.velas) || (nuevo.diario && !pref.diario);
+        if (activa && !(await permisoRecordatorios().catch(() => false))) {
+          setAviso("Las notificaciones están bloqueadas para esta app. Activalas en Ajustes del teléfono → Rabino Yoel Migdal → Notificaciones.");
+          return;
+        }
+        vibrar();
+        setPref(nuevo);
+        guardarJSON(CLAVE_RECORDATORIOS, nuevo);
+        programarRecordatorios(nuevo, ubicacion).catch(() => setAviso("No se pudo programar el recordatorio. Probá de nuevo."));
+      };
+      const fila = "fila-mas flex items-center gap-3.5 min-h-[52px] pl-4";
+      const icono = "shrink-0 w-[30px] h-[30px] rounded-[8px] bg-blue-900 text-white flex items-center justify-center";
+      return (
+        <React.Fragment>
+          <div className="bg-white rounded-[14px] overflow-hidden">
+            <div className={fila}>
+              <span className={icono}><IconVela size={17} /></span>
+              <span className="linea-mas flex-1 min-w-0 self-stretch flex items-center gap-3 border-b border-stone-200 pr-4">
+                <span className="flex-1 min-w-0 py-3">
+                  <span className="block text-[17px] leading-[22px] tracking-[-0.01em] text-stone-900">Encendido de velas</span>
+                  <span className="block text-[13px] leading-[18px] text-stone-500 mt-0.5">Aviso el viernes, una hora antes</span>
+                </span>
+                <Interruptor activo={pref.velas} etiqueta="Aviso de encendido de velas" onCambiar={() => cambiar({ ...pref, velas: !pref.velas })} />
+              </span>
+            </div>
+            <div className={fila}>
+              <span className={icono}><IconBell size={17} /></span>
+              <span className="linea-mas flex-1 min-w-0 self-stretch flex items-center gap-3 border-b border-stone-200 pr-4">
+                <span className="flex-1 min-w-0 py-3">
+                  <span className="block text-[17px] leading-[22px] tracking-[-0.01em] text-stone-900">Recordatorio de estudio</span>
+                  <span className="block text-[13px] leading-[18px] text-stone-500 mt-0.5">{pref.diario ? `Todos los días a las ${pref.diario}` : "Un aviso por día para escuchar un shiur"}</span>
+                </span>
+                <Interruptor activo={!!pref.diario} etiqueta="Recordatorio diario de estudio" onCambiar={() => cambiar({ ...pref, diario: pref.diario ? null : "20:00" })} />
+              </span>
+            </div>
+            {pref.diario && (
+              <label className={fila}>
+                <span className="shrink-0 w-[30px]" />
+                <span className="linea-mas flex-1 min-w-0 self-stretch flex items-center justify-between gap-3 border-b border-stone-200 pr-4">
+                  <span className="text-[17px] text-stone-900">Hora</span>
+                  <input
+                    type="time"
+                    value={pref.diario}
+                    onChange={(e) => e.target.value && cambiar({ ...pref, diario: e.target.value })}
+                    className="bg-stone-100 rounded-lg px-2.5 py-1 text-stone-900 focus:outline-none"
+                  />
+                </span>
+              </label>
+            )}
+          </div>
+          {aviso && <p className="text-[13px] text-amber-700 mt-2 px-4">{aviso}</p>}
+        </React.Fragment>
       );
     }
 
@@ -3872,6 +4390,18 @@
           return r.json();
         });
       const [datosCompletos, setDatosCompletos] = useState(false);
+      // Vuelve a leer la lista de shiurim (en la app, al deslizar hacia abajo desde arriba de todo).
+      // Si falla (sin conexión), la lista queda como estaba. Espera al menos medio segundo para que se vea el aviso.
+      const refrescarRef = useRef(null);
+      refrescarRef.current = () =>
+        Promise.all([
+          cargarJSON(datosCompletos ? "./data.json" : "./data-lite.json").then((data) => {
+            if (!data || !Array.isArray(data.shiurim)) return;
+            setShiurim(data.shiurim.filter(esShiurValido));
+            setConfig({ ...CONFIG_DEFECTO, ...(data.config || {}) });
+          }),
+          new Promise((r) => setTimeout(r, 600)),
+        ]).catch(() => {});
       useEffect(() => {
         let cancelado = false;
         let esAdminAlCargar = false;
@@ -4036,6 +4566,9 @@
       // Solo en la app: pestaña "Buscar" (lista completa con el buscador) y pantalla "Más"
       const [buscando, setBuscando] = useState(false);
       const [pestanaMas, setPestanaMas] = useState(false);
+      // Solo en la app: reproductor a pantalla completa y temporizador para dormir (momento en ms en que se pausa)
+      const [reproductorAbierto, setReproductorAbierto] = useState(false);
+      const [temporizador, setTemporizador] = useState(null);
       const [selectedShiur, setSelectedShiur] = useState(null);
       const [shiurACompartir, setShiurACompartir] = useState(null);
       const [showContact, setShowContact] = useState(false);
@@ -4430,6 +4963,7 @@
       atrasRef.current = () => {
         if (shiurACompartir) setShiurACompartir(null);
         else if (selectedShiur) setSelectedShiur(null);
+        else if (reproductorAbierto) setReproductorAbierto(false);
         else if (showContact) setShowContact(false);
         else if (showSuscripcion) setShowSuscripcion(false);
         else if (showDonate) setShowDonate(false);
@@ -4443,6 +4977,58 @@
         if (!ES_APP_ANDROID) return;
         const escucha = window.Capacitor.addListener("App", "backButton", () => atrasRef.current());
         return () => escucha.remove();
+      }, []);
+
+      // Solo en la app: ciudad aproximada (para la hora de las velas) y recordatorios. Cada vez que se
+      // abre la app se vuelven a armar los avisos de las velas de los próximos viernes.
+      const ubicacion = ES_APP ? useUbicacion() : null;
+      useEffect(() => {
+        if (!ES_APP) return;
+        const pref = leerJSON(CLAVE_RECORDATORIOS, {});
+        if (pref.velas || pref.diario) programarRecordatorios(pref, ubicacion).catch(() => {});
+      }, [ubicacion]);
+
+      // Solo en la app: deslizar hacia abajo desde arriba de todo para actualizar la lista de shiurim
+      const indicadorRef = useRef(null);
+      const puedeActualizarRef = useRef(false);
+      puedeActualizarRef.current = !pestanaMas && !selectedShiur && !reproductorAbierto && !showContact && !showSuscripcion;
+      useEffect(() => {
+        if (!ES_APP) return;
+        let inicio = null, distancia = 0, actualizando = false;
+        const mostrar = (d, girando) => {
+          const el = indicadorRef.current;
+          if (!el) return;
+          el.style.opacity = d > 10 || girando ? "1" : "0";
+          el.style.transform = `translate(-50%, ${Math.min(d, 90) * 0.7}px)`;
+          el.firstChild.style.transform = girando ? "" : `rotate(${d * 3}deg)`;
+          el.firstChild.classList.toggle("animate-spin", !!girando);
+        };
+        const empezar = (e) => {
+          inicio = !actualizando && puedeActualizarRef.current && window.scrollY <= 0 && e.touches.length === 1 ? e.touches[0].clientY : null;
+          distancia = 0;
+        };
+        const mover = (e) => {
+          if (inicio === null) return;
+          distancia = window.scrollY > 0 ? 0 : Math.max(0, e.touches[0].clientY - inicio);
+          mostrar(distancia, false);
+        };
+        const terminar = () => {
+          if (inicio === null) return;
+          inicio = null;
+          if (distancia < 80) { mostrar(0, false); return; }
+          actualizando = true;
+          vibrar();
+          mostrar(80, true);
+          refrescarRef.current().finally(() => { actualizando = false; mostrar(0, false); });
+        };
+        window.addEventListener("touchstart", empezar, { passive: true });
+        window.addEventListener("touchmove", mover, { passive: true });
+        window.addEventListener("touchend", terminar);
+        return () => {
+          window.removeEventListener("touchstart", empezar);
+          window.removeEventListener("touchmove", mover);
+          window.removeEventListener("touchend", terminar);
+        };
       }, []);
 
       // Reproducciones contadas por el servicio propio (shiur.id -> total). Solo
@@ -4514,6 +5100,25 @@
         setProgreso(valor);
         if (audio && audio.duration) audio.currentTime = (valor / 100) * audio.duration;
       };
+      // Solo en la app (reproductor a pantalla completa): saltar segundos hacia atrás o adelante
+      const saltar = (segundos) => {
+        const audio = audioRef.current;
+        vibrar();
+        if (audio && audio.duration) audio.currentTime = Math.min(audio.duration, Math.max(0, audio.currentTime + segundos));
+      };
+
+      // Temporizador para dormir: al llegar la hora se pausa el shiur. Se revisa cada segundo
+      // y también con cada avance del audio (por si el teléfono frena los relojes en segundo plano).
+      const [, setTic] = useState(0);
+      useEffect(() => {
+        if (!temporizador) return;
+        const reloj = setInterval(() => setTic((t) => t + 1), 1000);
+        return () => clearInterval(reloj);
+      }, [temporizador]);
+      useEffect(() => {
+        if (temporizador && Date.now() >= temporizador) { setIsPlaying(false); setTemporizador(null); }
+      });
+      useEffect(() => { if (!current) setReproductorAbierto(false); }, [current]);
 
       const handlePlay = (shiur) => {
         vibrar();
@@ -4608,8 +5213,9 @@
         const t = setTimeout(() => rastrearRef.current("visita", { pagina: vistaActual }), 600);
         return () => clearTimeout(t);
       }, [vistaActual, cargando, enlaceResuelto]);
+      // Los audios diarios del Tania ("Tania 19 de Kislev") tienen su propia sección: no desplazan a los demás shiurim
       const inicioRecientes = useMemo(
-        () => [...shiurim].sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, INICIO_RECIENTES),
+        () => shiurim.filter((s) => !fechaHebreaDeTitulo(s.titulo)).sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, INICIO_RECIENTES),
         [shiurim]
       );
       const inicioDestacados = useMemo(
@@ -4861,7 +5467,7 @@
 
           {/* Solo en la app: pestaña "Más" (en lugar del contenido) */}
           {ES_APP && pestanaMas && (
-            <PantallaMas onContacto={() => setShowContact(true)} onSuscripcion={() => setShowSuscripcion(true)} />
+            <PantallaMas onContacto={() => setShowContact(true)} onSuscripcion={() => setShowSuscripcion(true)} ubicacion={ubicacion} />
           )}
 
           {/* Hero: foto, frase y buscador (se pliega al buscar o elegir un tema). En la app: la foto solo
@@ -4900,6 +5506,9 @@
                     cantidadDescargas={Object.keys(descargas).filter((id) => shiurim.some((x) => String(x.id) === id)).length}
                     onElegir={(cat) => { setCategoriaActiva(cat); window.scrollTo({ top: 0 }); }}
                   />
+                </Reveal>
+                <Reveal>
+                  <SeccionTaniaDelDia shiurim={shiurim} filaDeShiur={filaDeShiur} />
                 </Reveal>
                 <Reveal>
                   <SeccionParasha
@@ -5030,10 +5639,41 @@
             onSeek={handleSeek}
             onSpeedChange={setSpeed}
             onClose={() => { setCurrent(null); setIsPlaying(false); }}
-            onOpenDetail={() => current && setSelectedShiur(current)}
+            onOpenDetail={() => current && (ES_APP ? setReproductorAbierto(true) : setSelectedShiur(current))}
           />
 
-          {/* Solo en la app: barra de pestañas */}
+          {/* Solo en la app: aviso de "deslizar para actualizar", reproductor a pantalla completa y barra de pestañas */}
+          {ES_APP && (
+            <div
+              ref={indicadorRef}
+              className="fixed left-1/2 z-[45] w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center text-blue-900 pointer-events-none"
+              style={{ top: "calc(max(20px, env(safe-area-inset-top)) + 64px)", opacity: 0, transform: "translate(-50%, 0)", transition: "opacity .15s" }}
+              aria-hidden="true"
+            >
+              <IconRefresh size={18} />
+            </div>
+          )}
+          {ES_APP && reproductorAbierto && current && (
+            <ReproductorCompleto
+              current={current}
+              isPlaying={isPlaying}
+              speed={speed}
+              progreso={progreso}
+              actual={actual}
+              duracion={duracion}
+              onTogglePlay={() => { vibrar(); setIsPlaying((p) => !p); }}
+              onSeek={handleSeek}
+              onSaltar={saltar}
+              onSpeedChange={setSpeed}
+              onClose={() => setReproductorAbierto(false)}
+              onVerFicha={() => setSelectedShiur(current)}
+              siguiente={siguienteDe(current, shiurim)}
+              onSiguiente={() => { const s = siguienteDe(current, shiurim); if (s) handlePlay(s); }}
+              temporizador={temporizador}
+              onTemporizador={(min) => { vibrar(); setTemporizador(min ? Date.now() + min * 60000 : null); }}
+            />
+          )}
+          {/* Barra de pestañas */}
           {ES_APP && <BarraPestanas activa={pestanaActiva} onElegir={irAPestana} />}
 
           {/* Vista detallada */}

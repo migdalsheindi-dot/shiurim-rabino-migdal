@@ -2,8 +2,8 @@
 # Sube a GitHub lo que haya cambiado (datos, transcripciones, páginas y sitemap).
 # Uso: scripts/publicar.sh "mensaje del commit"
 set -e
-mkdir -p transcripts s t og
-git add data.json data-lite.json transcripts/ s/ t/ og/ sitemap.xml robots.txt
+mkdir -p transcripts s t og tania
+git add data.json data-lite.json transcripts/ s/ t/ og/ tania/ scripts/tania-he.json sitemap.xml robots.txt
 if git diff --cached --quiet; then
   echo "Sin cambios: ya estaba todo al día."
   exit 0

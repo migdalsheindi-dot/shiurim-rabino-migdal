@@ -59,6 +59,13 @@ jobs:
           pip install --quiet Pillow
           python3 scripts/generar_paginas_shiur.py
 
+      # Tania del Día: texto hebreo (Sefaria) de ayer a 8 días adelante. No usa dependencias y, si algo falla,
+      # no rompe nada: la web sigue mostrando el enlace a Chabad.org.
+      - name: Fase 1 - preparar el Tania del Día (texto hebreo de los próximos días)
+        if: steps.decidir.outputs.hacer == 'true'
+        continue-on-error: true
+        run: python3 scripts/tania_del_dia.py
+
       - name: Fase 1 - publicar
         if: steps.decidir.outputs.hacer == 'true'
         run: scripts/publicar.sh "Sincronizar episodios de Spotify"
