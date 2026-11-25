@@ -2332,9 +2332,6 @@
                   <div className="flex-1 min-h-0 overflow-y-auto pr-2 text-stone-800 text-[15px] leading-[1.75]">
                     {textoEs.parrafos.map((p, i) => <p key={i} className="mb-3 last:mb-0">{p}</p>)}
                   </div>
-                  <p className="text-[11px] text-stone-400 mt-2 leading-snug">
-                    Texto en español: {textoEs.fuente}. <a href={`${URL_TANIA_CHABAD}${cal.tdate}`} target="_blank" rel="noopener noreferrer" className="underline">Ver en Chabad.org</a>
-                  </p>
                 </div>
               ) : (
                 <div dir="ltr" lang="es" className="h-60 text-stone-700 text-[15px] leading-relaxed">
@@ -2358,7 +2355,6 @@
                 <div dir="rtl" lang="he" className="texto-hebreo text-stone-900 flex-1 min-h-0 overflow-y-auto pl-2">
                   {texto.parrafos.map((p, i) => <p key={i} className="mb-4 last:mb-0" dangerouslySetInnerHTML={{ __html: p }} />)}
                 </div>
-                <p dir="ltr" className="text-[11px] text-stone-400 mt-2 leading-snug">Texto hebreo: {texto.fuente}.</p>
               </div>
             )}
           </div>
